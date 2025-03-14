@@ -1,15 +1,15 @@
+import { useEffect } from 'react';
 import { useChat } from '../../context/ChatContext';
 import { useSDK } from '../../context/SDKContext';
-import ChatMessage from './ui/ChatMessage';
+import Icon from '../common/Icon';
 import ChatInput from './ui/ChatInput';
 import ChatList from './ui/ChatList';
+import ChatMessage from './ui/ChatMessage';
 import SearchModal from './ui/SearchModal';
-import Icon from '../common/Icon';
-import { useEffect } from 'react';
 
 export default function Chat() {
   const { state, toggleSearchModal, createNewChat, dispatch } = useChat();
-  const { isLoading: isSDKLoading, error: sdkError } = useSDK();
+  const { sdk, isInitializing, reloadSDK } = useSDK();
   
   // Find the current chat
   const currentChat = state.chats.find(chat => chat.id === state.currentChatId) || state.chats[0];
@@ -52,7 +52,7 @@ export default function Chat() {
   }, [state.chats.length, state.isLoading, createNewChat]);
   
   // Show loading state while SDK is initializing
-  if (isSDKLoading) {
+  if (isInitializing || !sdk) {
     return (
       <div className="flex h-screen bg-gray-50 items-center justify-center">
         <div className="text-center">
@@ -61,13 +61,25 @@ export default function Chat() {
           </div>
           <h2 className="text-xl font-semibold text-gray-700">Loading Chat</h2>
           <p className="text-gray-500 mt-2">Initializing application...</p>
+          
+          {!sdk && !isInitializing && (
+            <div className="mt-4">
+              <p className="text-red-500">Failed to initialize the SDK.</p>
+              <button 
+                onClick={reloadSDK}
+                className="mt-2 px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 transition"
+              >
+                Retry Connection
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   }
   
-  // Show error state if SDK failed to initialize
-  if (sdkError) {
+  // Show error state if SDK isn't ready
+  if (sdk && !sdk.ready()) {
     return (
       <div className="flex h-screen bg-gray-50 items-center justify-center">
         <div className="text-center max-w-md px-6">
@@ -77,8 +89,13 @@ export default function Chat() {
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-gray-700">Connection Error</h2>
-          <p className="text-gray-500 mt-2">Failed to initialize the application. Please refresh the page or try again later.</p>
-          <p className="text-sm text-gray-400 mt-4">{sdkError.message}</p>
+          <p className="text-gray-500 mt-2">SDK is not ready. Please refresh the page or try again later.</p>
+          <button 
+            onClick={reloadSDK}
+            className="mt-4 px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 transition"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     );

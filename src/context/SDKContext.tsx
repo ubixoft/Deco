@@ -1,28 +1,30 @@
-import { createContext, ReactNode, useContext, useEffect, useReducer, useCallback, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useCallback, useMemo, useState, useEffect } from 'react';
 import { WebdrawSDK } from '../types/types';
 import { WebdrawService } from '../services/WebdrawService';
-import { sdkReducer, initialState, ActionType } from './SDKReducer';
-import { SDKStateContext } from './SDKStateContext';
-import { SDKDispatchContext } from './SDKDispatchContext';
 
-/**
- * Type definition for the SDK context with additional methods
- */
+// ============================================================================
+// CONTEXT DEFINITIONS
+// ============================================================================
+
+// Type definition for the SDK context
 export interface SDKContextType {
-  // Core state
   sdk: WebdrawSDK | null;
-  isSDKAvailable: boolean;
-  isLoading: boolean;
-  error: Error | null;
   user: { username: string } | null;
   service: WebdrawService;
-  // Additional methods
+  isInitializing: boolean;
   reloadSDK: () => void;
 }
 
 // Create the main context that will be used by components
 const SDKContext = createContext<SDKContextType | null>(null);
 
+// ============================================================================
+// CUSTOM HOOKS
+// ============================================================================
+
+/**
+ * Hook to use the complete SDK context
+ */
 export const useSDK = (): SDKContextType => {
   const ctx = useContext(SDKContext);
   if (!ctx) {
@@ -31,82 +33,94 @@ export const useSDK = (): SDKContextType => {
   return ctx;
 };
 
+// ============================================================================
+// SDK PROVIDER COMPONENT
+// ============================================================================
+
 interface SDKProviderProps {
   children: ReactNode;
 }
 
+// Configuration
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 2000;
+
 export const SDKProvider = ({ children }: SDKProviderProps) => {
-  const [state, dispatch] = useReducer(sdkReducer, initialState);
-  
   // Get service instance
-  const webdrawService = WebdrawService.getInstance();
-  const sdk = webdrawService.getSDK();
+  const webdrawService = useMemo(() => WebdrawService.getInstance(), []);
   
-  // Initialize the SDK in state
-  useEffect(() => {
-    if (sdk) {
-      dispatch({ type: ActionType.SET_SDK, payload: sdk });
-    }
-  }, [sdk]);
+  // State
+  const [sdk, setSDK] = useState<WebdrawSDK | null>(null);
+  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [retryAttempt, setRetryAttempt] = useState<number>(0);
 
   /**
-   * Reload SDK function
+   * Initialize or reload SDK
    */
+  const initializeSDK = useCallback(async () => {
+    setIsInitializing(true);
+    
+    try {
+      // Check if SDK is available
+      const isAvailable = await webdrawService.checkSDKAvailability();
+      
+      if (isAvailable) {
+        // Get SDK instance
+        const sdkInstance = webdrawService.getSDK();
+        setSDK(sdkInstance);
+        
+        // Get user info
+        const userInfo = await webdrawService.getUser();
+        setUser(userInfo);
+        
+        // Reset retry count on success
+        setRetryAttempt(0);
+      } else {
+        throw new Error('SDK not available');
+      }
+    } catch (error) {
+      console.error('Failed to initialize SDK:', error);
+      
+      // Handle retry logic
+      if (retryAttempt < MAX_RETRY_ATTEMPTS) {
+        console.log(`Will retry SDK initialization (attempt ${retryAttempt + 1} of ${MAX_RETRY_ATTEMPTS})...`);
+        setTimeout(() => {
+          setRetryAttempt(prev => prev + 1);
+        }, RETRY_DELAY_MS);
+      }
+    } finally {
+      // Only set initializing to false if we're done with retries or succeeded
+      if (retryAttempt >= MAX_RETRY_ATTEMPTS || sdk) {
+        setIsInitializing(false);
+      }
+    }
+  }, [webdrawService, retryAttempt, sdk]);
+
+  // Reload SDK function (exposed to consumers)
   const reloadSDK = useCallback(() => {
-    dispatch({ type: ActionType.INCREMENT_RELOAD_COUNTER });
+    setRetryAttempt(0);
+    setSDK(null);
+    setUser(null);
   }, []);
   
-  // Check SDK availability when reload counter changes
+  // Initialize SDK when component mounts or when retryAttempt changes
   useEffect(() => {
-    const checkSDKAvailability = async () => {
-      try {
-        dispatch({ type: ActionType.SET_LOADING, payload: true });
-        const isAvailable = await webdrawService.checkSDKAvailability();
-        dispatch({ type: ActionType.SET_SDK_AVAILABLE, payload: isAvailable });
-        
-        // Only try to load user if SDK is available
-        if (isAvailable) {
-          const user = await webdrawService.getUser();
-          dispatch({ type: ActionType.SET_USER, payload: user });
-        }
-      } catch (error) {
-        dispatch({ 
-          type: ActionType.SET_ERROR, 
-          payload: error instanceof Error ? error : new Error(String(error)) 
-        });
-        dispatch({ type: ActionType.SET_SDK_AVAILABLE, payload: false });
-      } finally {
-        dispatch({ type: ActionType.SET_LOADING, payload: false });
-      }
-    };
-    
-    checkSDKAvailability();
-  }, [webdrawService, state.reloadCounter]);
+    initializeSDK();
+  }, [initializeSDK, retryAttempt]);
   
-  // Create the context value with service and SDK references
+  // Create the context value
   const contextValue = useMemo(() => ({
-    ...state,
+    sdk,
+    user,
     service: webdrawService,
+    isInitializing,
     reloadSDK
-  }), [
-    state, 
-    webdrawService, 
-    reloadSDK
-  ]);
-  
-  // Create state value for SDKStateContext
-  const stateValue = useMemo(() => ({
-    ...state,
-    service: webdrawService,
-  }), [state, webdrawService]);
+  }), [sdk, user, webdrawService, isInitializing, reloadSDK]);
   
   return (
-    <SDKStateContext.Provider value={stateValue}>
-      <SDKDispatchContext.Provider value={dispatch}>
-        <SDKContext.Provider value={contextValue}>
-          {children}
-        </SDKContext.Provider>
-      </SDKDispatchContext.Provider>
-    </SDKStateContext.Provider>
+    <SDKContext.Provider value={contextValue}>
+      {children}
+    </SDKContext.Provider>
   );
 }; 

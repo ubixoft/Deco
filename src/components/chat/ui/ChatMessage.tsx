@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ChatMessage as ChatMessageType } from '../../../types/chat';
+import { AVAILABLE_MODELS } from '../../../constants/models';
 import { useChat } from '../../../context/ChatContext';
-import { AVAILABLE_MODELS, MODEL_ICONS } from '../../../constants/models';
+import { ChatMessage as ChatMessageType } from '../../../types/chat';
 import Icon from '../../common/Icon';
 
 interface ChatMessageProps {

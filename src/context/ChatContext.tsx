@@ -11,7 +11,6 @@ import {
   UPDATE_CHAT,
   SET_CURRENT_CHAT,
   SET_DRAWER_OPEN,
-  SET_LOADING,
   SET_SELECTED_MODEL,
   TOGGLE_MODEL_SELECTOR,
   SET_MODEL_SELECTOR,
@@ -53,7 +52,7 @@ interface ChatProviderProps {
 }
 
 export const ChatProvider = ({ children }: ChatProviderProps) => {
-  const { sdk, isSDKAvailable } = useSDK();
+  const { sdk } = useSDK();
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
 
   useEffect(() => {
@@ -62,7 +61,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
 
   // Load chats from storage
   useEffect(() => {
-    if (!isSDKAvailable || !sdk) return;
+    if (!sdk || !sdk.ready()) return;
 
     const loadChats = async () => {
       try {
@@ -107,12 +106,12 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     };
 
     loadChats();
-  }, [sdk, isSDKAvailable]);
+  }, [sdk]);
 
   // Save chats when they change
   useEffect(() => {
     const saveChats = async () => {
-      if (!isSDKAvailable || !sdk || state.chats.length === 0) return;
+      if (!sdk || !sdk.ready() || state.chats.length === 0) return;
 
       try {
         // Ensure the Chats directory exists
@@ -136,7 +135,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     };
 
     saveChats();
-  }, [state.chats, sdk, isSDKAvailable]);
+  }, [state.chats, sdk]);
 
   const createNewChat = () => {
     const uuid = uuidv4();
@@ -160,7 +159,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   };
 
   const deleteChat = async (id: string) => {
-    if (!isSDKAvailable || !sdk) return;
+    if (!sdk || !sdk.ready()) return;
 
     try {
       const chatToDelete = state.chats.find(chat => chat.id === id);
@@ -174,7 +173,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   };
 
   const generateChatTitle = async (chatId: string) => {
-    if (!isSDKAvailable || !sdk) return;
+    if (!sdk || !sdk.ready()) return;
 
     try {
       const currentChat = state.chats.find(chat => chat.id === chatId);
@@ -211,24 +210,16 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
   };
 
   const sendMessage = async (content: string) => {
-    if (!isSDKAvailable || !sdk || !content.trim() || state.isLoading) return;
-
-    dispatch({ type: SET_LOADING, payload: true });
+    if (!sdk || !content.trim()) return;
     
     const currentChatId = state.currentChatId;
-    if (!currentChatId) {
-      dispatch({ type: SET_LOADING, payload: false });
-      return;
-    }
+    if (!currentChatId) return;
     
     dispatch({ type: SET_REQUESTING_CHAT_ID, payload: currentChatId });
     
     try {
       const currentChat = state.chats.find(chat => chat.id === currentChatId);
-      if (!currentChat) {
-        dispatch({ type: SET_LOADING, payload: false });
-        return;
-      }
+      if (!currentChat) return;
 
       // Add user message
       const userMessageId = uuidv4();
@@ -264,7 +255,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
       }
 
       // Generate response
-      console.log('asking sdk', sdk.ai.generateText);
       const response = await sdk.ai.generateText({
         model: state.selectedModel,
         messages: updatedChat.messages
@@ -274,7 +264,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
             content: msg.role === 'assistant' ? msg.content.replace(/<[^>]*>/g, '') : msg.content,
           })),
       });
-      console.log('response', response);
+      
       if (!response.text) {
         throw new Error('Invalid response format');
       }
@@ -328,35 +318,23 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         dispatch({ type: UPDATE_CHAT, payload: updatedChat });
       }
     } finally {
-      dispatch({ type: SET_LOADING, payload: false });
       dispatch({ type: SET_REQUESTING_CHAT_ID, payload: null });
     }
   };
 
   const regenerateMessage = async (message: ChatMessage) => {
-    if (!isSDKAvailable || !sdk || state.isLoading) return;
-
-    dispatch({ type: SET_LOADING, payload: true });
+    if (!sdk || !sdk.ready() || !sdk.ai) return;
     
     const currentChatId = state.currentChatId;
-    if (!currentChatId) {
-      dispatch({ type: SET_LOADING, payload: false });
-      return;
-    }
+    if (!currentChatId) return;
     
     try {
       const currentChat = state.chats.find(chat => chat.id === currentChatId);
-      if (!currentChat) {
-        dispatch({ type: SET_LOADING, payload: false });
-        return;
-      }
+      if (!currentChat) return;
 
       // Find the index of the message to regenerate
       const messageIndex = currentChat.messages.findIndex(msg => msg.id === message.id);
-      if (messageIndex === -1) {
-        dispatch({ type: SET_LOADING, payload: false });
-        return;
-      }
+      if (messageIndex === -1) return;
 
       // Get the previous user message
       let userMessage = '';
@@ -367,10 +345,7 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
         }
       }
 
-      if (!userMessage) {
-        dispatch({ type: SET_LOADING, payload: false });
-        return;
-      }
+      if (!userMessage) return;
 
       // Update message with loading state
       const updatedMessages = [...currentChat.messages];
@@ -432,8 +407,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
           dispatch({ type: UPDATE_CHAT, payload: updatedChat });
         }
       }
-    } finally {
-      dispatch({ type: SET_LOADING, payload: false });
     }
   };
 
@@ -490,9 +463,6 @@ export const ChatProvider = ({ children }: ChatProviderProps) => {
     dispatch({ type: SET_SEARCH_MODAL, payload: false });
     dispatch({ type: SET_SEARCH_QUERY, payload: '' });
   };
-
-  // Calculate current chat
-  const currentChat = state.chats.find(chat => chat.id === state.currentChatId) || (state.chats[0] || null);
 
   // Memoized context value
   const contextValue: ChatContextType = {

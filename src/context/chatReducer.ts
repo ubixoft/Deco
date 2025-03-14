@@ -1,4 +1,4 @@
-import { ChatState, ChatAction, Chat } from '../types/chat';
+import { ChatAction, ChatState } from '../types/chat';
 
 // Action types
 export const SET_CHATS = 'SET_CHATS';
