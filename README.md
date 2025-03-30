@@ -1,110 +1,101 @@
-# Chat Application
+# deco.chat Agent Workspace 🚀
 
-A modern and responsive chat application built with React, TypeScript, and Tailwind CSS.
+_A self-hosted AI workspace for building intelligent, UI-rich AI Agents that integrate seamlessly with your internal tools and workflows._
 
-## Features
+---
 
-- 💬 Chat with multiple AI models (GPT, Claude, Mistral, Deepseek)
-- 📋 Multiple chat sessions with saved history
-- 🔍 Search through past conversations
-- 🎨 Clean, responsive UI for desktop and mobile
-- 📱 Mobile-friendly with drawer navigation
-- 🚀 Quick actions to start a new chat
+## 🎯 What is deco.chat Agent Workspace?
 
-## Technology Stack
+**deco.chat Agent Workspace** is an open-source platform designed to empower anyone to quickly create AI agents that don't just communicate through text—but **through rich, interactive UI**. Text is not everything. Your agents should visually express data, actions, and insights, leveraging an extensible chat interface that brings powerful UI elements directly into conversations.
 
-- **Frontend**: React, TypeScript
-- **Styling**: Tailwind CSS
-- **State Management**: Context API
-- **Markdown Rendering**: Marked
-- **Unique IDs**: UUID
+Agents built with deco.chat dynamically assemble themselves, connecting automatically to thousands of high-quality, strongly-typed MCPs (**Model Context Protocols**) available for popular databases, services, and APIs. This means your agents seamlessly understand how to interact with your existing tools and immediately provide value, saving you hours of setup and configuration.
 
-## Getting Started
+---
 
-### Prerequisites
+## 🌟 Benefits
 
-- Node.js (v14+)
-- npm or yarn
+- **Rich, Extensible UI:** Go beyond text—embed interactive elements like charts, forms, maps, dashboards, and code editors directly in chat interactions.
+- **Instant Connectivity:** Thousands of ready-to-use MCP integrations available immediately, connecting your agents with popular tools and internal systems.
+- **Chat-first Agent Creation:** Use natural language to instruct agents, allowing teams without coding experience to build powerful AI automations.
+- **Collaboration & Reuse:** Easily share, remix, and customize agents across teams, creating a unified library of reusable workflows.
+- **Enterprise-grade Governance:** Built-in compliance, permissions, and detailed audit trails, providing complete control over AI adoption.
 
-### Installation
+---
 
-1. Clone the repository
-```bash
-git clone <repository-url>
-cd chat
+## 🚀 Quick Start: Your First Agent in 30 Seconds (Google Sheets MCP)
+
+### Step 1: Installation
+
+Install deco.chat locally:
+
 ```
-
-2. Install dependencies
-```bash
-npm install
+npm install -g decochat
 # or
-yarn install
+deno install decochat
 ```
 
-3. Start the development server
-```bash
-npm run dev
-# or
-yarn dev
-```
-
-4. Open your browser and navigate to `http://localhost:5173` (or the URL provided in your terminal)
-
-## Usage
-
-1. **Creating a New Chat**
-   - Click on the "New Chat" button in the sidebar
-   - Start typing your message in the input field
-
-2. **Switching Between Chats**
-   - Click on any chat in the sidebar to switch to that conversation
-
-3. **Searching Conversations**
-   - Click the search icon in the sidebar header
-   - Type your search query to filter through chat titles and messages
-
-4. **Changing AI Model**
-   - Click on the model selector button at the bottom of the chat input
-   - Choose your preferred AI model from the dropdown
-
-5. **Message Actions**
-   - Hover over any assistant message to see available actions:
-     - Delete message
-     - Regenerate response
-     - Copy text
-
-## Configuration
-
-The application can be configured by modifying the following files:
-
-- `src/constants/models.ts`: Available AI models
-- `src/context/ChatContext.tsx`: Chat functionality and state management
-- `src/context/SDKContext.tsx`: SDK integration
-
-## Development
-
-### File Structure
+### Step 2: Run Your Local Workspace
 
 ```
-src/
-├── components/         # UI components
-│   ├── chat/           # Chat-specific components
-│   │   ├── ui/         # UI elements for chat
-│   │   └── Chat.tsx    # Main chat component
-├── constants/          # Application constants
-├── context/            # Context providers
-├── types/              # TypeScript type definitions
-└── main.tsx            # Entry point
+decochat start
 ```
 
-### Adding New Features
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To add new features:
+### Step 3: Connect Google Sheets MCP
 
-1. Create necessary components in the `src/components` directory
-2. Update relevant context providers as needed
-3. Add any new types to the `src/types` directory
+- Select "Google Sheets MCP" from the MCP Catalog.
+- Securely authorize your Google account via OAuth.
 
-## License
+### Step 4: Create Your First AI Agent!
 
-[MIT](LICENSE)
+Simply chat your request:
+
+```
+Create an agent that reads my spreadsheet "SalesData2025" and shows monthly revenue trends visually.
+```
+
+Your agent will:
+
+✅ Instantly connect to your spreadsheet  
+✅ Fetch and analyze data  
+✅ Display interactive charts within the chat interface
+
+---
+
+## 🧩 Key Features
+
+- **Interactive Chat Interface:** Deliver real-time visual interactions directly within the chat.
+- **Golden Layout UI:** Open multiple tabs within the chat workspace for multitasking across forms, dashboards, maps, and live coding environments.
+- **Extensive MCP Catalog:** Access thousands of high-quality MCPs for immediate integrations to databases, CRM, Slack, Salesforce, GitHub, and more.
+- **Collaborative Agent Library:** Rapidly remix, customize, and deploy agents internally or within the community.
+
+---
+
+## 🔗 Join Our Community
+
+- [GitHub Repository](https://github.com/deco-cx/chat)
+- [Official Documentation](https://docs.deco.chat)
+- [Community Discord](https://deco.cx/discord) — share ideas, seek support, and showcase your agents.
+
+---
+
+## 📚 Roadmap & Contributions
+
+We welcome your contributions:
+
+- [ ] Advanced memory management
+- [ ] Enhanced workflow visualizations
+- [ ] Rich analytics dashboards
+- [ ] Expanded MCP integrations (Zapier, Notion, Airtable, etc.)
+
+Help shape the future of UI-rich, self-building AI agents!
+
+---
+
+**Made with ❤️ by deco.chat**
+
+Empowering businesses to scale AI safely, visually, and efficiently. Explore our enterprise-grade managed solution at [deco.chat](https://deco.chat).
+
+**Build more than just conversations—build experiences.** 🌐✨
+
