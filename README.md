@@ -1,6 +1,6 @@
-# deco.chat Agent Workspace 🚀
+# deco.chat — Create AI Agents that Go Beyond Text 
 
-_A self-hosted AI workspace for building intelligent, UI-rich AI Agents that integrate seamlessly with your internal tools and workflows._
+_An extensible, self-hosted AI workspace for building intelligent, UI-rich AI Agents that integrate seamlessly with your internal tools and data._
 
 ---
 
