@@ -1,0 +1,35 @@
+{
+  "name": "@deco/chat",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "PWD=$PWD/apps/webdraw deno run dev",
+    "build": "PWD=$PWD/apps/webdraw deno run build",
+    "lint": "deno run lint .",
+    "fmt": "deno fmt .",
+    "check": "deno check . --allow-imports"
+  },
+  "dependencies": {},
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "workspace": [
+    "./apps/web"
+  ],
+  "compilerOptions": {
+    "lib": [
+      "deno.window",
+      "dom",
+      "esnext",
+      "deno.ns",
+      "deno.unstable"
+    ],
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "unstable": [
+    "kv"
+  ]
+}
