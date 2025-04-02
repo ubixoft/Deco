@@ -44,6 +44,7 @@
     "npm:react-dom@19": "19.1.0_react@19.1.0",
     "npm:react-hook-form@^7.55.0": "7.55.0_react@19.1.0",
     "npm:react-resizable-panels@^2.1.7": "2.1.7_react@19.1.0_react-dom@19.1.0__react@19.1.0",
+    "npm:react-router@^7.4.1": "7.4.1_react@19.1.0_react-dom@19.1.0__react@19.1.0",
     "npm:react@19": "19.1.0",
     "npm:recharts@^2.15.1": "2.15.1_react@19.1.0_react-dom@19.1.0__react@19.1.0",
     "npm:sonner@^2.0.3": "2.0.3_react@19.1.0_react-dom@19.1.0__react@19.1.0",
@@ -1061,6 +1062,9 @@
         "vite"
       ]
     },
+    "@types/cookie@0.6.0": {
+      "integrity": "sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA=="
+    },
     "@types/d3-array@3.2.1": {
       "integrity": "sha512-Y2Jn2idRrLzUfAKV2LyRImR+y4oa2AntrgID95SHJxuMUrkNXmanDSed71sRNZysveJVt1hLLemQZIady0FpEg=="
     },
@@ -1362,6 +1366,9 @@
     },
     "cookie@0.3.1": {
       "integrity": "sha512-+IJOX0OqlHCszo2mBUq+SrEbCj6w7Kpffqx60zYbPTFaO4+yYgRjHwcZNpWvaTylDHaV7PPmBHzSecZiMhtPgw=="
+    },
+    "cookie@1.0.2": {
+      "integrity": "sha512-9Kr/j4O16ISv8zBBhJoi4bXOYNTkFLOqSL3UDB0njXxCXNezjeyVrJyGOWtgfs/q2km1gwBcfH8q1yEGoMYunA=="
     },
     "core-js@2.6.12": {
       "integrity": "sha512-Kb2wC0fvsWfQrgk8HU5lW6U/Lcs8+9aaYcy4ZFc6DDlo4nZ7n70dEgE5rtR0oG6ufKDUnrwfWL1mXR5ljDatrQ=="
@@ -1712,7 +1719,7 @@
         "body-parser",
         "content-disposition",
         "content-type",
-        "cookie",
+        "cookie@0.3.1",
         "cookie-signature",
         "debug",
         "depd",
@@ -2468,6 +2475,17 @@
         "react-dom"
       ]
     },
+    "react-router@7.4.1_react@19.1.0_react-dom@19.1.0__react@19.1.0": {
+      "integrity": "sha512-Vmizn9ZNzxfh3cumddqv3kLOKvc7AskUT0dC1prTabhiEi0U4A33LmkDOJ79tXaeSqCqMBXBU/ySX88W85+EUg==",
+      "dependencies": [
+        "@types/cookie",
+        "cookie@1.0.2",
+        "react",
+        "react-dom",
+        "set-cookie-parser",
+        "turbo-stream"
+      ]
+    },
     "react-smooth@4.0.4_react@19.1.0_react-dom@19.1.0__react@19.1.0": {
       "integrity": "sha512-gnGKTpYwqL0Iii09gHobNolvX4Kiq4PKx6eWBCYYix+8cdw+cGo3do906l1NBPKkSWx1DghC1dlWG9L2uGd61Q==",
       "dependencies": [
@@ -2668,6 +2686,9 @@
         "parseurl",
         "send"
       ]
+    },
+    "set-cookie-parser@2.7.1": {
+      "integrity": "sha512-IOc8uWeOZgnb3ptbCURJWNjWUPcO3ZnTTdzsurqERrP6nPyv+paC55vJM0LpOlT2ne+Ix+9+CRG1MNLlyZ4GjQ=="
     },
     "set-function-length@1.2.2": {
       "integrity": "sha512-pgRc4hJ4/sNjWCSS9AmnS40x3bNMDTknHgL5UaMBTMyJnU90EgWh1Rz+MC9eFu4BuN/UwZjKQuY/1v3rM7HMfg==",
@@ -2871,6 +2892,9 @@
     },
     "tsscmp@1.0.6": {
       "integrity": "sha512-LxhtAkPDTkVCMQjt2h6eBVY28KCjikZqZfMcC15YBeNjkgUpdCfBu5HoiOTDu86v6smE8yOjyEktJ8hlbANHQA=="
+    },
+    "turbo-stream@2.4.0": {
+      "integrity": "sha512-FHncC10WpBd2eOmGwpmQsWLDoK4cqsA/UT/GqNoaKOQnT8uzhtCbg3EoUDMvqpOSAI0S26mr0rkjzbOO6S3v1g=="
     },
     "tw-animate-css@1.2.5": {
       "integrity": "sha512-ABzjfgVo+fDbhRREGL4KQZUqqdPgvc5zVrLyeW9/6mVqvaDepXc7EvedA+pYmMnIOsUAQMwcWzNvom26J2qYvQ=="
@@ -3101,6 +3125,7 @@
             "npm:@types/react@^19.0.10",
             "npm:@vitejs/plugin-react-swc@^3.8.0",
             "npm:react-dom@19",
+            "npm:react-router@^7.4.1",
             "npm:react@19",
             "npm:tailwindcss@^4.1.1",
             "npm:vite@^6.2.0"
