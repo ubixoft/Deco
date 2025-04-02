@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/global.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "aliases": {
+    "ui": "@deco/ui/components",    
+    "components": "@deco/ui/components",
+    "utils": "@deco/ui/lib/utils",
+    "lib": "@deco/ui/lib",
+    "hooks": "@deco/ui/hooks"
+  },
+  "iconLibrary": "material-symbols"
+}

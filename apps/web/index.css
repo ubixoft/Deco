@@ -1,0 +1,4 @@
+@import "@deco/ui/styles/global.css";
+
+/* include the ui package */
+@source "../../packages/ui";

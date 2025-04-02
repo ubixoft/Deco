@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "PWD=$PWD/apps/webdraw deno run dev",
-    "build": "PWD=$PWD/apps/webdraw deno run build",
+    "dev": "PWD=$PWD/apps/web deno run dev",
+    "build": "PWD=$PWD/apps/web deno run build",
     "lint": "deno run lint .",
     "fmt": "deno fmt .",
-    "check": "deno check . --allow-imports"
+    "check": "deno check . --allow-imports",
+    "ui": "npx shadcn@latest add -c ./packages/ui"
   },
   "dependencies": {},
   "workspaces": [
@@ -16,7 +17,8 @@
     "packages/*"
   ],
   "workspace": [
-    "./apps/web"
+    "./apps/web",
+    "./packages/ui"
   ],
   "compilerOptions": {
     "lib": [
