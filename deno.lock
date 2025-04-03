@@ -3138,7 +3138,8 @@
       "packages/sdk": {
         "packageJson": {
           "dependencies": [
-            "npm:react@^19.1.0"
+            "npm:react@^19.1.0",
+            "npm:zod@^3.24.2"
           ]
         }
       },

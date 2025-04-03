@@ -22,7 +22,7 @@ import { Input } from "@deco/ui/components/input.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { type ChangeEvent, useMemo, useReducer, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { EmptyState } from "../../EmptyState.tsx";
+import { EmptyState } from "../../common/EmptyState.tsx";
 import registryIntegrations from "../registry.json" with { type: "json" };
 
 // Registry Integration type that matches the structure in registry.json
