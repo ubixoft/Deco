@@ -1,4 +1,4 @@
-# deco.chat — Chat-based Agent Builder 
+# deco.chat — Extensible Chat-based Agent Builder
 
 _An extensible, self-hosted AI workspace for building intelligent, UI-rich AI Agents that integrate seamlessly with your internal tools and data._
 
