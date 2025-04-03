@@ -2,8 +2,12 @@ import { lazy, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
 
-const IntegrationDetails = lazy(() =>
-  import("./components/integrations/detail/index.tsx")
+const IntegrationNew = lazy(() =>
+  import("./components/integrations/detail/new.tsx")
+);
+
+const IntegrationEdit = lazy(() =>
+  import("./components/integrations/detail/edit.tsx")
 );
 
 const IntegrationList = lazy(() =>
@@ -19,8 +23,12 @@ createRoot(document.getElementById("root")!).render(
           element={<IntegrationList />}
         />
         <Route
+          path="integration/new"
+          element={<IntegrationNew />}
+        />
+        <Route
           path="integration/:id"
-          element={<IntegrationDetails />}
+          element={<IntegrationEdit />}
         />
       </Routes>
     </BrowserRouter>

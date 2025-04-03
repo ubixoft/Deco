@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@deco/ui": "workspace:*",
+    "@deco/sdk": "workspace:*",
+    "@hookform/resolvers": "^5.0.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@deco/ui": "workspace:*",
+    "react-hook-form": "^7.55.0",
     "react-router": "^7.4.1"
   },
   "devDependencies": {

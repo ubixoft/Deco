@@ -1,0 +1,20 @@
+{
+  "name": "@deco/sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "dependencies": {
+    "react": "^19.1.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./crud": "./src/crud/index.ts",
+    "./models": "./src/models/index.ts",
+    "./theme": "./src/theme.ts",
+    "./constants": "./src/constants.ts"
+  }
+}
