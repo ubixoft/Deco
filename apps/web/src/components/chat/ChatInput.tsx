@@ -128,7 +128,7 @@ export function ChatInput({
                   onChange={handleFileChange}
                   multiple
                   className="hidden"
-                  accept="image/*,text/*,application/pdf"
+                  accept="image/jpeg,image/png,image/gif,image/webp,text/*,application/pdf"
                 />
                 <Button
                   type="button"
