@@ -41,6 +41,7 @@
     "npm:clsx@^2.1.1": "2.1.1",
     "npm:cmdk@^1.1.1": "1.1.1_react@19.1.0_react-dom@19.1.0__react@19.1.0_@types+react@19.1.0_@types+react-dom@19.1.1__@types+react@19.1.0",
     "npm:date-fns@^4.1.0": "4.1.0",
+    "npm:dockview-react@^4.2.1": "4.2.1_react@19.1.0",
     "npm:embla-carousel-react@^8.5.2": "8.5.2_react@19.1.0_embla-carousel@8.5.2",
     "npm:input-otp@^1.4.2": "1.4.2_react@19.1.0_react-dom@19.1.0__react@19.1.0",
     "npm:lucide-react@0.487": "0.487.0_react@19.1.0",
@@ -1908,6 +1909,22 @@
       "integrity": "sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==",
       "dependencies": [
         "dequal"
+      ]
+    },
+    "dockview-core@4.2.1": {
+      "integrity": "sha512-KaEOMzMdQvWB9e3iRQf9BqerB1sX43wAIhla5uGzkA+irag9wz0F5bkVZyJ5mVqJgqrQdWh+W8j94+L2wY0AmA=="
+    },
+    "dockview-react@4.2.1_react@19.1.0": {
+      "integrity": "sha512-qDccFh2xStdDdsJ/VE9VZXEJ6t+hmQDZpsaFjnw4FTl3Ds6bdq7FJEyeLhhoujb6AMXSQRGJAP4abaaLG7DfhQ==",
+      "dependencies": [
+        "dockview"
+      ]
+    },
+    "dockview@4.2.1_react@19.1.0": {
+      "integrity": "sha512-P6T4JiM5yuHa8JH0E/BuPpCv8EMLDoCXtvS169ITRRKfgi+zF98AUrnhW8F+FOXV6QS/5Dtt9ca5YxWgtcQsOQ==",
+      "dependencies": [
+        "dockview-core",
+        "react"
       ]
     },
     "dom-helpers@5.2.1": {
@@ -4460,6 +4477,9 @@
       "integrity": "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="
     }
   },
+  "remote": {
+    "https://webdraw.com/webdraw-sdk@v1": "0b4dd53fe22c0aa1d33cf45aa9061ccf10edc6ae404b901e6148b4e663ffc887"
+  },
   "workspace": {
     "members": {
       "apps/web": {
@@ -4475,6 +4495,7 @@
             "npm:@types/react-dom@^19.0.4",
             "npm:@types/react@^19.0.10",
             "npm:@vitejs/plugin-react-swc@^3.8.0",
+            "npm:dockview-react@^4.2.1",
             "npm:marked@^15.0.7",
             "npm:react-dom@19",
             "npm:react-hook-form@^7.55.0",

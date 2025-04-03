@@ -11,7 +11,7 @@
     "prefix": ""
   },
   "aliases": {
-    "ui": "@deco/ui/components",    
+    "ui": "@deco/ui/components",
     "components": "@deco/ui/components",
     "utils": "@deco/ui/lib/utils.ts",
     "lib": "@deco/ui/lib",

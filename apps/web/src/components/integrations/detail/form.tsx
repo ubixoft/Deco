@@ -3,7 +3,7 @@ import {
   type Integration,
   IntegrationSchema,
   type MCPConnection,
-  saveIntegration
+  saveIntegration,
 } from "@deco/sdk";
 import {
   Breadcrumb,

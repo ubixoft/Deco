@@ -1,4 +1,3 @@
-import { Icon } from "@deco/ui/components/icon.tsx";
 import { useState } from "react";
 
 export function ExpandableDescription(

@@ -6,12 +6,11 @@
   "scripts": {
     "dev": "PWD=$PWD/apps/web deno run dev",
     "build": "PWD=$PWD/apps/web deno run build",
-    "lint": "deno run lint .",
-    "fmt": "deno fmt .",
-    "check": "deno check . --allow-imports",
+    "lint": "deno run --config ./package.json lint .",
+    "fmt": "deno fmt --config ./package.json .",
+    "check": "deno check --allow-import --config ./package.json .",
     "ui": "npx shadcn@latest add -c ./packages/ui"
   },
-  "dependencies": {},
   "workspaces": [
     "apps/*",
     "packages/*"
