@@ -19,6 +19,10 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <Routes>
         <Route
+          path="integrations.html"
+          element={<IntegrationList />}
+        />
+        <Route
           path="integrations"
           element={<IntegrationList />}
         />
