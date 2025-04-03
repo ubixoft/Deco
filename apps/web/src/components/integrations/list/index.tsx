@@ -382,7 +382,7 @@ export default function List() {
           />
           <Button onClick={handleCreate}>
             <Icon name="add" />
-            New Integration
+            Create Integration
           </Button>
         </div>
 

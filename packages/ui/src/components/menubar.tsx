@@ -4,7 +4,7 @@ import * as React from "react"
 import * as MenubarPrimitive from "@radix-ui/react-menubar"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
-import { cn } from "@deco/ui/lib/utils"
+import { cn } from "@deco/ui/lib/utils.ts"
 
 function Menubar({
   className,
@@ -14,7 +14,7 @@ function Menubar({
     <MenubarPrimitive.Root
       data-slot="menubar"
       className={cn(
-        "bg-background flex h-9 items-center gap-1 rounded-md border p-1 shadow-xs",
+        "bg-background flex h-10 items-center gap-1 rounded-md border p-1 shadow-xs",
         className
       )}
       {...props}

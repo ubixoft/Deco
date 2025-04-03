@@ -36,7 +36,7 @@ export function Icon(
     filled = false,
     weight = 400,
     grade = 0,
-    size = 24,
+    size = 16,
     style,
     className,
   }: Props,
@@ -49,9 +49,9 @@ export function Icon(
           FILL: filled ? "1" : "0",
           wght: weight,
           GRAD: grade,
-          opsz: size,
         }).map(([key, value]) => `'${key}' ${value}`).join(", "),
         ...style,
+        fontSize: `${size}px`,
       }}
     >
       {name}

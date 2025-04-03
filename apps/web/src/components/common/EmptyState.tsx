@@ -22,7 +22,7 @@ export function EmptyState({
             <div className="p-3.5 rounded-full border border-slate-100">
               <div className="p-3 rounded-full border border-slate-100">
                 <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center p-4">
-                  <Icon name={icon} className="text-slate-300 text-4xl" />
+                  <Icon name={icon} className="text-slate-300" size={36} />
                 </div>
               </div>
             </div>
@@ -30,7 +30,7 @@ export function EmptyState({
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-2 w-64">
+      <div className="flex flex-col items-center gap-2 w-72">
         <h3 className="text-lg font-semibold text-gray-900 text-center">
           {title}
         </h3>
