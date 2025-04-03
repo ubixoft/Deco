@@ -5,7 +5,6 @@ import { useAgent } from "@deco/sdk/hooks";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { API_SERVER_URL } from "../../constants.ts";
 import { stub } from "../../utils/stub.ts";
 import { Chat } from "./Chat.tsx";
 
