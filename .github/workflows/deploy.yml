@@ -1,0 +1,144 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.app }} app
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [web]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Install dependencies
+        run: deno install
+      
+      - name: Build ${{ matrix.app }} app
+        run: |
+          cd apps/${{ matrix.app }}
+          deno run build
+      
+      - name: Deploy to fs.webdraw.app
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          cd apps/${{ matrix.app }}/dist
+          
+          # Create a TypeScript deploy script
+          cat > deploy.ts << 'EOF'
+          // deploy.ts - TypeScript deployment script for fs.webdraw.app
+          
+          const APP_SLUG = Deno.env.get("APP_SLUG") || "";
+          const API_TOKEN = Deno.env.get("WEBDRAW_API_TOKEN");
+          const API_URL = `https://fs.webdraw.com/app/${APP_SLUG}`;
+          
+          console.log(`Starting deployment of ${APP_SLUG} to ${API_URL} at ${new Date().toISOString()}`);
+          
+          // Validate environment
+          if (!APP_SLUG) {
+            console.error("ERROR: APP_SLUG environment variable is not set");
+            Deno.exit(1);
+          }
+          
+          if (!API_TOKEN) {
+            console.warn("WARNING: No API token provided");
+          } else {
+            console.log("Using API key authentication");
+          }
+          
+          // Get all files in current directory recursively
+          async function getFiles(dir: string): Promise<string[]> {
+            const files: string[] = [];
+            
+            for await (const entry of Deno.readDir(dir)) {
+              const path = `${dir}/${entry.name}`;
+              if (entry.isDirectory) {
+                files.push(...await getFiles(path));
+              } else {
+                files.push(path);
+              }
+            }
+            
+            return files;
+          }
+          
+          async function main() {
+            try {
+              // Get all files
+              const allFiles = await getFiles(".");
+              console.log(`Found ${allFiles.length} files to upload`);
+              
+              // Create form data with all files
+              const formData = new FormData();
+              
+              for (const filePath of allFiles) {
+                // Remove leading ./ from the path
+                const relativePath = filePath.startsWith("./") ? filePath.slice(2) : filePath;
+                
+                // Read file data
+                const fileData = await Deno.readFile(filePath);
+                const fileName = relativePath.split("/").pop() || "";
+                
+                // Add file to form data with correct path as the field name
+                formData.append(relativePath, new Blob([fileData]), fileName);
+              }
+              
+              // Prepare headers
+              const headers: HeadersInit = {};
+              if (API_TOKEN) {
+                headers["x-webdraw-api-key"] = API_TOKEN;
+              }
+              
+              // Upload all files in a single request
+              console.log(`Uploading all ${allFiles.length} files in a single request...`);
+              
+              const response = await fetch(API_URL, {
+                method: "PUT",
+                headers,
+                body: formData,
+              });
+              
+              // Log full response
+              const responseText = await response.text();
+              console.log("Response status:", response.status);
+              console.log("Response body:", responseText);
+              
+              if (response.ok) {
+                console.log("Upload completed successfully");
+              } else {
+                console.error(`ERROR: Upload failed with HTTP code ${response.status}`);
+                Deno.exit(1);
+              }
+              
+              console.log(`Deployment completed at ${new Date().toISOString()}`);
+              console.log(`Total files: ${allFiles.length}`);
+              console.log("SUCCESS: All files have been deployed successfully!");
+              
+            } catch (error) {
+              console.error("ERROR:", error.message);
+              Deno.exit(1);
+            }
+          }
+          
+          main();
+          EOF
+          
+          # Run the TypeScript deploy script
+          deno run --allow-read --allow-net --allow-env deploy.ts
+        env:
+          APP_SLUG: ${{ matrix.app }}
+          WEBDRAW_API_TOKEN: ${{ secrets.WEBDRAW_API_TOKEN }}
