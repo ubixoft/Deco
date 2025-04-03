@@ -16,7 +16,6 @@ import {
   AlertDialogTrigger,
 } from "@deco/ui/components/alert-dialog.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import { Label } from "@deco/ui/components/label.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
@@ -25,7 +24,7 @@ import { Textarea } from "@deco/ui/components/textarea.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { AgentAvatar, Avatar } from "../common/Avatar.tsx";
+import { AgentAvatar } from "../common/Avatar.tsx";
 import { Integration } from "./integrations/index.tsx";
 
 const inputStyles =
