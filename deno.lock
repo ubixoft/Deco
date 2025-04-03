@@ -4513,6 +4513,7 @@
       "packages/sdk": {
         "packageJson": {
           "dependencies": [
+            "npm:dockview-react@^4.2.1",
             "npm:react@^19.1.0",
             "npm:zod@^3.24.2"
           ]

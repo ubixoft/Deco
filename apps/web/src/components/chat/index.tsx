@@ -50,7 +50,7 @@ const useMessages = (
       try {
         // TODO: I guess we can improve this and have proper typings
         // deno-lint-ignore no-explicit-any
-        const agentStub = stub<any>("AIAgent", API_SERVER_URL)
+        const agentStub = stub<any>("AIAgent")
           .new(agentRoot)
           .withMetadata({ threadId: threadId ?? agentId });
 
