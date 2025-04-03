@@ -6,9 +6,7 @@ import { useCallback } from "react";
 const getAgentUrl = (
   context: { root: string } | null | undefined,
   agentId: string,
-): string => {
-  return `${context?.root}/agent?agentId=${agentId}`;
-};
+): string => `${context?.root}/agent/${agentId}`;
 
 // Helper to check if agent is pinned
 const isAgentPinned = (
@@ -38,8 +36,10 @@ export const useFocusAgent = () => {
 
   const navigate = useCallback(
     (agentId: string, agent: Agent) => {
+      const url = getAgentUrl(context, agentId);
+
       // Navigate to the agent page
-      SDK.os.navigate(`${context!.root}/agent?agentId=${agentId}`);
+      SDK.os.navigate(url);
 
       // Pin the agent to the sidebar if provided
       if (!isPinned(agentId)) {

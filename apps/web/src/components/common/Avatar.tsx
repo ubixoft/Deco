@@ -1,10 +1,12 @@
-import * as React from "react";
+import type { Agent } from "@deco/sdk";
 import {
   Avatar as AvatarUI,
   AvatarFallback,
   AvatarImage,
 } from "@deco/ui/components/avatar.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
+import { type ReactNode, useMemo } from "react";
 
 // Predefined color palette for avatar backgrounds
 const AVATAR_COLORS = [
@@ -48,7 +50,7 @@ export interface AvatarProps {
    * Fallback text or element to display when the image is not available
    * If string is provided, it will use the first two characters (typically initials)
    */
-  fallback: string | React.ReactNode;
+  fallback: string | ReactNode;
 
   /**
    * Additional CSS classes to apply to the avatar
@@ -68,7 +70,7 @@ export function Avatar({
   size = "md",
 }: AvatarProps) {
   // Calculate appropriate size class
-  const sizeClass = React.useMemo(() => {
+  const sizeClass = useMemo(() => {
     switch (size) {
       case "sm":
         return "h-8 w-8";
@@ -81,7 +83,7 @@ export function Avatar({
   }, [size]);
 
   // Extract initials from string fallback (first two characters)
-  const fallbackContent = React.useMemo(() => {
+  const fallbackContent = useMemo(() => {
     if (typeof fallback === "string") {
       return fallback.substring(0, 2).toUpperCase();
     }
@@ -89,7 +91,7 @@ export function Avatar({
   }, [fallback]);
 
   // Get a deterministic color for the fallback based on the content
-  const fallbackColor = React.useMemo(() => {
+  const fallbackColor = useMemo(() => {
     if (typeof fallback === "string") {
       return getColorFromString(fallback);
     }
@@ -106,3 +108,44 @@ export function Avatar({
     </AvatarUI>
   );
 }
+
+export const AgentAvatar = (
+  { agent, variant = "lg" }: { agent?: Agent; variant?: "xl" | "lg" },
+) => {
+  if (!agent || agent.name === "Anonymous") {
+    return (
+      <div
+        className={cn(
+          "w-full h-full bg-gradient-to-b from-white to-slate-200 flex items-center justify-center border border-slate-200 overflow-hidden",
+          variant === "xl" && "rounded-xl",
+          variant === "lg" && "rounded-lg",
+        )}
+      >
+        <Icon
+          filled
+          name="domino_mask"
+          className="text-slate-600"
+          size={variant === "xl" ? 32 : 16}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <Avatar
+      url={agent.avatar && /^(data:)|(https?:)/.test(agent.avatar)
+        ? agent.avatar
+        : undefined}
+      fallback={agent.avatar &&
+          !/^(data:)|(https?:)/.test(agent.avatar)
+        ? agent.avatar
+        : agent.name.substring(0, 2)}
+      size="sm"
+      className={cn(
+        "w-full h-full",
+        variant === "xl" && "rounded-xl",
+        variant === "lg" && "rounded-lg",
+      )}
+    />
+  );
+};

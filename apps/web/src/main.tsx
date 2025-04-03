@@ -14,23 +14,33 @@ const IntegrationList = lazy(() =>
   import("./components/integrations/list/index.tsx")
 );
 
-const AgentsList = lazy(() => import("./components/agents/list.tsx"));
+const AgentsList = lazy(
+  () => import("./components/agents/list.tsx"),
+);
+
+const AgentDetail = lazy(
+  () => import("./components/chat/index.tsx"),
+);
+
+const AgentEdit = lazy(
+  () => import("./components/settings/index.tsx"),
+);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
         <Route
-          path="/agents.html"
-          element={<AgentsList />}
-        />
-        <Route
           path="/agents"
           element={<AgentsList />}
         />
         <Route
-          path="integrations.html"
-          element={<IntegrationList />}
+          path="/agent/:id/settings"
+          element={<AgentEdit />}
+        />
+        <Route
+          path="/agent/:id/:threadId?"
+          element={<AgentDetail />}
         />
         <Route
           path="integrations"
