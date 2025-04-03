@@ -78,6 +78,12 @@ jobs:
           
           async function main() {
             try {
+              // Create extra routes. This is a temporary fix while we are still inside the iframe.
+              // TODO: remove this once we are out of the iframe
+              for (const route of ["integrations"]) {
+                await Deno.copyFile('./dist/index.html', `./dist/${route}.html`);
+              }
+
               // Get all files
               const allFiles = await getFiles(".");
               console.log(`Found ${allFiles.length} files to upload`);
