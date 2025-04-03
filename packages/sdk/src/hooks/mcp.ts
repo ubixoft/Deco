@@ -24,7 +24,7 @@ export const useCreateIntegration = () => {
 };
 
 const DEFAULT_INTEGRATION_ICONS = {
-  CORE: "https://deco.chat/img/deco/deco-avocado-light.png",
+  CORE: "https://assets.webdraw.app/uploads/deco-avocado-light.png",
 };
 
 const isWellKnownIntegration = (
