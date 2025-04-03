@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "PWD=$PWD/apps/web deno run dev",
     "build": "PWD=$PWD/apps/web deno run build",
-    "lint": "deno run --config ./package.json lint .",
+    "lint": "deno lint --config ./package.json .",
     "fmt": "deno fmt --config ./package.json .",
     "check": "deno check --allow-import --config ./package.json .",
     "ui": "npx shadcn@latest add -c ./packages/ui"
