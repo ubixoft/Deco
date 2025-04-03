@@ -25,7 +25,7 @@ import { Textarea } from "@deco/ui/components/textarea.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { Avatar } from "../common/Avatar.tsx";
+import { AgentAvatar, Avatar } from "../common/Avatar.tsx";
 import { Integration } from "./integrations/index.tsx";
 
 const inputStyles =
@@ -195,29 +195,9 @@ function App({ agentId }: { agentId: string }) {
         <div className="space-y-6">
           {/* Avatar Section */}
           <div className="flex justify-center">
-            {agent.name === "Anonymous"
-              ? (
-                <div className="w-20 h-20 rounded-[20px] bg-gradient-to-b from-white to-slate-200 flex items-center justify-center border border-white/50">
-                  <Icon
-                    name="domino_mask"
-                    filled
-                    className="text-slate-600 text-5xl"
-                  />
-                </div>
-              )
-              : (
-                <Avatar
-                  url={agent.avatar && /^(data:)|(https?:)/.test(agent.avatar)
-                    ? agent.avatar
-                    : undefined}
-                  fallback={agent.avatar &&
-                      !/^(data:)|(https?:)/.test(agent.avatar)
-                    ? agent.avatar
-                    : agent.name.substring(0, 2)}
-                  size="lg"
-                  className="h-20 w-20 rounded-[20px]"
-                />
-              )}
+            <div className="h-20 w-20">
+              <AgentAvatar agent={agent} variant="xl" />
+            </div>
           </div>
 
           <div className="space-y-4">
