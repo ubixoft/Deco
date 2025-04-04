@@ -128,8 +128,8 @@ function App({ agentId, threadId }: { agentId: string; threadId?: string }) {
 
     if (!notFound) return;
 
-    createAgent().catch(console.error);
-  }, [notFound]);
+    createAgent({ id: agentId }).catch(console.error);
+  }, [notFound, agentId]);
 
   if (error && !notFound) {
     return (
