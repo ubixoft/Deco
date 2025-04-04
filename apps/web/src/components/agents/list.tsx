@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
 } from "@deco/ui/components/tooltip.tsx";
 import { useReducer, useState } from "react";
+import { useNavigate } from "react-router";
 import { useFocusAgent, useSidebarPinOperations } from "./hooks.ts";
 import { Avatar } from "../common/Avatar.tsx";
 import { EmptyState } from "../common/EmptyState.tsx";
@@ -68,17 +69,24 @@ export const useDuplicateAgent = (agent: Agent | null) => {
 // Add this component before AgentCard
 function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
   const { data: integration } = useIntegration(toolSetId);
+  const navigate = useNavigate();
 
   if (!integration) {
     return null;
   }
+
+  console.log({ integration });
 
   const icon = integration.icon || "icon://conversion_path";
 
   return (
     <TooltipProvider delayDuration={0}>
       <Tooltip>
-        <TooltipTrigger asChild>
+        <TooltipTrigger onClick={(e) => {
+          e.stopPropagation();
+
+          navigate(`/integration/${integration.id}`);
+        }} asChild>
           <div className="w-8 h-8 flex items-center justify-center border border-input rounded-lg p-1">
             {icon.startsWith("icon://")
               ? (
