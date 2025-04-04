@@ -26,6 +26,10 @@ const AgentEdit = lazy(
   () => import("./components/settings/index.tsx"),
 );
 
+const ThreadsList = lazy(
+  () => import("./components/threads/list.tsx"),
+);
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
@@ -37,6 +41,10 @@ createRoot(document.getElementById("root")!).render(
         <Route
           path="/agent/:id/settings"
           element={<AgentEdit />}
+        />
+        <Route
+          path="/agent/:id/threads"
+          element={<ThreadsList />}
         />
         <Route
           path="/agent/:id/:threadId?"

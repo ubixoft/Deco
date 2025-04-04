@@ -40,6 +40,25 @@ export function ChatHeader({
     });
   };
 
+  const handleThreads = () => {
+    SDK.layout.addPanel({
+      id: "threads",
+      component: "app",
+      title: "Conversations",
+      params: {
+        appSlug: "web",
+        href: new URL(
+          `/agent/${agent.id}/threads`,
+          ENABLE_LOCAL_DEBUGGER
+            ? "http://localhost:3000"
+            : `https://web.webdraw.app`,
+        ),
+        showTab: true,
+      },
+      ...DEFAULT_LAYOUT_SETTINGS,
+    });
+  };
+
   return (
     <header className="bg-background relative flex justify-between items-center pl-4 py-3">
       <div className="flex items-center gap-3">
@@ -49,6 +68,18 @@ export function ChatHeader({
         <h1 className="text-sm font-medium tracking-tight">{agent.name}</h1>
       </div>
       <div className="ml-auto flex items-center gap-1.5 pr-3">
+        <Button
+          onClick={handleThreads}
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 rounded-full hover:bg-muted"
+          aria-label="Threads"
+        >
+          <Icon
+            name="manage_search"
+            className="text-md text-muted-foreground"
+          />
+        </Button>
         <Button
           onClick={handleSettings}
           variant="ghost"

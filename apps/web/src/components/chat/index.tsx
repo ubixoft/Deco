@@ -1,5 +1,4 @@
 import type { Message } from "@ai-sdk/react";
-import { SDK, toAgentRoot } from "@deco/sdk";
 import { createAgent } from "@deco/sdk/crud";
 import { useAgent } from "@deco/sdk/hooks";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
@@ -7,35 +6,12 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { stub } from "../../utils/stub.ts";
 import { Chat } from "./Chat.tsx";
-
-const useAgentRoot = (agentId: string) => {
-  const [agentRoot, setAgentRoot] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancel = false;
-
-    const init = async () => {
-      const resolved = await SDK.fs.resolvePath(toAgentRoot(agentId));
-
-      if (cancel) return;
-
-      setAgentRoot(resolved);
-    };
-
-    init().catch(console.error);
-
-    return () => {
-      cancel = true;
-    };
-  }, [agentId]);
-
-  return agentRoot;
-};
+import { useAgentRoot } from "../agents/hooks.ts";
 
 // Extended agent type with locator
 const useMessages = (
   agentId: string,
-  threadId: string | undefined,
+  threadId: string,
   agentRoot: string | null,
 ) => {
   const [messages, setMessages] = useState<Message[] | null>(null);
@@ -51,9 +27,11 @@ const useMessages = (
         // deno-lint-ignore no-explicit-any
         const agentStub = stub<any>("AIAgent")
           .new(agentRoot)
-          .withMetadata({ threadId: threadId ?? agentId });
+          .withMetadata({ threadId });
 
-        const messages = await agentStub.query();
+        const messages = await agentStub.query({
+          threadId,
+        });
 
         if (cancel) return;
 
@@ -113,7 +91,7 @@ Never perform actions such as installing tools, enabling services, or creating c
 `,
 };
 
-function App({ agentId, threadId }: { agentId: string; threadId?: string }) {
+function App({ agentId, threadId }: { agentId: string; threadId: string }) {
   const { data: agent, update, error, loading } = useAgent(agentId);
   const agentRoot = useAgentRoot(agentId);
   const messages = useMessages(agentId, threadId, agentRoot);
@@ -167,9 +145,7 @@ function Wrapper() {
   const params = useParams();
 
   const agentId = params.id || crypto.randomUUID();
-  const threadId = params.threadId || agentId === "teamAgent"
-    ? `${Math.floor(Math.random() * 1e6)}`
-    : undefined;
+  const threadId = params.threadId ?? crypto.randomUUID();
 
   return <App agentId={agentId} threadId={threadId} />;
 }

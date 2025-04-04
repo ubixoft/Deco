@@ -1,12 +1,13 @@
-import { type Agent, SDK, type SidebarStorage } from "@deco/sdk";
+import { type Agent, SDK, type SidebarStorage, toAgentRoot } from "@deco/sdk";
 import { useRuntime } from "@deco/sdk/hooks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Helper to get agent URL
 const getAgentUrl = (
   context: { root: string } | null | undefined,
   agentId: string,
-): string => `${context?.root}/agent/${agentId}`;
+  threadId?: string,
+): string => `${context?.root}/agent/${agentId}/${threadId ?? ""}`;
 
 // Helper to check if agent is pinned
 const isAgentPinned = (
@@ -35,8 +36,8 @@ export const useFocusAgent = () => {
   const { pinAgent, isPinned } = useSidebarPinOperations();
 
   const navigate = useCallback(
-    (agentId: string, agent: Agent) => {
-      const url = getAgentUrl(context, agentId);
+    (agentId: string, agent: Agent, threadId?: string) => {
+      const url = getAgentUrl(context, agentId, threadId);
 
       // Navigate to the agent page
       SDK.os.navigate(url);
@@ -139,4 +140,28 @@ export const useSidebarPinOperations = () => {
   );
 
   return { pinAgent, unpinAgent, togglePin, isPinned };
+};
+
+export const useAgentRoot = (agentId: string) => {
+  const [agentRoot, setAgentRoot] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancel = false;
+
+    const init = async () => {
+      const resolved = await SDK.fs.resolvePath(toAgentRoot(agentId));
+
+      if (cancel) return;
+
+      setAgentRoot(resolved);
+    };
+
+    init().catch(console.error);
+
+    return () => {
+      cancel = true;
+    };
+  }, [agentId]);
+
+  return agentRoot;
 };
