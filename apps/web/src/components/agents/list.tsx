@@ -82,11 +82,14 @@ function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
   return (
     <TooltipProvider delayDuration={0}>
       <Tooltip>
-        <TooltipTrigger onClick={(e) => {
-          e.stopPropagation();
+        <TooltipTrigger
+          onClick={(e) => {
+            e.stopPropagation();
 
-          navigate(`/integration/${integration.id}`);
-        }} asChild>
+            navigate(`/integration/${integration.id}`);
+          }}
+          asChild
+        >
           <div className="w-8 h-8 flex items-center justify-center border border-input rounded-lg p-1">
             {icon.startsWith("icon://")
               ? (
