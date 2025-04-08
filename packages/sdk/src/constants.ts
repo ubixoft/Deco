@@ -33,6 +33,7 @@ const WELL_KNOWN_DEFAULT_INTEGRATION_TOOLS_SET = {
     GENERATE: false,
     REFRESH_TOOLS: false,
     FETCH: false,
+    POLL_FOR_CONTENT: false,
 
     // TRIGGERS
     GET_WEBHOOK_TRIGGER_URL: false,
