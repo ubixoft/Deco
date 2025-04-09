@@ -18,6 +18,15 @@ const fetchAPI = (segments: string[], init?: RequestInit) =>
     headers: { ...API_HEADERS, ...init?.headers },
   });
 
+export class IntegrationNotFoundError extends Error {
+  integrationId: string;
+
+  constructor(integrationId: string) {
+    super(`Integration ${integrationId} not found`);
+    this.integrationId = integrationId;
+  }
+}
+
 /**
  * Save an MCP to the file system
  * @param mcp - The MCP to save
@@ -74,6 +83,10 @@ export const loadIntegration = async (
 
   if (response.ok) {
     return response.json() as Promise<Integration>;
+  }
+
+  if (response.status === 404) {
+    throw new IntegrationNotFoundError(mcpId);
   }
 
   throw new Error("Failed to load integration");

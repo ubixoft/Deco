@@ -6,6 +6,7 @@ import {
 import { useMemo } from "react";
 import { WELL_KNOWN_AGENT_IDS } from "../constants.ts";
 import {
+  AgentNotFoundError,
   createAgent,
   deleteAgent,
   listAgents,
@@ -137,6 +138,8 @@ export const useAgent = (agentId: string) => {
   const data = useSuspenseQuery({
     queryKey: getKeyFor(context, agentId),
     queryFn: () => loadAgent(context, agentId),
+    retry: (failureCount, error) =>
+      error instanceof AgentNotFoundError ? false : failureCount < 2,
   });
 
   return data;

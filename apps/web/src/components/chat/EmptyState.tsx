@@ -12,8 +12,9 @@ export function Welcome({ agent }: { agent?: Agent }) {
           <div className="text-sm font-normal text-slate-500 max-w-[510px] text-center">
             Use this chat to ask questions, generate content, create and
             schedule tasks,{" "}
-            <span className="italic font-crimson-pro">create personalized agents</span>, or
-            manage team settings.
+            <span className="italic font-crimson-pro">
+              create personalized agents
+            </span>, or manage team settings.
           </div>
         </div>
       </div>

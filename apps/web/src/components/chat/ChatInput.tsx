@@ -1,5 +1,6 @@
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
+import { cn } from "@deco/ui/lib/utils.ts";
 import { useEffect, useRef, useState } from "react";
 import { RichTextArea } from "./RichText.tsx";
 
@@ -15,13 +16,15 @@ interface ChatInputProps {
   ) => void;
   isLoading?: boolean;
   stop?: () => void;
+  disabled?: boolean;
 }
 
 export function ChatInput({
+  isLoading = false,
+  disabled = false,
   input,
   handleInputChange,
   handleSubmit,
-  isLoading = false,
   stop,
 }: ChatInputProps) {
   const [files, setFiles] = useState<FileList | undefined>(undefined);
@@ -100,7 +103,10 @@ export function ChatInput({
   return (
     <form
       onSubmit={onSubmit}
-      className="relative flex items-center gap-2 p-4 pt-0"
+      className={cn(
+        "relative flex items-center gap-2 p-4 pt-0",
+        disabled && "pointer-events-none opacity-50 cursor-not-allowed",
+      )}
     >
       <div className="w-full px-2">
         <div className="relative rounded-md w-full mx-auto">
@@ -116,7 +122,7 @@ export function ChatInput({
                 onPaste={handlePaste}
                 placeholder="Type a message..."
                 className="border border-b-0 placeholder:text-muted-foreground resize-none focus-visible:ring-0"
-                disabled={isLoading}
+                disabled={isLoading || disabled}
               />
             </div>
 
