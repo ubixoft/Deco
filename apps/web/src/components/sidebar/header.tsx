@@ -79,25 +79,6 @@ export function Header() {
               <DropdownMenuItem
                 className="gap-4 cursor-pointer"
                 onClick={() => {
-                  navigate(`/${teamDomain}`);
-                }}
-              >
-                <Avatar fallback={teamDomain} />
-                <span className="text-xs flex-grow justify-self-start">
-                  {teamDomain}
-                </span>
-                <Icon
-                  name="check"
-                  className={cn(
-                    "text-xs",
-                    teamSlug === teamDomain ? "opacity-100" : "opacity-0",
-                  )}
-                />
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                className="gap-4 cursor-pointer"
-                onClick={() => {
                   navigate("/");
                 }}
               >
@@ -114,6 +95,24 @@ export function Header() {
                   className={cn(
                     "text-xs",
                     !teamSlug ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-4 cursor-pointer"
+                onClick={() => {
+                  navigate(`/${teamDomain}`);
+                }}
+              >
+                <Avatar fallback={teamDomain} />
+                <span className="text-xs flex-grow justify-self-start">
+                  {teamDomain}
+                </span>
+                <Icon
+                  name="check"
+                  className={cn(
+                    "text-xs",
+                    teamSlug === teamDomain ? "opacity-100" : "opacity-0",
                   )}
                 />
               </DropdownMenuItem>
