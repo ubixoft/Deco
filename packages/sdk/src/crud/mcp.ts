@@ -80,7 +80,7 @@ export const loadIntegration = async (
 };
 
 export const listIntegrations = async (context: string) => {
-  const response = await fetchAPI([context, "integration"]);
+  const response = await fetchAPI([context, "integrations"]);
 
   if (response.ok) {
     return response.json() as Promise<{ items: Integration[] }>;
