@@ -76,7 +76,7 @@ export const API_SERVER_URL = globalThis.location.hostname.includes("localhost")
 
 export const AUTH_URL = globalThis.location.hostname.includes("localhost")
   ? "http://localhost:5173"
-  : "https://webdraw.com";
+  : "https://auth.deco.chat";
 
 export const API_HEADERS = {
   "content-type": "application/json",

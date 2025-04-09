@@ -1,3 +1,4 @@
+import { WELL_KNOWN_AGENT_IDS } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { lazy, ReactNode, StrictMode, Suspense, useEffect } from "react";
@@ -9,10 +10,10 @@ import {
   useLocation,
   useNavigate,
 } from "react-router";
+import { EmptyState } from "./components/common/EmptyState.tsx";
 import { Layout } from "./components/layout.tsx";
 import Login from "./components/login/index.tsx";
 import { ErrorBoundary, useError } from "./ErrorBoundary.tsx";
-import { WELL_KNOWN_AGENT_IDS } from "@deco/sdk";
 
 const IntegrationNew = lazy(() =>
   import("./components/integrations/detail/new.tsx")
@@ -92,10 +93,16 @@ function ErrorFallback() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center">
-      <h1>Error</h1>
-      <p>{error?.message}</p>
-    </div>
+    <EmptyState
+      icon="report"
+      title="Something went wrong"
+      description={error?.message ??
+        "Looks like we are facing some technical issues. Please try again."}
+      buttonProps={{
+        onClick: () => reset(),
+        children: "Retry",
+      }}
+    />
   );
 }
 
