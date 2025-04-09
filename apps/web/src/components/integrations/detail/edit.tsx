@@ -4,9 +4,9 @@ import { useParams } from "react-router";
 import { DetailForm } from "./form.tsx";
 
 function EditIntegration({ id }: { id: string }) {
-  const { loading, data: integration } = useIntegration(id);
+  const { isLoading, data: integration } = useIntegration(id);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-full">
         <Spinner />

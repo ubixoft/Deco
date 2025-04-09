@@ -3,20 +3,19 @@
   "version": "1.0.0",
   "type": "module",
   "private": true,
-  "peerDependencies": {
-    "react": ">=18"
-  },
   "dependencies": {
+    "@deco/actors": "npm:@jsr/deco__actors@0.32.7",
+    "@deco/store": "workspace:*",
+    "@tanstack/react-query": "^5.72.0",
+    "@zenfs/core": "^2.0.0",
     "dockview-react": "^4.2.1",
     "react": "^19.1.0",
     "zod": "^3.24.2"
   },
+  "devDependencies": {
+    "@types/react": "^19.1.0"
+  },
   "exports": {
-    ".": "./src/index.ts",
-    "./hooks": "./src/hooks/index.ts",
-    "./crud": "./src/crud/index.ts",
-    "./models": "./src/models/index.ts",
-    "./theme": "./src/theme.ts",
-    "./constants": "./src/constants.ts"
+    ".": "./src/index.ts"
   }
 }
