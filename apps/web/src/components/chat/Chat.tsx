@@ -1,9 +1,8 @@
 import { type Message, useChat } from "@ai-sdk/react";
-import type { Agent } from "@deco/sdk";
-import { API_SERVER_URL } from "@deco/sdk";
+import { Agent, API_SERVER_URL, useAgentRoot } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { ChatInput } from "./ChatInput.tsx";
 import { Welcome } from "./EmptyState.tsx";
 import { ChatHeader } from "./Header.tsx";
@@ -11,11 +10,9 @@ import { ChatMessage } from "./Message.tsx";
 import { openPreviewPanel } from "./utils/preview.ts";
 
 interface ChatProps {
-  initialMessages?: Message[];
-  agent: Agent;
-  updateAgent: (updates: Partial<Agent>) => Promise<Agent>;
-  agentRoot: string;
+  agent?: Agent;
   threadId?: string;
+  initialMessages?: Message[];
 }
 
 interface ChatMessagesProps {
@@ -88,12 +85,12 @@ function ChatMessages(
 }
 
 export function Chat({
-  initialMessages = [],
   agent,
-  updateAgent,
-  agentRoot,
   threadId,
+  initialMessages = [],
 }: ChatProps) {
+  const agentRoot = useAgentRoot(agent?.id ?? "");
+  const containerRef = useRef<HTMLDivElement>(null);
   const {
     messages,
     input,
@@ -114,23 +111,14 @@ export function Chat({
     experimental_prepareRequestBody: ({ messages }) => ({
       args: [[messages.at(-1)]],
       metadata: {
-        threadId: threadId ?? agent.id,
+        threadId: threadId ?? agent?.id ?? "",
       },
     }),
     onError: (error) => {
       console.error("Chat error:", error);
       setMessages((prevMessages) => prevMessages.slice(0, -1));
     },
-    onToolCall: async ({ toolCall }) => {
-      if (toolCall.toolName === "editAgentName") {
-        const { name, description } = toolCall.args as {
-          name: string;
-          description: string;
-        };
-        const updatedAgent = await updateAgent({ name, description });
-        return { success: true, ...updatedAgent };
-      }
-
+    onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === "RENDER") {
         const { content, title } = toolCall.args as {
           content: string;
@@ -148,27 +136,10 @@ export function Chat({
       }
     },
   });
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current;
-    globalThis.scrollTo({
-      top: container.scrollHeight,
-      behavior: "auto",
-    });
+    containerRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, []);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current;
-    globalThis.scrollTo({
-      top: container.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, status]);
 
   const handlePickerSelect = async (
     toolCallId: string,
@@ -185,10 +156,7 @@ export function Chat({
         }))
       );
 
-      await append({
-        role: "user",
-        content: selectedValue,
-      });
+      await append({ role: "user", content: selectedValue });
     }
   };
 
@@ -229,9 +197,10 @@ export function Chat({
       <div className="w-full max-w-[800px] mx-auto bg-background">
         <ChatInput
           input={input}
+          disabled={!agent}
+          isLoading={status === "submitted" || status === "streaming"}
           handleInputChange={handleInputChange}
           handleSubmit={handleSubmit}
-          isLoading={status === "submitted" || status === "streaming"}
           stop={stop}
         />
       </div>

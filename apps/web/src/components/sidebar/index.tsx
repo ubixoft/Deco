@@ -130,12 +130,7 @@ function SidebarThreadsSkeleton() {
 
 function SidebarThreads() {
   const { data: threads } = useAllThreads();
-  const { data: agents } = useAgents();
-  const threadsExcludingDeletedAgents = threads.filter((thread: Thread) => {
-    const agentId = extractAgentId(thread);
-    return agentId && agents.some((agent) => agent.id === agentId);
-  });
-  const groupedThreads = groupThreadsByDate(threadsExcludingDeletedAgents);
+  const groupedThreads = groupThreadsByDate(threads);
 
   return (
     <>
@@ -179,8 +174,12 @@ function SidebarThreads() {
   );
 }
 
-function Prefetch() {
+function PrefetchIntegrations() {
   useIntegrations();
+  return null;
+}
+
+function PrefetchAgents() {
   useAgents();
   return null;
 }
@@ -194,7 +193,8 @@ export function AppSidebar() {
 
       {/* Since the sidebar is rendered in the root layout, we prefetch common data here */}
       <Suspense fallback={null}>
-        <Prefetch />
+        <PrefetchIntegrations />
+        <PrefetchAgents />
       </Suspense>
 
       <SidebarContent>

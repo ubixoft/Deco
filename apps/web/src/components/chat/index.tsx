@@ -1,60 +1,34 @@
 import {
   AgentNotFoundError,
   useAgent,
-  useAgentRoot,
   useCreateAgent,
   useMessages,
   WELL_KNOWN_AGENT_IDS,
 } from "@deco/sdk";
-import { Button } from "@deco/ui/components/button.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useEffect } from "react";
-import { useNavigate } from "react-router";
 import { ErrorBoundary, useError } from "../../ErrorBoundary.tsx";
-import { Chat } from "./Chat.tsx";
+import { Chat as ChatUI } from "./Chat.tsx";
 
-function App({ agentId, threadId }: { agentId: string; threadId: string }) {
-  const agentRoot = useAgentRoot(agentId);
-  const { data: agent } = useAgent(agentId);
+function Chat({ agentId, threadId }: { agentId: string; threadId: string }) {
   const { data: messages } = useMessages(agentId, threadId);
-  const createAgent = useCreateAgent();
+  const { data: agent } = useAgent(agentId);
 
   return (
-    <Chat
+    <ChatUI
       initialMessages={messages}
-      agentRoot={agentRoot}
       threadId={threadId}
       agent={agent}
-      updateAgent={async (updates) => {
-        const updatedAgent = { ...agent, ...updates };
-        await createAgent.mutateAsync(updatedAgent);
-        return updatedAgent;
-      }}
     />
   );
 }
 
-function AgentNotFound() {
-  const navigate = useNavigate();
-  return (
-    <div className="h-full w-full flex flex-col items-center justify-center gap-4 p-6 bg-background">
-      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted">
-        <Icon name="smart_toy" size={32} className="text-muted-foreground" />
-      </div>
-      <h2 className="text-xl font-semibold text-foreground">Agent Not Found</h2>
-      <p className="text-center text-muted-foreground max-w-md">
-        The agent you're looking for doesn't exist or has been deleted.
-      </p>
-      <Button
-        variant="outline"
-        onClick={() => navigate("/agents")}
-        className="mt-2"
-      >
-        Back to Agents
-      </Button>
-    </div>
-  );
+function AgentNotFound(
+  { agentId, threadId }: { agentId: string; threadId: string },
+) {
+  const { data: messages } = useMessages(agentId, threadId);
+
+  return <ChatUI initialMessages={messages} threadId={threadId} />;
 }
 
 const TEAM_AGENT = {
@@ -125,17 +99,17 @@ export default function AgentChat(
         fallback={<CreateTeamAgent />}
         shouldCatch={(error) => error instanceof AgentNotFoundError}
       >
-        <App agentId={agentId} threadId={threadId} />
+        <Chat agentId={agentId} threadId={threadId} />
       </ErrorBoundary>
     );
   }
 
   return (
     <ErrorBoundary
-      fallback={<AgentNotFound />}
+      fallback={<AgentNotFound agentId={agentId} threadId={threadId} />}
       shouldCatch={(error) => error instanceof AgentNotFoundError}
     >
-      <App agentId={agentId} threadId={threadId} />
+      <Chat agentId={agentId} threadId={threadId} />
     </ErrorBoundary>
   );
 }

@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import {
   createIntegration,
   deleteIntegration,
+  IntegrationNotFoundError,
   listIntegrations,
   loadIntegration,
   saveIntegration,
@@ -135,6 +136,8 @@ export const useIntegration = (mcpId: string) => {
   const data = useSuspenseQuery({
     queryKey: getKeyFor(context, mcpId),
     queryFn: () => loadIntegration(context, mcpId),
+    retry: (failureCount, error) =>
+      error instanceof IntegrationNotFoundError ? false : failureCount < 2,
   });
 
   return data;
