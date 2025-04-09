@@ -115,7 +115,6 @@ export function ToolInvocations({
                 <Preview
                   type={tool.result.data.type}
                   content={tool.result.data.content}
-                  title={tool.result.data.title}
                 />
               )}
 

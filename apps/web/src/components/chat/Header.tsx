@@ -1,9 +1,8 @@
 import type { Agent } from "@deco/sdk";
+import { SDK } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { togglePanel } from "../agent/index.tsx";
 import { AgentAvatar } from "../common/Avatar.tsx";
-import { TopbarAction, TopbarBreadcrumb } from "../topbar/portal.tsx";
 
 interface ChatHeaderProps {
   agent: Agent;
@@ -12,70 +11,90 @@ interface ChatHeaderProps {
 const DEFAULT_LAYOUT_SETTINGS = {
   initialWidth: 400,
   maximumWidth: 400,
-  position: { direction: "right" },
+  position: {
+    direction: "right",
+  },
 };
 
-export function ChatHeader({ agent }: ChatHeaderProps) {
+const ENABLE_LOCAL_DEBUGGER = globalThis.location.hostname === "localhost";
+
+export function ChatHeader({
+  agent,
+}: ChatHeaderProps) {
   const handleSettings = () => {
-    togglePanel({
-      id: "settings",
-      component: "settings",
+    SDK.layout.addPanel({
+      id: "agent-settings",
+      component: "app",
       title: "Agent Settings",
-      params: { agentId: agent.id },
+      params: {
+        appSlug: "agent-settings",
+        href: new URL(
+          `/agent/${agent.id}/settings`,
+          ENABLE_LOCAL_DEBUGGER
+            ? "http://localhost:3000"
+            : `https://web.webdraw.app`,
+        ),
+        showTab: true,
+      },
       ...DEFAULT_LAYOUT_SETTINGS,
     });
   };
 
   const handleThreads = () => {
-    togglePanel({
+    SDK.layout.addPanel({
       id: "threads",
-      component: "threads",
-      title: "Agent Threads",
-      params: { agentId: agent.id },
+      component: "app",
+      title: "Conversations",
+      params: {
+        appSlug: "web",
+        href: new URL(
+          `/agent/${agent.id}/threads`,
+          ENABLE_LOCAL_DEBUGGER
+            ? "http://localhost:3000"
+            : `https://web.webdraw.app`,
+        ),
+        showTab: true,
+      },
       ...DEFAULT_LAYOUT_SETTINGS,
     });
   };
 
   return (
     <header className="bg-background relative flex justify-between items-center pl-4 py-3">
-      <TopbarBreadcrumb>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-[10px] overflow-hidden flex items-center justify-center">
-            <AgentAvatar
-              name={agent.name}
-              avatar={agent.avatar}
-              className="rounded-lg text-xs"
-            />
-          </div>
-          <h1 className="text-sm font-medium tracking-tight">{agent.name}</h1>
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-[10px] overflow-hidden flex items-center justify-center">
+          <AgentAvatar agent={agent} />
         </div>
-      </TopbarBreadcrumb>
-      <TopbarAction>
-        <div className="ml-auto flex items-center gap-1.5 pr-1">
-          <Button
-            onClick={handleThreads}
-            variant="ghost"
-            size="icon"
-            className="rounded-full hover:bg-muted"
-            aria-label="Threads"
-          >
-            <Icon
-              size={18}
-              name="manage_search"
-              className="text-muted-foreground"
-            />
-          </Button>
-          <Button
-            onClick={handleSettings}
-            variant="ghost"
-            size="icon"
-            className="rounded-full hover:bg-muted"
-            aria-label="Start new chat"
-          >
-            <Icon size={18} name="settings" className="text-muted-foreground" />
-          </Button>
-        </div>
-      </TopbarAction>
+        <h1 className="font-medium tracking-tight">{agent.name}</h1>
+      </div>
+      <div className="ml-auto flex items-center gap-1.5 pr-3">
+        <Button
+          onClick={handleThreads}
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-full hover:bg-muted"
+          aria-label="Threads"
+        >
+          <Icon
+            name="manage_search"
+            size={20}
+            className="text-muted-foreground"
+          />
+        </Button>
+        <Button
+          onClick={handleSettings}
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-full hover:bg-muted"
+          aria-label="Start new chat"
+        >
+          <Icon
+            name="settings"
+            size={20}
+            className="text-muted-foreground"
+          />
+        </Button>
+      </div>
     </header>
   );
 }
