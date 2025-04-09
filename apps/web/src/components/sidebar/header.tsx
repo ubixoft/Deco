@@ -42,12 +42,15 @@ export function Header() {
   const { teamSlug } = useParams();
   const logoutUrl = useLogoutUrl();
   const teamDomain = user.email.split("@")[1];
+  const teamLabel = `${teamDomain} team`;
 
   const userAvatarURL = user?.metadata?.avatar_url ?? undefined;
   const userName = user?.metadata?.full_name || user?.email;
+  const userLabel = `${userName.split(" ")[0]}'s team`;
 
   const currentAvatarURL = teamSlug ? undefined : userAvatarURL;
   const currentName = teamSlug ? teamSlug : userName;
+  const currentLabel = teamSlug ? teamLabel : userLabel;
 
   return (
     <SidebarHeader className="h-14 py-2 flex flex-row items-center bg-accent/30">
@@ -70,7 +73,7 @@ export function Header() {
                   className="w-6 h-6"
                 />
                 <span className="text-xs truncate ml-2">
-                  {currentName}
+                  {currentLabel}
                 </span>
                 <Icon name="unfold_more" className="text-xs ml-1" size={16} />
               </Button>
@@ -88,7 +91,7 @@ export function Header() {
                   fallback={userName}
                 />
                 <span className="text-xs flex-grow justify-self-start">
-                  {userName}
+                  {userLabel}
                 </span>
                 <Icon
                   name="check"
@@ -106,7 +109,7 @@ export function Header() {
               >
                 <Avatar fallback={teamDomain} />
                 <span className="text-xs flex-grow justify-self-start">
-                  {teamDomain}
+                  {teamLabel}
                 </span>
                 <Icon
                   name="check"
