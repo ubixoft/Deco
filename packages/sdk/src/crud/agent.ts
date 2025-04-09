@@ -5,6 +5,7 @@ import {
   WELL_KNOWN_INITIAL_TOOLS_SET,
 } from "../constants.ts";
 import { type Agent, AgentSchema } from "../models/agent.ts";
+import { stub } from "../stub.ts";
 
 const toPath = (segments: string[]) => segments.join("/");
 
@@ -39,6 +40,24 @@ export const saveAgent = async (context: string, agent: Agent) => {
   }
 
   throw new Error("Failed to save agent");
+};
+
+/**
+ * Update an agent
+ * @param context - The context of the agent
+ * @param agent - The agent to update
+ * @returns The updated agent
+ */
+export const updateAgent = async (context: string, agent: Agent) => {
+  const agentRoot = `/${context}/Agents/${agent.id}`;
+
+  // deno-lint-ignore no-explicit-any
+  const agentStub = stub<any>("AIAgent")
+    .new(agentRoot);
+
+  await agentStub.configure(agent);
+
+  return agent;
 };
 
 /**

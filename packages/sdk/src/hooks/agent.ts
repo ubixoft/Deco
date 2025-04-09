@@ -6,7 +6,7 @@ import {
   deleteAgent,
   listAgents,
   loadAgent,
-  saveAgent,
+  updateAgent,
 } from "../crud/agent.ts";
 import type { Agent } from "../models/agent.ts";
 import { stub } from "../stub.ts";
@@ -47,7 +47,7 @@ export const useUpdateAgent = () => {
   const { state: { context: root, client } } = useSDK();
 
   const update = useMutation({
-    mutationFn: (agent: Agent) => saveAgent(root, agent),
+    mutationFn: (agent: Agent) => updateAgent(root, agent),
     onMutate: async (updatedAgent) => {
       // Cancel any outgoing refetches
       await client.cancelQueries({ queryKey: getKeyFor(root) });
