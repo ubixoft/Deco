@@ -17,7 +17,7 @@ import {
 } from "@deco/ui/components/sidebar.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import { useMemo } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useUser } from "../../hooks/data/useUser.ts";
 import { Avatar } from "../common/Avatar.tsx";
 
@@ -36,10 +36,12 @@ const useLogoutUrl = () => {
 };
 
 export function Header() {
+  const navigate = useNavigate();
   const user = useUser();
   const { toggleSidebar, open } = useSidebar();
   const { teamSlug } = useParams();
   const logoutUrl = useLogoutUrl();
+  const teamDomain = user.email.split("@")[1];
 
   const userAvatarURL = user?.metadata?.avatar_url ?? undefined;
   const userName = user?.metadata?.full_name || user?.email;
@@ -74,26 +76,46 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              {teamSlug && (
-                <DropdownMenuItem className="gap-3">
-                  <Avatar fallback={teamSlug} />
-                  <span className="text-xs">{teamSlug}</span>
-                  {teamSlug && <Icon name="check" className="text-xs" />}
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem
-                className="gap-3"
-                // TODO (@gimenes): use navigate instead of globalThis.location.href
-                // Some bugs are happening when using navigate
-                onClick={() => globalThis.location.href = "/"}
+                className="gap-4 cursor-pointer"
+                onClick={() => {
+                  navigate(`/${teamDomain}`);
+                }}
+              >
+                <Avatar fallback={teamDomain} />
+                <span className="text-xs flex-grow justify-self-start">
+                  {teamDomain}
+                </span>
+                <Icon
+                  name="check"
+                  className={cn(
+                    "text-xs",
+                    teamSlug === teamDomain ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="gap-4 cursor-pointer"
+                onClick={() => {
+                  navigate("/");
+                }}
               >
                 <Avatar
                   className="rounded-full"
                   url={userAvatarURL}
                   fallback={userName}
                 />
-                <span className="text-xs">{userName}</span>
-                {!teamSlug && <Icon name="check" className="text-xs" />}
+                <span className="text-xs flex-grow justify-self-start">
+                  {userName}
+                </span>
+                <Icon
+                  name="check"
+                  className={cn(
+                    "text-xs",
+                    !teamSlug ? "opacity-100" : "opacity-0",
+                  )}
+                />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>

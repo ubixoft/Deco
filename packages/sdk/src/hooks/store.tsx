@@ -1,19 +1,10 @@
-import { createStore } from "@deco/store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PropsWithChildren } from "react";
+import { createContext, PropsWithChildren, use } from "react";
 
 interface State {
+  /** The context of the account, i.e. users/123 or shared/teamId */
   context: string;
-  client: QueryClient;
 }
-
-const { Provider: StoreProvider, useStore } = createStore<State>({
-  initializer: (props) => ({
-    ...props,
-    context: props.context ?? "",
-    client: props.client!,
-  }),
-});
 
 const client = new QueryClient({
   defaultOptions: {
@@ -23,14 +14,26 @@ const client = new QueryClient({
   },
 });
 
-function Provider({ children, ...props }: PropsWithChildren<Partial<State>>) {
+const Context = createContext<State | null>(null);
+
+export function SDKProvider(
+  { children, ...props }: PropsWithChildren<State>,
+) {
   return (
     <QueryClientProvider client={client}>
-      <StoreProvider {...props} client={client}>
+      <Context.Provider value={props}>
         {children}
-      </StoreProvider>
+      </Context.Provider>
     </QueryClientProvider>
   );
 }
 
-export { Provider as SDKProvider, useStore as useSDK };
+export function useSDK() {
+  const context = use(Context);
+
+  if (!context) {
+    throw new Error("useSDK must be used within a SDKProvider");
+  }
+
+  return context;
+}
