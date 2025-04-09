@@ -32,9 +32,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@deco/ui/components/tooltip.tsx";
-import { useReducer, useState } from "react";
-import { useNavigate } from "react-router";
-import { useFocusAgent, useSidebarPinOperations } from "./hooks.ts";
 import { Suspense, useReducer, useState } from "react";
 import { useNavigate } from "react-router";
 import { ErrorBoundary } from "../../ErrorBoundary.tsx";
@@ -83,8 +80,6 @@ function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
   if (!integration) {
     return null;
   }
-
-  console.log({ integration });
 
   const icon = integration.icon || "icon://conversion_path";
 
