@@ -1,6 +1,7 @@
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
+import { ALLOWANCES } from "../../../constants.ts";
 import { openPreviewPanel, toIframeProps } from "../utils/preview.ts";
 
 interface PreviewProps {
@@ -65,8 +66,10 @@ export function Preview({ content, title, className }: PreviewProps) {
             <iframe
               {...iframeProps}
               className="absolute inset-0 w-full h-full rounded-2xl shadow-lg"
-              sandbox="allow-scripts"
               title={title || "Preview content"}
+              allow={ALLOWANCES}
+              allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
             />
           )}
       </div>

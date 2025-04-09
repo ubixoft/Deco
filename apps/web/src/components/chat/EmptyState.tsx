@@ -10,11 +10,11 @@ export function Welcome({ agent }: { agent?: Agent }) {
             What can I help with?
           </div>
           <div className="text-sm font-normal text-slate-500 max-w-[510px] text-center">
-            Use this chat to ask questions, generate content, create and
-            schedule tasks,{" "}
-            <span className="italic font-crimson-pro">
-              create personalized agents
-            </span>, or manage team settings.
+            Use this chat to ask questions, generate content, execute tasks or
+            <br />
+            <span className="italic font-crimson-pro text-base">
+              build personalized agents.
+            </span>
           </div>
         </div>
       </div>
