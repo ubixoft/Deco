@@ -1,3 +1,4 @@
+import type { Agent } from "@deco/sdk";
 import {
   Avatar as AvatarUI,
   AvatarFallback,
@@ -5,7 +6,7 @@ import {
 } from "@deco/ui/components/avatar.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
-import { HTMLAttributes, type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
 
 // Predefined color palette for avatar backgrounds
 const AVATAR_COLORS = [
@@ -39,7 +40,7 @@ function getColorFromString(input: string): string {
   return AVATAR_COLORS[index];
 }
 
-export interface AvatarProps extends HTMLAttributes<HTMLDivElement> {
+export interface AvatarProps {
   /**
    * The URL of the avatar image
    */
@@ -55,14 +56,32 @@ export interface AvatarProps extends HTMLAttributes<HTMLDivElement> {
    * Additional CSS classes to apply to the avatar
    */
   className?: string;
+
+  /**
+   * Optional size override (defaults to the UI component's size)
+   */
+  size?: "sm" | "md" | "lg";
 }
 
 export function Avatar({
   url,
   fallback,
   className,
-  ...props
+  size = "md",
 }: AvatarProps) {
+  // Calculate appropriate size class
+  const sizeClass = useMemo(() => {
+    switch (size) {
+      case "sm":
+        return "h-8 w-8";
+      case "lg":
+        return "h-12 w-12";
+      case "md":
+      default:
+        return "h-10 w-10";
+    }
+  }, [size]);
+
   // Extract initials from string fallback (first two characters)
   const fallbackContent = useMemo(() => {
     if (typeof fallback === "string") {
@@ -81,7 +100,7 @@ export function Avatar({
   }, [fallback]);
 
   return (
-    <AvatarUI className={cn(className)} {...props}>
+    <AvatarUI className={cn(sizeClass, "rounded-2xl", className)}>
       {url && <AvatarImage src={url} alt="Avatar" />}
       <AvatarFallback className={cn(fallbackColor, "rounded-2xl")}>
         {fallbackContent}
@@ -91,38 +110,41 @@ export function Avatar({
 }
 
 export const AgentAvatar = (
-  { name, avatar, className }: {
-    name?: string;
-    avatar?: string;
-    className?: string;
-  },
+  { agent, variant = "lg" }: { agent?: Agent; variant?: "xl" | "lg" },
 ) => {
-  if (!name || name === "Anonymous") {
+  if (!agent || agent.name === "Anonymous") {
     return (
       <div
         className={cn(
           "w-full h-full bg-gradient-to-b from-white to-slate-200 flex items-center justify-center border border-slate-200 overflow-hidden",
-          className,
+          variant === "xl" && "rounded-xl",
+          variant === "lg" && "rounded-lg",
         )}
       >
         <Icon
           filled
           name="domino_mask"
           className="text-slate-600"
+          size={variant === "xl" ? 32 : 16}
         />
       </div>
     );
   }
 
-  const isUrlLike = avatar && /^(data:)|(https?:)/.test(avatar);
-
   return (
     <Avatar
-      url={isUrlLike ? avatar : undefined}
-      fallback={isUrlLike ? avatar : name.substring(0, 2)}
+      url={agent.avatar && /^(data:)|(https?:)/.test(agent.avatar)
+        ? agent.avatar
+        : undefined}
+      fallback={agent.avatar &&
+          !/^(data:)|(https?:)/.test(agent.avatar)
+        ? agent.avatar
+        : agent.name.substring(0, 2)}
+      size="sm"
       className={cn(
         "w-full h-full",
-        className,
+        variant === "xl" && "rounded-xl",
+        variant === "lg" && "rounded-lg",
       )}
     />
   );

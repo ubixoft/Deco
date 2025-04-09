@@ -39,7 +39,6 @@ export function Icon(
     size = 16,
     style,
     className,
-    ...props
   }: Props,
 ) {
   return (
@@ -54,7 +53,6 @@ export function Icon(
         ...style,
         fontSize: `${size}px`,
       }}
-      {...props}
     >
       {name}
     </span>

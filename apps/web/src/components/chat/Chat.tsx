@@ -1,9 +1,9 @@
 import { type Message, useChat } from "@ai-sdk/react";
 import type { Agent } from "@deco/sdk";
-import { API_SERVER_URL } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { API_SERVER_URL } from "../../constants.ts";
 import { ChatInput } from "./ChatInput.tsx";
 import { Welcome } from "./EmptyState.tsx";
 import { ChatHeader } from "./Header.tsx";
@@ -62,7 +62,7 @@ function ChatMessages(
                       name: error.name,
                       stack: error.stack,
                     }),
-                    "The previous attempt resulted in an error. I'll try to address the error and provide a better response.",
+                    "The previous attempt resulted in an error. I'll try to address the error and provide a better response."
                   ]);
                 }}
               >
@@ -184,7 +184,7 @@ export function Chat({
   };
 
   const handleRetry = async (context?: string[]) => {
-    const lastUserMessage = messages.findLast((msg) => msg.role === "user");
+    const lastUserMessage = messages.findLast(msg => msg.role === 'user');
     if (!lastUserMessage) return;
 
     await append({
@@ -195,14 +195,31 @@ export function Chat({
   };
 
   return (
-    <div className="grid grid-rows-[auto_1fr_auto] grid-cols-1 h-full max-h-full">
+    <div className="flex flex-col h-screen max-h-screen">
       {/* Fixed Header */}
-      <div className="w-full mx-auto">
-        <ChatHeader agent={agent} />
+      <div className="fixed top-0 inset-x-0 z-50">
+        <div className="w-full mx-auto bg-background">
+          <ChatHeader
+            agent={agent}
+          />
+        </div>
+      </div>
+
+      {/* Fixed Input */}
+      <div className="fixed bottom-0 inset-x-0 z-50">
+        <div className="w-full max-w-[800px] mx-auto bg-background">
+          <ChatInput
+            input={input}
+            handleInputChange={handleInputChange}
+            handleSubmit={handleSubmit}
+            isLoading={status === "submitted" || status === "streaming"}
+            stop={stop}
+          />
+        </div>
       </div>
 
       {/* Scrollable Messages */}
-      <div className="w-full max-w-[800px] mx-auto overflow-y-auto">
+      <div className="w-full max-w-[800px] mx-auto">
         <div className="pt-16">
           <div
             ref={containerRef}
@@ -219,22 +236,6 @@ export function Chat({
             )}
           </div>
         </div>
-      </div>
-
-      {/* Fixed Input */}
-      <div className="w-full max-w-[800px] mx-auto bg-background">
-        {error && (
-          <div className="px-8 py-4 bg-destructive/10 text-destructive text-sm">
-            An error occurred. Please try again.
-          </div>
-        )}
-        <ChatInput
-          input={input}
-          handleInputChange={handleInputChange}
-          handleSubmit={handleSubmit}
-          isLoading={status === "submitted" || status === "streaming"}
-          stop={stop}
-        />
       </div>
     </div>
   );

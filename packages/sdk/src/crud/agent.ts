@@ -1,43 +1,33 @@
-import {
-  API_HEADERS,
-  API_SERVER_URL,
-  WELL_KNOWN_AGENT_IDS,
-  WELL_KNOWN_INITIAL_TOOLS_SET,
-} from "../constants.ts";
 import { type Agent, AgentSchema } from "../models/agent.ts";
+import { SDK } from "../index.ts";
+import { WELL_KNOWN_INITIAL_TOOLS_SET } from "../constants.ts";
 
-const toPath = (segments: string[]) => segments.join("/");
+export const HOME_PATH = "~/Agents";
+export const MANIFEST_PATH = ".webdraw/manifest.json";
 
-const fetchAPI = (segments: string[], init?: RequestInit) =>
-  fetch(new URL(toPath(segments), API_SERVER_URL), {
-    ...init,
-    headers: { ...API_HEADERS, ...init?.headers },
-  });
+/**
+ * Convert an agent to a locator
+ *
+ * @param agent - The agent to convert
+ * @returns The locator
+ */
+export const toLocator = (agentId: string) => {
+  return `${HOME_PATH}/${agentId}/${MANIFEST_PATH}`;
+};
 
-export class AgentNotFoundError extends Error {
-  agentId: string;
-
-  constructor(agentId: string) {
-    super(`Agent ${agentId} not found`);
-    this.agentId = agentId;
-  }
-}
+export const toAgentRoot = (agentId: string) => {
+  return `${HOME_PATH}/${agentId}`;
+};
 
 /**
  * Save an agent to the file system
  * @param agent - The agent to save
  */
-export const saveAgent = async (context: string, agent: Agent) => {
-  const response = await fetchAPI([context, "agent"], {
-    method: "POST",
-    body: JSON.stringify(agent),
-  });
+export const saveAgent = async (agent: Agent) => {
+  const path = toLocator(agent.id);
+  const content = JSON.stringify(agent);
 
-  if (response.ok) {
-    return response.json() as Promise<Agent>;
-  }
-
-  throw new Error("Failed to save agent");
+  await SDK.fs.write(path, content);
 };
 
 /**
@@ -45,7 +35,6 @@ export const saveAgent = async (context: string, agent: Agent) => {
  * @returns The new agent
  */
 export const createAgent = async (
-  context: string,
   template: Partial<Agent> = {},
 ) => {
   const agent: Agent = {
@@ -55,7 +44,7 @@ export const createAgent = async (
     avatar: "", // You could add a default avatar path here if needed
     description: "A customizable AI assistant", // Default description
     tools_set: {
-      CORE: template.id === WELL_KNOWN_AGENT_IDS.teamAgent
+      CORE: template.id === "teamAgent"
         ? [...WELL_KNOWN_INITIAL_TOOLS_SET.CORE, "AGENT_CREATE"]
         : WELL_KNOWN_INITIAL_TOOLS_SET.CORE,
     },
@@ -64,7 +53,7 @@ export const createAgent = async (
     ...template,
   };
 
-  await saveAgent(context, agent);
+  await saveAgent(agent);
 
   return agent;
 };
@@ -74,44 +63,24 @@ export const createAgent = async (
  * @param agentId - The id of the agent to load
  * @returns The agent
  */
-export const loadAgent = async (context: string, agentId: string) => {
-  const response = await fetchAPI([context, "agent", agentId]);
+export const loadAgent = async (agentId: string) => {
+  const path = toLocator(agentId);
+  const content = await SDK.fs.read(path);
 
-  if (response.ok) {
-    return response.json() as Promise<Agent>;
+  try {
+    return JSON.parse(content) as unknown;
+  } catch {
+    return null;
   }
-
-  if (response.status === 404) {
-    throw new AgentNotFoundError(agentId);
-  }
-
-  throw new Error("Failed to load agent");
-};
-
-export const listAgents = async (context: string) => {
-  const response = await fetchAPI([context, "agent"]);
-
-  if (response.ok) {
-    return response.json() as Promise<{ items: Agent[] }>;
-  }
-
-  throw new Error("Failed to list agents");
 };
 
 /**
  * Delete an agent from the file system
  * @param agentId - The id of the agent to delete
  */
-export const deleteAgent = async (context: string, agentId: string) => {
-  const response = await fetchAPI([context, "agent", agentId], {
-    method: "DELETE",
-  });
-
-  if (response.ok) {
-    return response.json();
-  }
-
-  throw new Error("Failed to delete agent");
+export const deleteAgent = async (agentId: string) => {
+  const path = toLocator(agentId);
+  await SDK.fs.unlink(path);
 };
 
 /**
