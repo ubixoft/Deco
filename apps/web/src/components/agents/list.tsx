@@ -191,7 +191,7 @@ function AgentCard({ agent }: { agent: Agent }) {
                   variant="ghost"
                   size="icon"
                   onClick={(e) => e.stopPropagation()}
-                  className="opacity-0 group-hover:opacity-100"
+                  className="invisible group-hover:visible"
                 >
                   <Icon name="more_horiz" />
                 </Button>
