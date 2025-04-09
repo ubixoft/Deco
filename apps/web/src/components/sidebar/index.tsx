@@ -26,7 +26,7 @@ import { Header as SidebarHeader } from "./header.tsx";
 const STATIC_ITEMS = [
   {
     url: "/",
-    title: "Chat",
+    title: "New chat",
     icon: "forum",
   },
   {

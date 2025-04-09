@@ -1,30 +1,14 @@
 import { DetailedHTMLProps, IframeHTMLAttributes } from "react";
-
+import { ALLOWANCES } from "../../constants.ts";
 type Props = DetailedHTMLProps<
   IframeHTMLAttributes<HTMLIFrameElement>,
   HTMLIFrameElement
 >;
 
-const allowances = [
-  "camera",
-  "microphone",
-  "display-capture",
-  "autoplay",
-  "accelerometer",
-  "clipboard-write",
-  "encrypted-media",
-  "gyroscope",
-  "picture-in-picture",
-  "web-share",
-  "fullscreen",
-  "geolocation",
-  "payment",
-].join("; ");
-
 function Preview(props: Props) {
   return (
     <iframe
-      allow={allowances}
+      allow={ALLOWANCES}
       allowFullScreen
       sandbox="allow-scripts"
       className="w-full h-full"
