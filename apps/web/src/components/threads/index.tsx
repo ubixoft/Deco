@@ -1,13 +1,11 @@
-import { Agent } from "@deco/sdk";
-import { useAgent } from "@deco/sdk/hooks";
+import { useThreads } from "@deco/sdk";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { useEffect, useState } from "react";
-import { useParams } from "react-router";
-import { useAgentRoot, useFocusAgent } from "../agents/hooks.ts";
-import { stub } from "../../utils/stub.ts";
+import { useUser } from "../../hooks/data/useUser.ts";
+import { useFocusAgent } from "../agents/hooks.ts";
 
-interface Thread {
+export interface Thread {
   id: string;
+  resourceId: string;
   title: string;
   createdAt: string;
   updatedAt: string;
@@ -27,7 +25,7 @@ const formatDate = (date: Date): string => {
   });
 };
 
-const groupThreadsByDate = (threads: Thread[]): GroupedThreads => {
+export const groupThreadsByDate = (threads: Thread[]): GroupedThreads => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const yesterday = new Date(today);
@@ -53,14 +51,15 @@ const groupThreadsByDate = (threads: Thread[]): GroupedThreads => {
 };
 
 function ThreadItem(
-  { agentId, agent, thread }: { agentId: string; agent: Agent; thread: Thread },
+  { agentId, thread }: { agentId: string; thread: Thread },
 ) {
+  const user = useUser();
   const navigate = useFocusAgent();
   return (
     <button
       type="button"
-      onClick={() => navigate(agentId, agent, thread.id)}
-      key={thread.id}
+      onClick={() =>
+        navigate(agentId, thread.id.replace(`${user?.id ?? ""}-`, ""))}
       className="w-full text-left p-3 hover:bg-slate-100 rounded-lg transition-colors"
     >
       <h2 className="text-sm">{thread.title}</h2>
@@ -68,53 +67,14 @@ function ThreadItem(
   );
 }
 
-const useThreads = (
-  agentId: string,
-  agentRoot: string | null,
-) => {
-  const [threads, setThreads] = useState<Thread[] | null>(null);
-
-  useEffect(() => {
-    let cancel = false;
-
-    if (!agentId || !agentRoot) return;
-
-    const init = async () => {
-      try {
-        // TODO: I guess we can improve this and have proper typings
-        // deno-lint-ignore no-explicit-any
-        const agentStub = stub<any>("AIAgent")
-          .new(agentRoot);
-
-        const threads = await agentStub.listThreads();
-
-        if (cancel) return;
-
-        setThreads(threads);
-      } catch (err) {
-        if (cancel) return;
-
-        console.error(err);
-        setThreads([]);
-      }
-    };
-
-    init().catch(console.error);
-
-    return () => {
-      cancel = true;
-    };
-  }, [agentId, agentRoot]);
-
-  return threads;
-};
-
 function App({ agentId }: { agentId: string }) {
-  const { data: agent, error, loading } = useAgent(agentId);
-  const agentRoot = useAgentRoot(agentId);
-  const threads = useThreads(agentId, agentRoot);
+  const {
+    data: threads,
+    error: threadsError,
+    isLoading: threadsLoading,
+  } = useThreads(agentId);
 
-  if (loading || !agent) {
+  if (threadsLoading) {
     return (
       <div className="h-full bg-background flex flex-col items-center justify-center">
         <div className="relative">
@@ -124,7 +84,8 @@ function App({ agentId }: { agentId: string }) {
     );
   }
 
-  if (error) {
+  if (threadsError) {
+    const error = threadsError;
     return (
       <div>
         Error loading agent: {typeof error === "object" && error !== null
@@ -134,9 +95,7 @@ function App({ agentId }: { agentId: string }) {
     );
   }
 
-  const groupedThreads = threads
-    ? groupThreadsByDate(threads)
-    : { today: [], yesterday: [], older: {} };
+  const groupedThreads = groupThreadsByDate(threads);
   const olderDates = Object.keys(groupedThreads.older).sort((a, b) => {
     return new Date(b).getTime() - new Date(a).getTime();
   });
@@ -168,7 +127,6 @@ function App({ agentId }: { agentId: string }) {
                     <ThreadItem
                       key={thread.id}
                       agentId={agentId}
-                      agent={agent}
                       thread={thread}
                     />
                   ))}
@@ -184,7 +142,6 @@ function App({ agentId }: { agentId: string }) {
                     <ThreadItem
                       key={thread.id}
                       agentId={agentId}
-                      agent={agent}
                       thread={thread}
                     />
                   ))}
@@ -198,7 +155,6 @@ function App({ agentId }: { agentId: string }) {
                     <ThreadItem
                       key={thread.id}
                       agentId={agentId}
-                      agent={agent}
                       thread={thread}
                     />
                   ))}
@@ -211,14 +167,4 @@ function App({ agentId }: { agentId: string }) {
   );
 }
 
-function Wrapper() {
-  const { id: agentId } = useParams();
-
-  if (!agentId) {
-    return <div>No agent ID provided</div>;
-  }
-
-  return <App agentId={agentId} />;
-}
-
-export default Wrapper;
+export default App;

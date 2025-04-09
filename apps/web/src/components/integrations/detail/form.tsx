@@ -1,18 +1,10 @@
 import {
-  createIntegration,
   type Integration,
   IntegrationSchema,
   type MCPConnection,
-  saveIntegration,
+  useCreateIntegration,
+  useUpdateIntegration,
 } from "@deco/sdk";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@deco/ui/components/breadcrumb.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import {
   Form,
@@ -36,7 +28,9 @@ import { Textarea } from "@deco/ui/components/textarea.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRef } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useBasePath } from "../../../hooks/useBasePath.ts";
+import { TopbarBreadcrumb } from "../../topbar/portal.tsx";
 import Inspector from "./inspector.tsx";
 
 interface DetailProps {
@@ -46,7 +40,12 @@ interface DetailProps {
 export function DetailForm({ integration: editIntegration }: DetailProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const withBasePath = useBasePath();
+
   const integrationId = editIntegration?.id;
+
+  const createIntegration = useCreateIntegration();
+  const updateIntegration = useUpdateIntegration();
 
   const form = useForm<Integration>({
     resolver: zodResolver(IntegrationSchema),
@@ -63,7 +62,6 @@ export function DetailForm({ integration: editIntegration }: DetailProps) {
     },
   });
 
-  const { isSubmitting } = form.formState;
   const iconValue = form.watch("icon");
   const connection = form.watch("connection");
 
@@ -119,21 +117,14 @@ export function DetailForm({ integration: editIntegration }: DetailProps) {
 
   const onSubmit = async (data: Integration) => {
     try {
-      // Build the integration data
-      const integrationData: Integration = {
-        ...data,
-      };
-
       if (editIntegration) {
         // Update the existing integration
-        await saveIntegration(integrationData);
+        await updateIntegration.mutateAsync(data);
       } else {
         // Create a new integration
-        await createIntegration(integrationData);
-        navigate(`/integrations`);
+        await createIntegration.mutateAsync(data);
+        navigate(withBasePath("/integrations"));
       }
-
-      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.error(
         `Error ${editIntegration ? "updating" : "creating"} integration:`,
@@ -142,29 +133,18 @@ export function DetailForm({ integration: editIntegration }: DetailProps) {
     }
   };
 
+  const isMutating = createIntegration.isPending || updateIntegration.isPending;
+
   return (
     <div className="flex flex-col gap-4 pb-4">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Button
-                variant="link"
-                className="p-0 h-auto font-normal"
-                onClick={() => navigate("/integrations")}
-              >
-                Integrations
-              </Button>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {editIntegration ? editIntegration.name : "New Integration"}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <TopbarBreadcrumb>
+        <Button asChild className="gap-2" variant="ghost">
+          <Link to={withBasePath("/integrations")}>
+            <Icon name="arrow_back" size={16} />
+            <span>Back</span>
+          </Link>
+        </Button>
+      </TopbarBreadcrumb>
 
       <div className="text-2xl font-bold">
         {editIntegration ? editIntegration.name : "Create New Integration"}
@@ -402,12 +382,13 @@ export function DetailForm({ integration: editIntegration }: DetailProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate("/integrations")}
+              onClick={() =>
+                navigate(withBasePath("/integrations/marketplace"))}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="gap-2">
-              {isSubmitting
+            <Button type="submit" disabled={isMutating} className="gap-2">
+              {isMutating
                 ? (
                   <>
                     <Spinner size="xs" />
