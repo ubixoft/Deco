@@ -32,7 +32,7 @@
     "jsxImportSource": "react"
   },
   "exclude": [
-    "**/*.md"
+    ".github/"
   ],
   "unstable": [
     "kv"
