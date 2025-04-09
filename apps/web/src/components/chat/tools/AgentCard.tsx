@@ -69,8 +69,7 @@ export function AgentCard(
         {displayLink && (
           <Button
             onClick={() => {
-              // @ts-expect-error - This is only a temporary solution
-              focusAgent(id, { id, name, description, avatar });
+              focusAgent(id);
             }}
             size="sm"
             className="text-sm"
