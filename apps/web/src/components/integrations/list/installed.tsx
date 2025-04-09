@@ -58,18 +58,20 @@ function IntegrationCard({
               )}
           </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="text-base font-semibold">{integration.name}</div>
+          <div className="grid grid-cols-1 gap-1">
+            <div className="text-base font-semibold truncate">
+              {integration.name}
+            </div>
             <div className="text-sm text-muted-foreground line-clamp-3">
               {integration.description}
             </div>
           </div>
 
-          <div className="">
+          <div className="hidden group-hover:block">
             <Button
               variant="ghost"
               size="icon"
-              className="hidden group-hover:inline-flex hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+              className="hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(integration.id);

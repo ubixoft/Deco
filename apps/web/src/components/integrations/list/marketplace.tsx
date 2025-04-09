@@ -113,8 +113,8 @@ function AvailableIntegrationCard(
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <div className="text-base font-semibold">
+            <div className="grid grid-cols-1 gap-1">
+              <div className="text-base font-semibold truncate">
                 {integration.name}
               </div>
               <div className="text-sm text-muted-foreground line-clamp-2">
