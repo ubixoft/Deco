@@ -11,6 +11,7 @@ const toPath = (segments: string[]) => segments.join("/");
 const fetchAPI = (segments: string[], init?: RequestInit) =>
   fetch(new URL(toPath(segments), API_SERVER_URL), {
     ...init,
+    credentials: "include",
     headers: { ...API_HEADERS, ...init?.headers },
   });
 

@@ -70,11 +70,13 @@ export const WELL_KNOWN_INITIAL_TOOLS_SET = {
   ],
 };
 
-export const API_SERVER_URL = globalThis.location.hostname.includes("localhost")
+const LOCAL_DEBUGGER = globalThis.location.hostname.includes("localhost");
+
+export const API_SERVER_URL = LOCAL_DEBUGGER
   ? "http://localhost:8000"
   : "https://fs.deco.chat";
 
-export const AUTH_URL = globalThis.location.hostname.includes("localhost")
+export const AUTH_URL = LOCAL_DEBUGGER
   ? "http://localhost:5173"
   : "https://auth.deco.chat";
 

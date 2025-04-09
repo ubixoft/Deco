@@ -21,6 +21,7 @@ const fetchAPI = <T extends object>(
 
   return fetch(url, {
     ...init,
+    credentials: "include",
     headers: { ...API_HEADERS, ...init?.headers },
   });
 };

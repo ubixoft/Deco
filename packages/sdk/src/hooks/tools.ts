@@ -37,6 +37,7 @@ const INITIAL_DATA: ToolsData = { tools: [], instructions: "" };
 const fetchAPI = (path: string, init?: RequestInit) =>
   fetch(new URL(path, API_SERVER_URL), {
     ...init,
+    credentials: "include",
     headers: { ...API_HEADERS, ...init?.headers },
   });
 
