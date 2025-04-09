@@ -16,7 +16,7 @@ export const useBasePath = () => {
       const rootWithStartingSlash = slug.replace(/(^\/)|(\/$)/g, "");
       const pathWithStartingSlash = path.replace(/(^\/)|(\/$)/g, "");
 
-      return [rootWithStartingSlash, pathWithStartingSlash]
+      return ["", rootWithStartingSlash, pathWithStartingSlash]
         .join("/")
         .replace(/\/\//g, "/");
     },
