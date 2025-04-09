@@ -1,8 +1,10 @@
+import { AUTH_URL } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@deco/ui/components/dropdown-menu.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
@@ -14,14 +16,30 @@ import {
   useSidebar,
 } from "@deco/ui/components/sidebar.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
+import { useMemo } from "react";
 import { useParams } from "react-router";
 import { useUser } from "../../hooks/data/useUser.ts";
 import { Avatar } from "../common/Avatar.tsx";
+
+const useLogoutUrl = () => {
+  const logoutUrl = useMemo(() => {
+    const url = new URL(AUTH_URL);
+    url.pathname = "/auth/logout";
+
+    const next = new URL(location.pathname, globalThis.location.origin);
+    url.searchParams.set("next", next.href);
+
+    return url.href;
+  }, [location.pathname]);
+
+  return logoutUrl;
+};
 
 export function Header() {
   const user = useUser();
   const { toggleSidebar, open } = useSidebar();
   const { teamSlug } = useParams();
+  const logoutUrl = useLogoutUrl();
 
   const userAvatarURL = user?.metadata?.avatar_url ?? undefined;
   const userName = user?.metadata?.full_name || user?.email;
@@ -76,6 +94,12 @@ export function Header() {
                 />
                 <span className="text-xs">{userName}</span>
                 {!teamSlug && <Icon name="check" className="text-xs" />}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <a href={logoutUrl} className="leading-7 text-xs">
+                  Log out
+                </a>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
