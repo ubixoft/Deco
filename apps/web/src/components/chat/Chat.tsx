@@ -132,15 +132,13 @@ export function Chat({
       }
 
       if (toolCall.toolName === "RENDER") {
-        const { type, content, title } = toolCall.args as {
-          type: string;
+        const { content, title } = toolCall.args as {
           content: string;
           title: string;
         };
 
         openPreviewPanel(
           `preview-${toolCall.toolCallId}`,
-          type,
           content,
           title,
         );
