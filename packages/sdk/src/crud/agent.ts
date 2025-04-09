@@ -109,7 +109,7 @@ export const loadAgent = async (context: string, agentId: string) => {
 };
 
 export const listAgents = async (context: string) => {
-  const response = await fetchAPI([context, "agent"]);
+  const response = await fetchAPI([context, "agents"]);
 
   if (response.ok) {
     return response.json() as Promise<{ items: Agent[] }>;
