@@ -1,4 +1,4 @@
-import type { Agent } from "@deco/sdk";
+import { type Agent, WELL_KNOWN_AGENT_IDS } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { togglePanel } from "../agent/index.tsx";
@@ -37,45 +37,58 @@ export function ChatHeader({ agent }: ChatHeaderProps) {
   };
 
   return (
-    <header className="bg-background relative flex justify-between items-center pl-4 py-3">
+    <>
       <TopbarBreadcrumb>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-[10px] overflow-hidden flex items-center justify-center">
-            <AgentAvatar
-              name={agent.name}
-              avatar={agent.avatar}
-              className="rounded-lg text-xs"
-            />
-          </div>
-          <h1 className="text-sm font-medium tracking-tight">{agent.name}</h1>
-        </div>
+        {agent.id === WELL_KNOWN_AGENT_IDS.teamAgent
+          ? (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Icon name="forum" size={16} />
+              <h1 className="text-sm font-medium tracking-tight">
+                New chat
+              </h1>
+            </div>
+          )
+          : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-[10px] overflow-hidden flex items-center justify-center">
+                <AgentAvatar
+                  name={agent.name}
+                  avatar={agent.avatar}
+                  className="rounded-lg text-xs"
+                />
+              </div>
+              <h1 className="text-sm font-medium tracking-tight">
+                {agent.name}
+              </h1>
+            </div>
+          )}
       </TopbarBreadcrumb>
       <TopbarAction>
-        <div className="ml-auto flex items-center gap-1.5 pr-1">
+        <div className="ml-auto flex items-center gap-2">
           <Button
             onClick={handleThreads}
-            variant="ghost"
+            variant="outline"
             size="icon"
             className="rounded-full hover:bg-muted"
             aria-label="Threads"
           >
             <Icon
-              size={18}
+              size={16}
               name="manage_search"
               className="text-muted-foreground"
             />
           </Button>
           <Button
             onClick={handleSettings}
-            variant="ghost"
+            variant="outline"
             size="icon"
             className="rounded-full hover:bg-muted"
             aria-label="Start new chat"
           >
-            <Icon size={18} name="settings" className="text-muted-foreground" />
+            <Icon size={16} name="tune" className="text-muted-foreground" />
           </Button>
         </div>
       </TopbarAction>
-    </header>
+    </>
   );
 }
