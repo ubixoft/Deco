@@ -21,7 +21,6 @@ import { ReactNode, Suspense } from "react";
 import { Link, useMatch } from "react-router";
 import { useBasePath } from "../../hooks/useBasePath.ts";
 import { groupThreadsByDate, Thread } from "../threads/index.tsx";
-import { SidebarFooter } from "./footer.tsx";
 import { Header as SidebarHeader } from "./header.tsx";
 
 const STATIC_ITEMS = [
@@ -233,8 +232,6 @@ export function AppSidebar() {
           <SidebarThreads />
         </Suspense>
       </SidebarContent>
-
-      <SidebarFooter />
     </Sidebar>
   );
 }
