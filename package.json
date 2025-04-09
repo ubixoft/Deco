@@ -31,6 +31,9 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react"
   },
+  "exclude": [
+    "**/*.md"
+  ],
   "unstable": [
     "kv"
   ]
