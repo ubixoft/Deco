@@ -15,29 +15,10 @@ import { ErrorBoundary, useError } from "../../ErrorBoundary.tsx";
 import { Chat } from "./Chat.tsx";
 
 function App({ agentId, threadId }: { agentId: string; threadId: string }) {
-  const { data: agent, error } = useAgent(agentId);
   const agentRoot = useAgentRoot(agentId);
+  const { data: agent } = useAgent(agentId);
   const { data: messages } = useMessages(agentId, threadId);
   const createAgent = useCreateAgent();
-
-  if (error) {
-    return (
-      <div>
-        Error loading agent:{" "}
-        {error instanceof Error ? String(error) : JSON.stringify(error)}
-      </div>
-    );
-  }
-
-  if (!agent || !messages || !agentRoot) {
-    return (
-      <div className="h-full bg-background flex flex-col items-center justify-center">
-        <div className="relative">
-          <Spinner />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <Chat

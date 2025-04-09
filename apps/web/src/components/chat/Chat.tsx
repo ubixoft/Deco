@@ -212,21 +212,16 @@ export function Chat({
 
       {/* Scrollable Messages */}
       <div className="w-full max-w-[800px] mx-auto overflow-y-auto">
-        <div className="pt-16">
-          <div
-            ref={containerRef}
-            className="pb-32"
-          >
-            {messages.length === 0 ? <Welcome agent={agent} /> : (
-              <ChatMessages
-                messages={messages}
-                status={status as "streaming" | "submitted" | "ready" | "idle"}
-                handlePickerSelect={handlePickerSelect}
-                error={error}
-                onRetry={handleRetry}
-              />
-            )}
-          </div>
+        <div ref={containerRef}>
+          {messages.length === 0 ? <Welcome agent={agent} /> : (
+            <ChatMessages
+              messages={messages}
+              status={status as "streaming" | "submitted" | "ready" | "idle"}
+              handlePickerSelect={handlePickerSelect}
+              error={error}
+              onRetry={handleRetry}
+            />
+          )}
         </div>
       </div>
 
