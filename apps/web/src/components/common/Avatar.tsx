@@ -82,7 +82,7 @@ export function Avatar({
 
   return (
     <AvatarUI className={cn(className)} {...props}>
-      {url && <AvatarImage src={url} alt="Avatar" />}
+      <AvatarImage src={url} alt="Avatar" />
       <AvatarFallback className={cn(fallbackColor, "rounded-2xl")}>
         {fallbackContent}
       </AvatarFallback>

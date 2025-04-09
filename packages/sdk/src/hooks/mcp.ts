@@ -1,4 +1,8 @@
-import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
   createIntegration,
@@ -16,19 +20,20 @@ const getKeyFor = (
 ) => ["mcp", context, mcpId];
 
 export const useCreateIntegration = () => {
-  const { state: { context, client } } = useSDK();
+  const client = useQueryClient();
+  const { context: root } = useSDK();
 
   const create = useMutation({
-    mutationFn: (mcp: Integration) => createIntegration(context, mcp),
+    mutationFn: (mcp: Integration) => createIntegration(root, mcp),
     onSuccess: (result) => {
-      const key = getKeyFor(context, result.id);
+      const key = getKeyFor(root, result.id);
 
       // update item
       client.setQueryData(key, result);
 
       // update list
       client.setQueryData(
-        getKeyFor(context),
+        getKeyFor(root),
         (old: Integration[] | undefined) => {
           if (!old) return [result];
           return [result, ...old];
@@ -36,7 +41,7 @@ export const useCreateIntegration = () => {
       );
 
       // invalidate list
-      client.invalidateQueries({ queryKey: getKeyFor(context) });
+      client.invalidateQueries({ queryKey: getKeyFor(root) });
     },
   });
 
@@ -44,7 +49,8 @@ export const useCreateIntegration = () => {
 };
 
 export const useUpdateIntegration = () => {
-  const { state: { context: root, client } } = useSDK();
+  const client = useQueryClient();
+  const { context: root } = useSDK();
 
   const update = useMutation({
     mutationFn: (mcp: Integration) => saveIntegration(root, mcp),
@@ -84,7 +90,8 @@ export const useUpdateIntegration = () => {
 };
 
 export const useRemoveIntegration = () => {
-  const { state: { context: root, client } } = useSDK();
+  const client = useQueryClient();
+  const { context: root } = useSDK();
 
   const remove = useMutation({
     mutationFn: (mcpId: string) => deleteIntegration(root, mcpId),
@@ -123,7 +130,7 @@ export const useRemoveIntegration = () => {
 
 /** Hook for crud-like operations on MCPs */
 export const useIntegration = (mcpId: string) => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
 
   const data = useSuspenseQuery({
     queryKey: getKeyFor(context, mcpId),
@@ -135,7 +142,7 @@ export const useIntegration = (mcpId: string) => {
 
 /** Hook for listing all MCPs */
 export const useIntegrations = () => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
 
   const data = useSuspenseQuery({
     queryKey: getKeyFor(context),
@@ -146,7 +153,7 @@ export const useIntegrations = () => {
 };
 
 export const useIntegrationRoot = (mcpId: string) => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
 
   return useMemo(() => {
     if (!context) {

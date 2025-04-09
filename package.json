@@ -18,8 +18,7 @@
   "workspace": [
     "./apps/web",
     "./packages/ui",
-    "./packages/sdk",
-    "./packages/store"
+    "./packages/sdk"
   ],
   "compilerOptions": {
     "lib": [
@@ -32,6 +31,9 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react"
   },
+  "exclude": [
+    ".github/"
+  ],
   "unstable": [
     "kv"
   ]

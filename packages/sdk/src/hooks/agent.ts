@@ -1,4 +1,8 @@
-import { useMutation, useSuspenseQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import { WELL_KNOWN_AGENT_IDS } from "../constants.ts";
 import {
@@ -19,7 +23,8 @@ const getKeyFor = (
 ) => ["agent", context, agentId, threadId];
 
 export const useCreateAgent = () => {
-  const { state: { context, client } } = useSDK();
+  const client = useQueryClient();
+  const { context } = useSDK();
 
   const create = useMutation({
     mutationFn: (agent: Partial<Agent>) => createAgent(context, agent),
@@ -44,7 +49,8 @@ export const useCreateAgent = () => {
 };
 
 export const useUpdateAgent = () => {
-  const { state: { context: root, client } } = useSDK();
+  const client = useQueryClient();
+  const { context: root } = useSDK();
 
   const update = useMutation({
     mutationFn: (agent: Agent) => updateAgent(root, agent),
@@ -86,7 +92,8 @@ export const useUpdateAgent = () => {
 };
 
 export const useRemoveAgent = () => {
-  const { state: { context: root, client } } = useSDK();
+  const client = useQueryClient();
+  const { context: root } = useSDK();
 
   const remove = useMutation({
     mutationFn: (agentId: string) => deleteAgent(root, agentId),
@@ -125,7 +132,7 @@ export const useRemoveAgent = () => {
 
 /** Hook for crud-like operations on agents */
 export const useAgent = (agentId: string) => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
 
   const data = useSuspenseQuery({
     queryKey: getKeyFor(context, agentId),
@@ -137,7 +144,7 @@ export const useAgent = (agentId: string) => {
 
 /** Hook for listing all agents */
 export const useAgents = () => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
 
   const data = useSuspenseQuery({
     queryKey: getKeyFor(context),
@@ -148,7 +155,7 @@ export const useAgents = () => {
 };
 
 export const useAgentRoot = (agentId: string) => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
 
   const root = useMemo(
     () => `/${context}/Agents/${agentId}`,
@@ -160,7 +167,7 @@ export const useAgentRoot = (agentId: string) => {
 
 /** Hook for fetching messages from an agent */
 export const useMessages = (agentId: string, threadId: string) => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
   const agentRoot = useAgentRoot(agentId);
 
   const data = useSuspenseQuery({
@@ -181,7 +188,7 @@ export const useMessages = (agentId: string, threadId: string) => {
 
 /** Hook for fetching threads from an agent */
 export const useThreads = (agentId: string) => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
   const agentRoot = useAgentRoot(agentId);
 
   return useSuspenseQuery({
@@ -199,7 +206,7 @@ export const useThreads = (agentId: string) => {
 
 /** Hook for fetching all threads for the user */
 export const useAllThreads = () => {
-  const { state: { context } } = useSDK();
+  const { context } = useSDK();
   const agentRoot = useAgentRoot(WELL_KNOWN_AGENT_IDS.teamAgent);
 
   return useSuspenseQuery({
