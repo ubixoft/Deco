@@ -1,33 +1,12 @@
-import type { Agent, Integration } from "@deco/sdk";
+import type { Agent, Integration, MCPTool } from "@deco/sdk";
 import { useTools } from "@deco/sdk";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { useCallback, useMemo, useState } from "react";
 import { ExpandableDescription } from "./description.tsx";
 import { IntegrationHeader } from "./header.tsx";
-import { SchemaDisplay, SchemaProperty } from "./schema-display.tsx";
+import { SchemaDisplay } from "./schema-display.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
-
-interface Tool {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: string;
-    properties: Record<string, SchemaProperty>;
-    required?: string[];
-    title?: string;
-    description?: string;
-  };
-  outputSchema: {
-    type: string;
-    properties?: Record<string, SchemaProperty>;
-    additionalProperties?: boolean;
-  };
-}
-
-interface ToolsData {
-  tools: Tool[];
-}
 
 interface IntegrationProps {
   integration: Integration;
@@ -60,12 +39,12 @@ export function Integration(
     (localAgent || agent).tools_set[integration.id] || [];
 
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [selectedTool, setSelectedTool] = useState<MCPTool | null>(null);
 
   const isAllSelected = useMemo(() => {
     if (!toolsData?.tools.length) return false;
     if (!enabledTools || enabledTools.length === 0) return false;
-    return toolsData.tools.every((tool: Tool) =>
+    return toolsData.tools.every((tool: MCPTool) =>
       enabledTools.includes(tool.name)
     );
   }, [toolsData, enabledTools]);
@@ -123,7 +102,7 @@ export function Integration(
     <div className="rounded-lg border">
       <IntegrationHeader
         integration={integration}
-        tools={toolsData.tools.map((tool: Tool) => tool.name)}
+        tools={toolsData.tools.map((tool: MCPTool) => tool.name)}
         isAllSelected={isAllSelected}
         setIntegrationTools={setIntegrationTools}
         isExpanded={isExpanded}
@@ -159,7 +138,7 @@ export function Integration(
             )
             : (
               <div className="space-y-4">
-                {toolsData.tools.map((tool: Tool) => (
+                {toolsData.tools.map((tool: MCPTool) => (
                   <div
                     key={`${integration.id}-${tool.name}`}
                     className="flex items-start space-x-3"
