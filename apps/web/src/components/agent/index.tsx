@@ -73,22 +73,16 @@ const TAB_COMPONENTS = {
     }
 
     return (
-      <div className="flex items-center justify-between px-4 py-2">
-        <div className="font-medium">
-          {props.api.title}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => {
-              props.api.close();
-            }}
-          >
-            <Icon name="close" />
-          </Button>
-        </div>
+      <div className="flex items-center justify-between gap-2 h-12 px-4 py-2 ">
+        <p className="text-sm">{props.api.title}</p>
+        <Button
+          className="p-1 h-6 w-6"
+          variant="ghost"
+          size="icon"
+          onClick={() => props.api.close()}
+        >
+          <Icon name="close" size={12} />
+        </Button>
       </div>
     );
   },
@@ -122,11 +116,24 @@ function Agent(props: Props) {
   const handleReady = useCallback((event: DockviewReadyEvent) => {
     setApi(event.api);
 
-    event.api.addPanel({
+    const params = { agentId, threadId, panels: [] };
+
+    const chatPanel = event.api.addPanel({
       id: "chat",
       component: "chat",
       title: "Chat View",
-      params: { agentId, threadId },
+      params,
+    });
+
+    chatPanel.group.locked = "no-drop-target";
+
+    let prev: string[] = [];
+    event.api.onDidLayoutChange(() => {
+      const currentPanels = event.api.panels.map((panel) => panel.id);
+      if (JSON.stringify(prev) !== JSON.stringify(currentPanels)) {
+        prev = currentPanels;
+        chatPanel.api.updateParameters({ ...params, panels: currentPanels });
+      }
     });
   }, [agentId, threadId]);
 
@@ -141,7 +148,19 @@ function Agent(props: Props) {
       if (panel) {
         panel.api.close();
       } else {
-        api?.addPanel(detail);
+        const group = api?.groups.find((group) =>
+          group.locked !== "no-drop-target"
+        );
+        api?.addPanel({
+          ...detail,
+          position: {
+            direction: group?.id ? "within" : "right",
+            referenceGroup: group?.id,
+          },
+          minimumWidth: 300,
+          initialWidth: group?.width || 400,
+          floating: false,
+        });
       }
     };
 
@@ -163,7 +182,8 @@ function Agent(props: Props) {
       onReady={handleReady}
       className="h-full w-full dockview-theme-abyss deco-dockview-container"
       singleTabMode="fullwidth"
-      disableDnd
+      disableTabsOverflowList
+      disableFloatingGroups
       hideBorders
     />
   );
