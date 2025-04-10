@@ -1,4 +1,4 @@
-import { type Agent } from "@deco/sdk";
+import type { Agent } from "@deco/sdk";
 import {
   WELL_KNOWN_DEFAULT_INTEGRATION_TOOLS,
   WELL_KNOWN_INITIAL_TOOLS_SET,
@@ -144,6 +144,9 @@ function App({ agentId }: { agentId: string }) {
     setIsDirty(true);
   };
 
+  console.log("localAgent", localAgent);
+  console.log("dirty", isDirty);
+
   const handleToolToggle = (
     integrationId: string,
     toolId: string,
@@ -270,16 +273,6 @@ function App({ agentId }: { agentId: string }) {
                 onChange={(e) => handleUpdate({ instructions: e.target.value })}
                 className={cn(inputStyles, "min-h-36")}
                 placeholder="Enter the agent's system prompt"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="model">Model</Label>
-              <Input
-                id="model"
-                value={agent.model || "anthropic:claude-3-7-sonnet-20250219"}
-                readOnly
-                className={inputStyles}
               />
             </div>
 
