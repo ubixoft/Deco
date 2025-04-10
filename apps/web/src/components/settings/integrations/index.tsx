@@ -5,7 +5,7 @@ import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { useCallback, useMemo, useState } from "react";
 import { ExpandableDescription } from "./description.tsx";
 import { IntegrationHeader } from "./header.tsx";
-import { SchemaDisplay } from "./schema-display.tsx";
+import { SchemaDisplay, SchemaProperty } from "./schema-display.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 
 interface Tool {
@@ -13,14 +13,14 @@ interface Tool {
   description: string;
   inputSchema: {
     type: string;
-    properties: Record<string, unknown>;
+    properties: Record<string, SchemaProperty>;
     required?: string[];
     title?: string;
     description?: string;
   };
   outputSchema: {
     type: string;
-    properties?: Record<string, unknown>;
+    properties?: Record<string, SchemaProperty>;
     additionalProperties?: boolean;
   };
 }
@@ -55,7 +55,7 @@ export function Integration(
 ) {
   const { data: toolsData, loading, error } = useTools(
     integration.connection,
-  ) as { data: ToolsData; loading: boolean; error: Error | null };
+  );
   const enabledTools: string[] | undefined =
     (localAgent || agent).tools_set[integration.id] || [];
 

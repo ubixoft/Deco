@@ -3,7 +3,7 @@ import { Label } from "@deco/ui/components/label.tsx";
 import { Badge } from "@deco/ui/components/badge.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 
-interface SchemaProperty {
+export interface SchemaProperty {
   type: string;
   description?: string;
   title?: string;
@@ -48,7 +48,6 @@ function PropertyType(
 function PropertyDisplay(
   { name, property }: { name: string; property: SchemaProperty },
 ) {
-  console.log({ property, name });
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -95,7 +94,6 @@ function PropertyDisplay(
 }
 
 export function SchemaDisplay({ schema, title }: SchemaDisplayProps) {
-  console.log(schema);
   if (!schema || !schema?.properties) return null;
 
   return (
