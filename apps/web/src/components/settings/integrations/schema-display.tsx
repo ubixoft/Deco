@@ -4,7 +4,7 @@ import { Badge } from "@deco/ui/components/badge.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 
 export interface SchemaProperty {
-  type: string;
+  type?: string;
   description?: string;
   title?: string;
   properties?: Record<string, SchemaProperty>;
@@ -23,7 +23,7 @@ interface SchemaDisplayProps {
 
 function PropertyType(
   { type, anyOf }: {
-    type: string;
+    type?: string;
     anyOf?: Array<{ type: string; const?: string }>;
   },
 ) {
@@ -40,7 +40,7 @@ function PropertyType(
   }
   return (
     <Badge variant="outline" className="text-xs">
-      {type}
+      {type ?? 'object'}
     </Badge>
   );
 }

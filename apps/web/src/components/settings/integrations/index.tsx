@@ -5,7 +5,7 @@ import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { useCallback, useMemo, useState } from "react";
 import { ExpandableDescription } from "./description.tsx";
 import { IntegrationHeader } from "./header.tsx";
-import { SchemaDisplay } from "./schema-display.tsx";
+import { SchemaDisplay, type SchemaProperty } from "./schema-display.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 
 interface IntegrationProps {
@@ -32,7 +32,7 @@ export function Integration(
     localAgent,
   }: IntegrationProps,
 ) {
-  const { data: toolsData, loading, error } = useTools(
+  const { data: toolsData, error, isLoading } = useTools(
     integration.connection,
   );
   const enabledTools: string[] | undefined =
@@ -53,7 +53,7 @@ export function Integration(
     _setIntegrationTools(integration.id, tools);
   }, [integration.id, _setIntegrationTools]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="rounded-lg border bg-gradient-to-b from-white to-slate-50">
         <IntegrationHeader.Skeleton
@@ -127,11 +127,7 @@ export function Integration(
                 <div className="space-y-4">
                   <SchemaDisplay
                     title="Input Schema"
-                    schema={selectedTool.inputSchema}
-                  />
-                  <SchemaDisplay
-                    title="Output Schema"
-                    schema={selectedTool.outputSchema}
+                    schema={selectedTool.inputSchema as SchemaProperty}
                   />
                 </div>
               </div>
