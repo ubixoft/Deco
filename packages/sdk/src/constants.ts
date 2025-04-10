@@ -147,11 +147,11 @@ export const MODELS: Model[] = [
       "https://assets.decocache.com/webdraw/15dc381c-23b4-4f6b-9ceb-9690f77a7cf5/openai.svg",
     capabilities: ["reasoning"],
   },
-  {
-    id: "deepseek:deepseek-r1-distill-llama-8b",
-    name: "DeepSeek R1 Distill Llama 8B",
-    logo:
-      "https://assets.decocache.com/webdraw/798dda7c-f79e-4622-bca7-05552560fd40/deepseek.svg",
-    capabilities: ["reasoning"],
-  },
+  // {
+  //   id: "deepseek:deepseek-r1-distill-llama-8b",
+  //   name: "DeepSeek R1 Distill Llama 8B",
+  //   logo:
+  //     "https://assets.decocache.com/webdraw/798dda7c-f79e-4622-bca7-05552560fd40/deepseek.svg",
+  //   capabilities: ["reasoning"],
+  // },
 ];
