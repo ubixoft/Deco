@@ -1,12 +1,10 @@
-import { type Integration, useCreateIntegration, useInstall } from "@deco/sdk";
+import {
+  type Integration,
+  useInstallFromMarketplace,
+  useMarketplaceIntegrations,
+} from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Card, CardContent } from "@deco/ui/components/card.tsx";
-import { Input } from "@deco/ui/components/input.tsx";
-import { type ChangeEvent, useMemo, useReducer, useState } from "react";
-import { useNavigate } from "react-router";
-import { useBasePath } from "../../../hooks/useBasePath.ts";
-import registryIntegrations from "../registry.json" with { type: "json" };
-import { IntegrationTopbar } from "./breadcrumb.tsx";
 import {
   Dialog,
   DialogContent,
@@ -15,27 +13,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@deco/ui/components/dialog.tsx";
+import { Input } from "@deco/ui/components/input.tsx";
+import { type ChangeEvent, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { useBasePath } from "../../../hooks/useBasePath.ts";
+import { IntegrationTopbar } from "./breadcrumb.tsx";
 
-// Registry Integration type that matches the structure in registry.json
-type RegistryIntegration = Omit<Integration, "connection"> & {
-  category: string;
-  url: string;
-};
+// Marketplace Integration type that matches the structure from the API
+interface MarketplaceIntegration extends Integration {
+  provider: string;
+}
 
 // Available Integration Card Component
-function AvailableIntegrationCard(
-  { integration }: {
-    integration: RegistryIntegration;
-  },
-) {
-  const {
-    mutate: createIntegrationMutation,
-    isPending: isCreating,
-  } = useCreateIntegration();
+function AvailableIntegrationCard({
+  integration,
+}: { integration: MarketplaceIntegration }) {
   const {
     mutate: installIntegration,
     isPending: isInstalling,
-  } = useInstall();
+  } = useInstallFromMarketplace();
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createdIntegrationId, setCreatedIntegrationId] = useState<
@@ -44,37 +40,17 @@ function AvailableIntegrationCard(
   const navigate = useNavigate();
   const withBasePath = useBasePath();
 
-  const isPending = isInstalling || isCreating;
+  const isPending = isInstalling;
 
   const handleInstall = () => {
     installIntegration(integration.id, {
       onSuccess: (data) => {
-        if (typeof data.installation !== "string") {
+        if (typeof data.installationId !== "string") {
           setError("Failed to install integration: Invalid installation data");
-          setShowModal(true);
           return;
         }
-
-        // Create the integration using the SDK
-        const newIntegrationId = crypto.randomUUID();
-        setCreatedIntegrationId(newIntegrationId);
-        createIntegrationMutation({
-          ...integration,
-          id: newIntegrationId,
-          connection: { type: "SSE", url: data.installation },
-        }, {
-          onSuccess: () => {
-            setShowModal(true);
-          },
-          onError: (error) => {
-            setError(
-              error instanceof Error
-                ? error.message
-                : "Failed to create integration",
-            );
-            setShowModal(true);
-          },
-        });
+        setShowModal(true);
+        setCreatedIntegrationId(data.installationId);
       },
       onError: (error) => {
         setError(
@@ -94,6 +70,7 @@ function AvailableIntegrationCard(
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setError(null);
     setCreatedIntegrationId(null);
   };
 
@@ -125,7 +102,7 @@ function AvailableIntegrationCard(
 
           <div className="mt-4">
             <span className="text-xs px-2 py-1 bg-secondary rounded-full">
-              {integration.category}
+              {integration.provider}
             </span>
           </div>
         </CardContent>
@@ -187,91 +164,24 @@ function AvailableIntegrationCard(
   );
 }
 
-// Define the state interface
-interface MarketplaceState {
-  registryFilter: string;
-  selectedCategories: Set<string>;
-}
-
-// Define action types
-type MarketplaceAction =
-  | { type: "SET_REGISTRY_FILTER"; payload: string }
-  | { type: "TOGGLE_CATEGORY"; payload: string }
-  | { type: "SET_SELECTED_CATEGORIES"; payload: Set<string> };
-
-// Initial state
-const initialState: MarketplaceState = {
-  registryFilter: "",
-  selectedCategories: new Set(),
-};
-
-// Reducer function
-function marketplaceReducer(
-  state: MarketplaceState,
-  action: MarketplaceAction,
-): MarketplaceState {
-  switch (action.type) {
-    case "SET_REGISTRY_FILTER": {
-      return { ...state, registryFilter: action.payload };
-    }
-    case "TOGGLE_CATEGORY": {
-      const categories = new Set(state.selectedCategories);
-      if (categories.has(action.payload)) {
-        categories.delete(action.payload);
-      } else {
-        categories.add(action.payload);
-      }
-      return { ...state, selectedCategories: categories };
-    }
-    case "SET_SELECTED_CATEGORIES": {
-      return { ...state, selectedCategories: action.payload };
-    }
-    default: {
-      return state;
-    }
-  }
-}
-
 export default function Marketplace() {
-  const [state, dispatch] = useReducer(marketplaceReducer, initialState);
-  const { registryFilter, selectedCategories } = state;
+  const [registryFilter, setRegistryFilter] = useState("");
 
-  // Get unique categories from registry
-  const categories = useMemo(() => {
-    const categorySet = new Set(
-      registryIntegrations.map((integration) => integration.category),
-    );
-    const sortedCategories = Array.from(categorySet).sort();
-    return ["All", ...sortedCategories];
-  }, []);
+  // Use the marketplace integrations hook instead of static registry
+  const { data: marketplace } = useMarketplaceIntegrations();
 
-  // Filter registry integrations by name and category
+  // Filter marketplace integrations by name, description, and provider
   const filteredRegistryIntegrations = useMemo(() => {
-    let filtered = registryIntegrations;
+    const searchTerm = registryFilter.toLowerCase();
 
-    // Apply text filter
-    if (registryFilter) {
-      filtered = filtered.filter(
-        (integration: RegistryIntegration) =>
-          integration.name.toLowerCase().includes(
-            registryFilter.toLowerCase(),
-          ) ||
-          integration.category.toLowerCase().includes(
-            registryFilter.toLowerCase(),
-          ),
-      );
-    }
-
-    // Apply category filter
-    if (selectedCategories.size > 0 && !selectedCategories.has("All")) {
-      filtered = filtered.filter(
-        (integration: RegistryIntegration) =>
-          selectedCategories.has(integration.category),
-      );
-    }
-
-    return filtered;
-  }, [registryFilter, selectedCategories]);
+    return registryFilter
+      ? marketplace.integrations.filter((integration) =>
+        integration.name.toLowerCase().includes(searchTerm) ||
+        (integration.description?.toLowerCase() ?? "").includes(searchTerm) ||
+        integration.provider.toLowerCase().includes(searchTerm)
+      )
+      : marketplace.integrations;
+  }, [marketplace, registryFilter]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -284,36 +194,8 @@ export default function Marketplace() {
             className="max-w-[373px] rounded-[46px]"
             value={registryFilter}
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              dispatch({
-                type: "SET_REGISTRY_FILTER",
-                payload: e.target.value,
-              })}
+              setRegistryFilter(e.target.value)}
           />
-          <div className="flex items-center gap-2 flex-wrap">
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategories.has(category) ||
-                    (category === "All" && selectedCategories.size === 0)
-                  ? "default"
-                  : "outline"}
-                size="sm"
-                className="rounded-full"
-                onClick={() => {
-                  if (category === "All") {
-                    dispatch({
-                      type: "SET_SELECTED_CATEGORIES",
-                      payload: new Set(),
-                    });
-                  } else {
-                    dispatch({ type: "TOGGLE_CATEGORY", payload: category });
-                  }
-                }}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">

@@ -3,7 +3,6 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
 import {
   createIntegration,
   deleteIntegration,
@@ -13,6 +12,7 @@ import {
   saveIntegration,
 } from "../crud/mcp.ts";
 import type { Integration } from "../models/mcp.ts";
+import { useAgentStub } from "./agent.ts";
 import { useSDK } from "./store.tsx";
 
 const getKeyFor = (
@@ -155,14 +155,41 @@ export const useIntegrations = () => {
   return data;
 };
 
-export const useIntegrationRoot = (mcpId: string) => {
+interface IntegrationsResult {
+  integrations: Array<Integration & { provider: string }>;
+}
+
+export const useMarketplaceIntegrations = () => {
+  const agentStub = useAgentStub();
+
+  return useSuspenseQuery<IntegrationsResult>({
+    queryKey: ["integrations", "marketplace"],
+    queryFn: () =>
+      agentStub.callTool("CORE.INTEGRATIONS_SEARCH", {
+        query: "",
+        filters: { installed: false },
+        verbose: true,
+      }).then((r: { data: IntegrationsResult }) => r.data),
+  });
+};
+
+export const useInstallFromMarketplace = () => {
+  const agentStub = useAgentStub();
+  const client = useQueryClient();
   const { context } = useSDK();
 
-  return useMemo(() => {
-    if (!context) {
-      return null;
-    }
+  const mutation = useMutation({
+    mutationFn: async (mcpId: string) => {
+      const result: { data: { installationId: string } } = await agentStub
+        .callTool("CORE.INTEGRATION_INSTALL", { id: mcpId });
 
-    return `${context}/Integrations/${mcpId}`;
-  }, [context]);
+      return result.data;
+    },
+    onSuccess: () => {
+      // Invalidate the integrations list to refresh it
+      client.invalidateQueries({ queryKey: getKeyFor(context) });
+    },
+  });
+
+  return mutation;
 };
