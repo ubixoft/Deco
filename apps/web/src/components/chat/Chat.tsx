@@ -15,6 +15,7 @@ import { ChatHeader } from "./Header.tsx";
 import { ChatMessage } from "./Message.tsx";
 import { openPreviewPanel } from "./utils/preview.ts";
 import { PageLayout } from "../pageLayout.tsx";
+import { trackEvent } from "../../hooks/analytics.ts";
 
 interface ChatProps {
   agent?: Agent;
@@ -178,6 +179,10 @@ export function Chat({
       content: lastUserMessage.content,
       role: "user",
       annotations: context || [],
+    });
+
+    trackEvent("chat_retry", {
+      data: { agent, threadId, lastUserMessage: lastUserMessage.content },
     });
   };
 
