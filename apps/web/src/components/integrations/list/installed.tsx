@@ -18,12 +18,13 @@ import { Card, CardContent } from "@deco/ui/components/card.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { type ChangeEvent, useReducer } from "react";
+import { type ChangeEvent, type MouseEvent, useReducer } from "react";
 import { useNavigate } from "react-router";
 import { useBasePath } from "../../../hooks/useBasePath.ts";
 import { EmptyState } from "../../common/EmptyState.tsx";
 import { IntegrationPage } from "./breadcrumb.tsx";
 import { trackEvent } from "../../../hooks/analytics.ts";
+import { useExplorerAgents } from "./useCreateExplorerAgent.ts";
 
 // Integration Card Component
 function IntegrationCard({
@@ -35,11 +36,41 @@ function IntegrationCard({
   onConfigure: (integration: Integration) => void;
   onDelete: (integrationId: string) => void;
 }) {
+  const { goToAgentFor, isRedirecting } = useExplorerAgents();
+
+  const handleChatClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    goToAgentFor(integration);
+  };
+
   return (
     <Card
-      className="shadow-sm group cursor-pointer hover:shadow-md transition-shadow rounded-2xl"
+      className="shadow-sm group cursor-pointer hover:shadow-md transition-shadow rounded-2xl relative"
       onClick={() => onConfigure(integration)}
     >
+      {/* Chat button - always visible */}
+      <Button
+        size="icon"
+        className="absolute top-2 right-2 bg-green-500 hover:bg-green-600 text-white h-8 w-8 rounded-full flex items-center justify-center shadow-sm z-10"
+        onClick={handleChatClick}
+        disabled={isRedirecting}
+      >
+        {isRedirecting ? <Spinner size="sm" /> : <Icon name="chat" />}
+      </Button>
+
+      {/* Delete button - visible only on hover */}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="absolute bottom-2 right-2 hover:text-destructive focus:bg-destructive/10 focus:text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-20"
+        onClick={(e: MouseEvent<HTMLButtonElement>) => {
+          e.stopPropagation();
+          onDelete(integration.id);
+        }}
+      >
+        <Icon name="delete" />
+      </Button>
+
       <CardContent className="p-4">
         <div className="grid grid-cols-[min-content_1fr_min-content] gap-4">
           <div className="h-16 w-16 rounded-md flex items-center justify-center overflow-hidden">
@@ -51,12 +82,7 @@ function IntegrationCard({
                   className="h-full w-full object-contain"
                 />
               )
-              : (
-                <Icon
-                  name="conversion_path"
-                  className="text-muted-foreground text-4xl font-thin"
-                />
-              )}
+              : <Icon name="conversion_path" />}
           </div>
 
           <div className="grid grid-cols-1 gap-1">
@@ -68,18 +94,8 @@ function IntegrationCard({
             </div>
           </div>
 
-          <div className="hidden group-hover:block">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(integration.id);
-              }}
-            >
-              <Icon name="delete" />
-            </Button>
+          <div className="w-8">
+            {/* Empty div to maintain grid layout */}
           </div>
         </div>
       </CardContent>
@@ -249,10 +265,7 @@ export default function InstalledIntegrations() {
                 ))}
               </div>
               <div className="flex-col items-center justify-center h-48 peer-empty:flex hidden">
-                <Icon
-                  name="search_off"
-                  className="mb-2 text-4xl text-muted-foreground"
-                />
+                <Icon name="search_off" />
                 <p className="text-muted-foreground">
                   No integrations match your filter. Try adjusting your search.
                 </p>

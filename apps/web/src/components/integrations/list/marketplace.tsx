@@ -19,6 +19,8 @@ import { useNavigate } from "react-router";
 import { useBasePath } from "../../../hooks/useBasePath.ts";
 import { IntegrationPage } from "./breadcrumb.tsx";
 import { trackEvent } from "../../../hooks/analytics.ts";
+import { useFocusAgent } from "../../agents/hooks.ts";
+import { useCreateExplorerAgent } from "./useCreateExplorerAgent.ts";
 
 // Marketplace Integration type that matches the structure from the API
 interface MarketplaceIntegration extends Integration {
@@ -33,37 +35,44 @@ function AvailableIntegrationCard({
     mutate: installIntegration,
     isPending: isInstalling,
   } = useInstallFromMarketplace();
+  const focusAgent = useFocusAgent();
   const [showModal, setShowModal] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [createdIntegrationId, setCreatedIntegrationId] = useState<
     string | null
   >(null);
+  const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
   const navigate = useNavigate();
   const withBasePath = useBasePath();
 
-  const isPending = isInstalling;
+  // Use the custom hook for agent creation
+  const { createExplorerAgent, isCreatingAgent, error } =
+    useCreateExplorerAgent();
+
+  const isPending = isInstalling || isCreatingAgent;
 
   const handleInstall = () => {
     installIntegration(integration.id, {
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         if (typeof data.installationId !== "string") {
-          setError("Failed to install integration: Invalid installation data");
+          // Handle error
           return;
         }
-        setShowModal(true);
-        setCreatedIntegrationId(data.installationId);
 
+        const installationId = data.installationId;
+        setShowModal(true);
+        setCreatedIntegrationId(installationId);
         trackEvent("integration_install", {
           success: true,
           data: integration,
         });
+
+        // Use the hook's createExplorerAgent function
+        const agentId = await createExplorerAgent(installationId);
+        if (agentId) {
+          setCreatedAgentId(agentId);
+        }
       },
       onError: (error) => {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to install integration",
-        );
         setShowModal(true);
 
         trackEvent("integration_install", {
@@ -80,10 +89,17 @@ function AvailableIntegrationCard({
     navigate(withBasePath(`/integration/${createdIntegrationId}`));
   };
 
+  const handleExploreIntegration = () => {
+    if (!createdAgentId) return;
+    focusAgent(createdAgentId, {
+      message: `I want to configure and explore ${integration.name}`,
+    });
+  };
+
   const handleCloseModal = () => {
     setShowModal(false);
-    setError(null);
     setCreatedIntegrationId(null);
+    setCreatedAgentId(null);
   };
 
   return (
@@ -155,14 +171,26 @@ function AvailableIntegrationCard({
               : isPending
               ? (
                 <Button disabled={isPending}>
-                  Connecting...
+                  {isCreatingAgent ? "Creating Agent..." : "Connecting..."}
                 </Button>
               )
               : createdIntegrationId
               ? (
-                <Button onClick={handleEditIntegration}>
-                  See Integration
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleEditIntegration}
+                    disabled={!createdAgentId}
+                  >
+                    Inspect
+                  </Button>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={handleExploreIntegration}
+                    disabled={!createdAgentId}
+                  >
+                    Explore
+                  </Button>
+                </div>
               )
               : (
                 <Button onClick={handleInstall}>
@@ -187,7 +215,7 @@ export default function Marketplace() {
     const searchTerm = registryFilter.toLowerCase();
 
     return registryFilter
-      ? marketplace.integrations.filter((integration) =>
+      ? marketplace.integrations.filter((integration: MarketplaceIntegration) =>
         integration.name.toLowerCase().includes(searchTerm) ||
         (integration.description?.toLowerCase() ?? "").includes(searchTerm) ||
         integration.provider.toLowerCase().includes(searchTerm)
@@ -209,7 +237,9 @@ export default function Marketplace() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
-          {filteredRegistryIntegrations.map((integration) => (
+          {filteredRegistryIntegrations.map((
+            integration: MarketplaceIntegration,
+          ) => (
             <AvailableIntegrationCard
               key={integration.id}
               integration={integration}
