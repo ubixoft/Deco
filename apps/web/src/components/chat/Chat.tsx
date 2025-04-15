@@ -6,7 +6,7 @@ import {
   useAgentRoot,
   useUpdateAgent,
 } from "@deco/sdk";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatInput } from "./ChatInput.tsx";
 import { Welcome } from "./EmptyState.tsx";
 import { ChatHeader } from "./Header.tsx";
@@ -15,6 +15,7 @@ import { openPreviewPanel } from "./utils/preview.ts";
 import { PageLayout } from "../pageLayout.tsx";
 import { trackEvent } from "../../hooks/analytics.ts";
 import { ChatError } from "./ChatError.tsx";
+import { Icon } from "../../../../../packages/ui/src/components/icon.tsx";
 
 interface ChatProps {
   agent?: Agent;
@@ -32,6 +33,12 @@ interface ChatMessagesProps {
   ) => Promise<void>;
   error?: Error;
   onRetry?: (context?: string[]) => void;
+}
+
+interface FileData {
+  name: string;
+  contentType: string;
+  url: string;
 }
 
 function ChatMessages(
@@ -78,14 +85,15 @@ export function Chat({
 }: ChatProps) {
   const agentRoot = useAgentRoot(agent?.id ?? "");
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [userScrolled, setUserScrolled] = useState(false);
+  const autoScrollingRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
   const updateAgent = useUpdateAgent();
 
   // Keep track of the last file data for use in the next message
-  const fileDataRef = useRef<{
-    name: string;
-    contentType: string;
-    url: string;
-  }[]>([]);
+  const fileDataRef = useRef<FileData[]>([]);
 
   const {
     messages,
@@ -114,7 +122,7 @@ export function Chat({
           ...message,
           annotations: files && files.length > 0
             ? [
-              files.map((file) => ({
+              files.map((file: FileData) => ({
                 type: "file",
                 url: file.url,
                 name: file.name,
@@ -153,11 +161,83 @@ export function Chat({
     },
   });
 
-  useLayoutEffect(() => {
-    containerRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+  useEffect(() => {
+    const setupViewport = () => {
+      const viewport = document.querySelector(
+        '[data-slot="scroll-area-viewport"]',
+      );
+      if (viewport instanceof HTMLDivElement) {
+        scrollViewportRef.current = viewport;
+        return viewport;
+      }
+      return null;
+    };
+
+    const viewport = setupViewport();
+    if (!viewport || messages.length === 0) return;
+
+    const timer = setTimeout(() => {
+      scrollToBottom("auto");
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [messages.length]);
+
+  useEffect(() => {
+    const scrollContainer = scrollViewportRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      if (autoScrollingRef.current) return;
+
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const isBottom = Math.abs(scrollTop + clientHeight - scrollHeight) < 10;
+      const scrollingUp = scrollTop < lastScrollTopRef.current;
+
+      if (scrollingUp) {
+        setUserScrolled(true);
+      } else if (isBottom) {
+        setUserScrolled(false);
+      }
+
+      setIsAtBottom(isBottom);
+      lastScrollTopRef.current = scrollTop;
+    };
+
+    lastScrollTopRef.current = scrollContainer.scrollTop;
+    scrollContainer.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+    };
+  }, [scrollViewportRef.current]);
+
+  useEffect(() => {
+    const scrollContainer = scrollViewportRef.current;
+    if (!scrollContainer) return;
+
+    const shouldAutoScroll = isAtBottom ||
+      (status === "streaming" && !userScrolled);
+    if (!shouldAutoScroll) return;
+
+    const timer = setTimeout(() => {
+      scrollToBottom("auto");
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [messages, isAtBottom, status, userScrolled]);
+
+  useEffect(() => {
+    const scrollContainer = scrollViewportRef.current;
+    if (!scrollContainer || messages.length === 0) return;
+
+    const initialScrollTimeout = setTimeout(() => {
+      scrollToBottom("auto");
+    }, 300);
+
+    return () => clearTimeout(initialScrollTimeout);
   }, []);
 
-  // Auto-send message from query string on first load
   useEffect(() => {
     if (!agent) return;
 
@@ -167,7 +247,6 @@ export function Chat({
     if (messageParam && messages.length === initialMessages.length) {
       append({ role: "user", content: messageParam });
 
-      // Clear the query string after appending the message
       const url = new URL(globalThis.location.href);
       url.search = "";
       globalThis.history.replaceState({}, "", url);
@@ -179,7 +258,6 @@ export function Chat({
     selectedValue: string,
   ) => {
     if (selectedValue) {
-      // Remove the picker
       setMessages((prevMessages) =>
         prevMessages.map((msg) => ({
           ...msg,
@@ -223,11 +301,7 @@ export function Chat({
     e: React.FormEvent<HTMLFormElement>,
     options?: {
       experimental_attachments?: FileList;
-      fileData?: {
-        name: string;
-        contentType: string;
-        url: string;
-      }[];
+      fileData?: FileData[];
       abort?: boolean;
     },
   ) => {
@@ -245,11 +319,41 @@ export function Chat({
     }, 1000);
   };
 
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const scrollContainer = scrollViewportRef.current;
+    if (!scrollContainer) return;
+
+    autoScrollingRef.current = true;
+
+    if (containerRef.current) {
+      containerRef.current.scrollIntoView({ behavior, block: "end" });
+    } else {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+
+    setTimeout(() => {
+      autoScrollingRef.current = false;
+      setUserScrolled(false);
+      setIsAtBottom(true);
+    }, 100);
+  };
+
   return (
     <PageLayout
       header={<ChatHeader agent={agent} panels={panels} />}
       footer={
-        <div className="w-full max-w-[800px] mx-auto">
+        <div className="w-full max-w-[800px] mx-auto relative">
+          {!isAtBottom && (
+            <div
+              className="absolute bottom-[calc(100%+10px)] left-1/2 transform -translate-x-1/2 
+                        w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center
+                        cursor-pointer hover:bg-slate-50 transition-colors z-50 border border-slate-200"
+              onClick={() => scrollToBottom()}
+              aria-label="Scroll to bottom"
+            >
+              <Icon name="arrow_downward" />
+            </div>
+          )}
           <ChatInput
             agentRoot={agentRoot}
             input={input}
@@ -264,8 +368,7 @@ export function Chat({
         </div>
       }
     >
-      {/* Scrollable Messages */}
-      <div className="w-full max-w-[800px] mx-auto overflow-y-auto px-4 py-2">
+      <div className="w-full max-w-[800px] mx-auto">
         <div ref={containerRef}>
           {messages.length === 0 ? <Welcome agent={agent} /> : (
             <ChatMessages
@@ -277,6 +380,7 @@ export function Chat({
             />
           )}
         </div>
+        <div className="h-4" />
       </div>
     </PageLayout>
   );
