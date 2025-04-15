@@ -140,7 +140,6 @@ export function Chat({
     },
     onError: (error) => {
       console.error("Chat error:", error);
-      setMessages((prevMessages) => prevMessages.slice(0, -1));
     },
     onToolCall: ({ toolCall }) => {
       if (toolCall.toolName === "RENDER") {
