@@ -97,11 +97,16 @@ export function ChatInput({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      // Limit to 5 files
-      const fileList = Array.from(e.target.files).slice(0, 5);
-
+      const existingFiles = files ? Array.from(files) : [];
+      const newFiles = Array.from(e.target.files);
+      //limit to 5 files
+      const combinedFiles = [...existingFiles, ...newFiles].slice(
+        0,
+        5,
+      ) as File[];
       const dataTransfer = new DataTransfer();
-      fileList.forEach((file) => dataTransfer.items.add(file));
+      combinedFiles.forEach((file) => dataTransfer.items.add(file));
+
       setFiles(dataTransfer.files);
     }
   };
@@ -276,9 +281,14 @@ export function ChatInput({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute -top-2 -right-2 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-sm bg-slate-700 text-slate-50 hover:bg-slate-600 hover:text-slate-50"
+                    className="absolute -top-2 -right-2 h-5 w-5 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-sm bg-slate-700 text-slate-50 hover:bg-slate-600 hover:text-slate-50"
                     onClick={() => {
                       const dataTransfer = new DataTransfer();
+                      Array.from(files || []).forEach((f, i) => {
+                        if (i !== index) {
+                          dataTransfer.items.add(f);
+                        }
+                      });
                       setFiles(dataTransfer.files);
                     }}
                     title="Remove file"
