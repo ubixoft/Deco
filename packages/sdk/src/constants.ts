@@ -163,7 +163,7 @@ export const MODELS: Model[] = [
     id: "openai:gpt-4.1-nano",
     name: "OpenAI GPT-4.1 nano",
     logo: LOGOS.openai,
-    capabilities: [],
+    capabilities: ["reasoning", "image-upload"],
   },
   {
     id: "openai:o3-mini-high",
