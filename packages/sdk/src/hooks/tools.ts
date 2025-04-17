@@ -1,9 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  API_HEADERS,
-  API_SERVER_URL,
-  WELL_KNOWN_DEFAULT_INTEGRATION_TOOLS,
-} from "../constants.ts";
+import { API_HEADERS, API_SERVER_URL } from "../constants.ts";
 import { type MCPConnection } from "../models/mcp.ts";
 
 export interface MCPTool {
@@ -44,7 +40,7 @@ const fetchAPI = (path: string, init?: RequestInit) =>
 export const listTools = async (
   connection: MCPConnection,
 ): Promise<ToolsData> => {
-  const response = await fetchAPI("/inspect/list-tools", {
+  const response = await fetchAPI(`/inspect/list-tools`, {
     method: "POST",
     body: JSON.stringify(connection),
   });
@@ -77,19 +73,6 @@ export function useTools(connection: MCPConnection) {
     retry: false,
     queryKey: ["tools", connection],
     queryFn: () => {
-      if (connection.type === "INNATE") {
-        return {
-          tools: WELL_KNOWN_DEFAULT_INTEGRATION_TOOLS[connection.name as "CORE"]
-            .map(
-              (tool) => ({
-                name: tool,
-                description: "",
-                inputSchema: {},
-              }),
-            ),
-          instructions: "",
-        };
-      }
       return listTools(connection);
     },
     initialData: INITIAL_DATA,

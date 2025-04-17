@@ -1,14 +1,6 @@
 import { API_HEADERS, API_SERVER_URL } from "../constants.ts";
 import { type Integration, IntegrationSchema } from "../models/mcp.ts";
 
-const CORE_INTEGRATION: Integration = {
-  id: "CORE",
-  name: "Core",
-  description: "The core integration",
-  icon: "https://assets.webdraw.app/uploads/deco-avocado-light.png",
-  connection: { type: "INNATE", name: "CORE" },
-};
-
 const toPath = (segments: string[]) => segments.join("/");
 
 const fetchAPI = (segments: string[], init?: RequestInit) =>
@@ -75,10 +67,6 @@ export const loadIntegration = async (
   context: string,
   mcpId: string,
 ): Promise<Integration> => {
-  if (mcpId === "CORE") {
-    return CORE_INTEGRATION;
-  }
-
   const response = await fetchAPI([context, "integration", mcpId]);
 
   if (response.ok) {

@@ -2,11 +2,12 @@ import type { Message } from "@ai-sdk/react";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AgentCard } from "./tools/AgentCard.tsx";
 import { Preview } from "./tools/Preview.tsx";
 import { Picker } from "./Picker.tsx";
 import { parseHandoffTool } from "./utils/parse.ts";
+import { openPanel, updateParameters } from "../agent/index.tsx";
 
 interface ToolMessageProps {
   toolInvocations: NonNullable<Message["toolInvocations"]>;
@@ -61,10 +62,48 @@ function ToolStatus(
 
   const getToolName = () => {
     if (tool.toolName.startsWith("HANDOFF_")) {
-      return parseHandoffTool(tool.toolName);
+      return `Delegating to ${parseHandoffTool(tool.toolName)}`;
     }
     return tool.toolName;
   };
+
+  useEffect(() => {
+    if (
+      tool.state === "result" &&
+      tool.result?.data &&
+      tool.toolName.startsWith("HANDOFF_")
+    ) {
+      const { threadId, agentId } = tool.result.data as {
+        threadId: string;
+        agentId: string;
+      };
+
+      const panelId = `chat-${threadId}`;
+
+      openPanel({
+        id: panelId,
+        component: "chatView",
+        title: parseHandoffTool(tool.toolName),
+        params: {
+          threadId,
+          agentId,
+          view: "readonly",
+          key: `${panelId}-${Date.now()}`,
+        },
+      });
+
+      updateParameters({
+        id: panelId,
+        component: "chatView",
+        params: {
+          threadId,
+          agentId,
+          view: "readonly",
+          key: `${panelId}-${Date.now()}`,
+        },
+      });
+    }
+  }, [tool.state]);
 
   return (
     <div className="flex flex-col">
