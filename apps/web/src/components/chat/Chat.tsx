@@ -1,23 +1,15 @@
-import { type Message } from "@ai-sdk/react";
-import {
-  Agent,
-  API_SERVER_URL,
-  DEFAULT_REASONING_MODEL,
-  useAgentRoot,
-  useUpdateAgent,
-} from "@deco/sdk";
+import { type Message, useChat } from "@ai-sdk/react";
+import { Agent, API_SERVER_URL, getModel, useAgentRoot } from "@deco/sdk";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@deco/ui/components/icon.tsx";
+import { trackEvent } from "../../hooks/analytics.ts";
+import { PageLayout } from "../pageLayout.tsx";
+import { ChatError } from "./ChatError.tsx";
 import { ChatInput } from "./ChatInput.tsx";
 import { Welcome } from "./EmptyState.tsx";
 import { ChatHeader } from "./Header.tsx";
 import { ChatMessage } from "./Message.tsx";
-import { PageLayout } from "../pageLayout.tsx";
-import { trackEvent } from "../../hooks/analytics.ts";
-import { ChatError } from "./ChatError.tsx";
-import { Icon } from "../../../../../packages/ui/src/components/icon.tsx";
-import { IMAGE_REGEXP } from "./utils/preview.ts";
-import { openPreviewPanel } from "./utils/preview.ts";
-import { useChat } from "@ai-sdk/react";
+import { IMAGE_REGEXP, openPreviewPanel } from "./utils/preview.ts";
 
 interface ChatProps {
   agent?: Agent;
@@ -88,7 +80,6 @@ export function Chat({
   const [userScrolled, setUserScrolled] = useState(false);
   const autoScrollingRef = useRef(false);
   const lastScrollTopRef = useRef(0);
-  const updateAgent = useUpdateAgent();
 
   // Keep track of the last file data for use in the next message
   const fileDataRef = useRef<FileData[]>([]);
@@ -130,7 +121,9 @@ export function Chat({
               })),
             ]
             : message?.annotations || [],
-        }]],
+        }], {
+          model: getModel(),
+        }],
         metadata: {
           threadId: threadId ?? agent?.id ?? "",
         },
@@ -288,17 +281,6 @@ export function Chat({
     });
   };
 
-  const handleModelChange = async (model: string) => {
-    if (!agent || !agent.id) return;
-
-    const updatedAgent = {
-      ...agent,
-      model,
-    } as Agent;
-
-    await updateAgent.mutateAsync(updatedAgent);
-  };
-
   const handleChatSubmit = (
     e: React.FormEvent<HTMLFormElement>,
     options?: {
@@ -385,8 +367,6 @@ export function Chat({
             handleInputChange={handleInputChange}
             handleSubmit={handleChatSubmit}
             stop={stop}
-            model={agent?.model ?? DEFAULT_REASONING_MODEL}
-            onModelChange={handleModelChange}
           />
         </div>
       }
