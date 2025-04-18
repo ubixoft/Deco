@@ -68,7 +68,7 @@ function LoggedUser() {
         <DropdownMenuItem asChild>
           <Link
             to="/wallet"
-            className="leading-7 text-xs"
+            className="leading-relaxed text-xs"
             onClick={handleWalletClick}
           >
             <Icon name="wallet" />
