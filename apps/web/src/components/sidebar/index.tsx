@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@deco/ui/components/sidebar.tsx";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { ReactNode, Suspense } from "react";
@@ -159,6 +160,8 @@ function PrefetchAgents() {
 
 export function AppSidebar() {
   const withBasePath = useBasePath();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
 
   const handleStaticItemClick = (title: string) => {
     trackEvent("sidebar_navigation_click", {
@@ -177,52 +180,59 @@ export function AppSidebar() {
       </Suspense>
 
       <SidebarContent className="flex flex-col h-full overflow-x-hidden">
-        {/* Fixed section with static items */}
-        <div className="flex-none overflow-x-hidden">
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">
-                {STATIC_ITEMS.map((item) => {
-                  const href = withBasePath(item.url);
+        <div className="flex flex-col h-full">
+          {/* Fixed section with static items */}
+          <div className="flex-none">
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">
+                  {STATIC_ITEMS.map((item) => {
+                    const href = withBasePath(item.url);
 
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <WithActive to={href}>
-                        {({ isActive }) => (
-                          <SidebarMenuButton
-                            asChild
-                            isActive={isActive}
-                            tooltip={item.title}
-                            className="h-9"
-                          >
-                            <Link
-                              to={href}
-                              onClick={() => handleStaticItemClick(item.title)}
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <WithActive to={href}>
+                          {({ isActive }) => (
+                            <SidebarMenuButton
+                              asChild
+                              isActive={isActive}
+                              tooltip={item.title}
+                              className="h-9"
                             >
-                              <Icon name={item.icon} filled={isActive} />
-                              <span className="truncate">{item.title}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        )}
-                      </WithActive>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <SidebarSeparator />
-        </div>
+                              <Link
+                                to={href}
+                                onClick={() =>
+                                  handleStaticItemClick(item.title)}
+                              >
+                                <Icon name={item.icon} filled={isActive} />
+                                <span className="truncate">{item.title}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          )}
+                        </WithActive>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarSeparator />
+          </div>
 
-        {/* Scrollable section with threads */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <Suspense fallback={<SidebarThreadsSkeleton />}>
-            <SidebarThreads />
-          </Suspense>
-        </div>
+          {/* Scrollable section with threads */}
+          {!isCollapsed && (
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <Suspense fallback={<SidebarThreadsSkeleton />}>
+                <SidebarThreads />
+              </Suspense>
+            </div>
+          )}
 
-        {/* Footer with user info */}
-        <SidebarFooter />
+          {/* Footer with user info */}
+          <div className="flex-none mt-auto">
+            <SidebarFooter />
+          </div>
+        </div>
       </SidebarContent>
     </Sidebar>
   );
