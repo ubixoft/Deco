@@ -32,7 +32,11 @@ function BreadcrumbItem({
   to: string;
 }) {
   return (
-    <Button asChild variant={active ? "secondary" : "outline"}>
+    <Button
+      asChild
+      variant={active ? "secondary" : "outline"}
+      className="shadow-none"
+    >
       <Link to={to}>
         <span>{label}</span>
         <span className="text-xs text-slate-400">
@@ -93,6 +97,7 @@ export function IntegrationPage({ children }: { children: ReactNode }) {
               <Button
                 onClick={handleCreate}
                 disabled={create.isPending}
+                variant="special"
                 className="gap-2"
               >
                 {create.isPending

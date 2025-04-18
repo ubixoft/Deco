@@ -105,7 +105,7 @@ function AvailableIntegrationCard({
   return (
     <>
       <Card
-        className="shadow-sm group hover:shadow-md transition-shadow rounded-2xl cursor-pointer"
+        className="group hover:shadow-md transition-shadow rounded-2xl cursor-pointer"
         onClick={() => setShowModal(true)}
       >
         <CardContent className="p-4">
@@ -236,7 +236,7 @@ export default function Marketplace() {
           />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-4">
           {filteredRegistryIntegrations.map((
             integration: MarketplaceIntegration,
           ) => (

@@ -45,13 +45,13 @@ function IntegrationCard({
 
   return (
     <Card
-      className="shadow-sm group cursor-pointer hover:shadow-md transition-shadow rounded-2xl relative"
+      className="group cursor-pointer hover:shadow-md transition-shadow rounded-2xl relative border-slate-200"
       onClick={() => onConfigure(integration)}
     >
       {/* Chat button - always visible */}
       <Button
         size="icon"
-        className="absolute top-2 right-2 bg-green-500 hover:bg-green-600 text-white h-8 w-8 rounded-full flex items-center justify-center shadow-sm z-10"
+        className="absolute top-2 right-2 bg-slate-200 hover:bg-slate-300 text-slate-500 h-8 w-8 rounded-lg flex items-center justify-center z-10"
         onClick={handleChatClick}
         disabled={isRedirecting}
       >
@@ -72,8 +72,8 @@ function IntegrationCard({
       </Button>
 
       <CardContent className="p-4">
-        <div className="grid grid-cols-[min-content_1fr_min-content] gap-4">
-          <div className="h-16 w-16 rounded-md flex items-center justify-center overflow-hidden">
+        <div className="flex flex-col gap-3">
+          <div className="h-12 w-12 rounded-md flex items-center justify-center overflow-hidden shadow-sm">
             {integration.icon && /^(data:)|(https?:)/.test(integration.icon)
               ? (
                 <img
@@ -85,17 +85,13 @@ function IntegrationCard({
               : <Icon name="conversion_path" />}
           </div>
 
-          <div className="grid grid-cols-1 gap-1">
+          <div className="flex flex-col gap-1">
             <div className="text-base font-semibold truncate">
               {integration.name}
             </div>
-            <div className="text-sm text-muted-foreground line-clamp-3">
+            <div className="text-sm text-muted-foreground line-clamp-2">
               {integration.description}
             </div>
-          </div>
-
-          <div className="w-8">
-            {/* Empty div to maintain grid layout */}
           </div>
         </div>
       </CardContent>
@@ -227,7 +223,7 @@ export default function InstalledIntegrations() {
         <div className="flex items-center justify-between">
           <Input
             placeholder="Filter integrations..."
-            className="max-w-[373px] rounded-[46px]"
+            className="max-w-[373px] rounded-[46px] border-slate-200 placeholder:text-slate-400 text-slate-500"
             value={filter}
             onChange={(e: ChangeEvent<HTMLInputElement>) =>
               dispatch({ type: "SET_FILTER", payload: e.target.value })}
@@ -255,7 +251,7 @@ export default function InstalledIntegrations() {
           )
           : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 peer">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 peer">
                 {filteredIntegrations.map((integration) => (
                   <IntegrationCard
                     key={integration.id}

@@ -55,12 +55,18 @@ export interface AvatarProps extends HTMLAttributes<HTMLDivElement> {
    * Additional CSS classes to apply to the avatar
    */
   className?: string;
+
+  /**
+   * The object fit of the avatar image
+   */
+  objectFit?: "contain" | "cover";
 }
 
 export function Avatar({
   url,
   fallback,
   className,
+  objectFit = "cover",
   ...props
 }: AvatarProps) {
   // Extract initials from string fallback (first two characters)
@@ -82,8 +88,14 @@ export function Avatar({
 
   return (
     <AvatarUI className={cn(className)} {...props}>
-      <AvatarImage src={url} alt="Avatar" />
-      <AvatarFallback className={cn(fallbackColor, "rounded-2xl")}>
+      <AvatarImage
+        src={url}
+        alt="Avatar"
+        className={cn(
+          (objectFit === "contain" && url) ? "object-contain" : "object-cover",
+        )}
+      />
+      <AvatarFallback className={cn(fallbackColor, "rounded-lg")}>
         {fallbackContent}
       </AvatarFallback>
     </AvatarUI>

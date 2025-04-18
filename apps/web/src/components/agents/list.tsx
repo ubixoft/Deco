@@ -116,6 +116,7 @@ function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
                 <Avatar
                   url={icon}
                   fallback={integration.name.substring(0, 2)}
+                  objectFit="contain"
                   className="h-full w-full rounded-none"
                 />
               )}
@@ -177,84 +178,85 @@ function AgentCard({ agent }: { agent: Agent }) {
   return (
     <>
       <Card
-        className="shadow-sm group cursor-pointer hover:shadow-md transition-shadow flex flex-col rounded-2xl"
+        className="group cursor-pointer hover:shadow-md transition-shadow flex flex-col rounded-2xl p-4 border-slate-200"
         onClick={() => {
           focusAgent(agent.id);
         }}
       >
-        <CardContent className="p-4 gap-4 flex flex-col justify-start flex-grow">
-          <div className="grid grid-cols-[min-content_auto_min-content] gap-4">
-            <div className="h-16 w-16 flex items-center justify-center overflow-hidden">
-              <Avatar
-                url={agent.avatar && /^(data:)|(https?:)/.test(agent.avatar)
-                  ? agent.avatar
-                  : undefined}
-                fallback={agent.avatar &&
-                    !/^(data:)|(https?:)/.test(agent.avatar)
-                  ? agent.avatar
-                  : agent.name.substring(0, 2)}
-                className="h-full w-full rounded-xl"
-              />
+        <CardContent className="gap-4 flex flex-col flex-grow">
+          <div className="flex flex-col gap-3 w-full">
+            <div className="relative w-full">
+              <div className="h-12 w-12 flex justify-center overflow-hidden rounded-lg shadow-sm">
+                <Avatar
+                  url={agent.avatar && /^(data:)|(https?:)/.test(agent.avatar)
+                    ? agent.avatar
+                    : undefined}
+                  fallback={agent.avatar &&
+                      !/^(data:)|(https?:)/.test(agent.avatar)
+                    ? agent.avatar
+                    : agent.name.substring(0, 2)}
+                  className="h-full w-full rounded-lg"
+                />
+              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute top-0 right-0 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+                  >
+                    <Icon name="more_horiz" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    disabled={duplicating}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      duplicate();
+                    }}
+                  >
+                    <Icon name="content_copy" className="mr-2" />
+                    {duplicating ? "Duplicating..." : "Duplicate"}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteDialogOpen(true);
+                    }}
+                  >
+                    <Icon name="delete" className="mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
-            <div className="grid grid-cols-1 gap-1">
-              <div className="text-base font-semibold truncate">
+            <div className="flex flex-col gap-1">
+              <div className="text-slate-800 font-semibold truncate">
                 {agent.name}
               </div>
-              <div className="text-sm text-muted-foreground line-clamp-2">
-                {displayText}
+              <div className="text-sm text-slate-500 line-clamp-2 min-h-[2.5rem]">
+                {displayText || "No description"}
               </div>
             </div>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => e.stopPropagation()}
-                  className="xl:invisible xl:w-0 xl:group-hover:visible xl:group-hover:w-10"
-                >
-                  <Icon name="more_horiz" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  disabled={duplicating}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    duplicate();
-                  }}
-                >
-                  <Icon name="content_copy" className="mr-2" />
-                  {duplicating ? "Duplicating..." : "Duplicate"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteDialogOpen(true);
-                  }}
-                >
-                  <Icon name="delete" className="mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Integrations list slot */}
-          <div className="flex gap-2 flex-wrap h-8 justify-end">
-            {Object
-              .entries(agent.tools_set ?? {})
-              .filter(([_, tools]) => tools.length > 0)
-              .map(([toolSetId]) => (
-                <ErrorBoundary key={toolSetId} fallback={null}>
-                  <Suspense fallback={null}>
-                    <IntegrationMiniature toolSetId={toolSetId} />
-                  </Suspense>
-                </ErrorBoundary>
-              ))}
+            <div className="flex gap-2 flex-wrap">
+              {Object
+                .entries(agent.tools_set ?? {})
+                .filter(([_, tools]) => tools.length > 0)
+                .map(([toolSetId]) => (
+                  <ErrorBoundary key={toolSetId} fallback={null}>
+                    <Suspense fallback={null}>
+                      <IntegrationMiniature toolSetId={toolSetId} />
+                    </Suspense>
+                  </ErrorBoundary>
+                ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -369,13 +371,14 @@ export default function List() {
               value={filter}
               onChange={(e) =>
                 dispatch({ type: "SET_FILTER", payload: e.target.value })}
-              className="w-full md:w-64"
+              className="w-full md:w-64 border-slate-200 placeholder:text-slate-400 text-slate-500 focus-visible:ring-slate-200"
             />
           </div>
           <div>
             <Button
               onClick={handleCreate}
               disabled={creating}
+              variant="special"
               className="gap-2"
             >
               {creating
@@ -406,7 +409,7 @@ export default function List() {
             : agents.length > 0
             ? (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6 peer">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-3 peer">
                   {filteredAgents?.map((agent) => (
                     <AgentCard key={agent.id} agent={agent} />
                   ))}
