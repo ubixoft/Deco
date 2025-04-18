@@ -216,16 +216,18 @@ export function AppSidebar() {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-            <SidebarSeparator />
           </div>
 
           {/* Scrollable section with threads */}
           {!isCollapsed && (
-            <div className="flex-1 overflow-y-auto overflow-x-hidden">
-              <Suspense fallback={<SidebarThreadsSkeleton />}>
-                <SidebarThreads />
-              </Suspense>
-            </div>
+            <>
+              <SidebarSeparator />
+              <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                <Suspense fallback={<SidebarThreadsSkeleton />}>
+                  <SidebarThreads />
+                </Suspense>
+              </div>
+            </>
           )}
 
           {/* Footer with user info */}
