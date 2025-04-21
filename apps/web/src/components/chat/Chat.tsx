@@ -331,6 +331,7 @@ export function Chat({
                 "w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center",
                 "cursor-pointer hover:bg-slate-50 transition-colors z-50 border border-slate-200",
                 `[[data-disable-auto-scroll="false"]_&]:opacity-0 opacity-100 transition-opacity`,
+                `[[data-disable-auto-scroll="false"]_&]:pointer-events-none`,
               )}
               onClick={() => scrollToBottom()}
               aria-label="Scroll to bottom"
