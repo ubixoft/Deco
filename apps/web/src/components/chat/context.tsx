@@ -1,10 +1,10 @@
-import { CreateMessage, type Message, useChat } from "@ai-sdk/react";
+import { CreateMessage, useChat } from "@ai-sdk/react";
 import {
   API_SERVER_URL,
   getModel,
   useAgentRoot,
   useInvalidateAll,
-  useMessages,
+  useThreadMessages,
 } from "@deco/sdk";
 import {
   createContext,
@@ -35,7 +35,6 @@ const isAutoScrollEnabled = (e: HTMLDivElement | null) => {
 
 type IContext = {
   chat: ReturnType<typeof useChat>;
-  initialMessages: Message[];
   agentId: string;
   agentRoot: string;
   threadId: string;
@@ -52,7 +51,10 @@ const Context = createContext<IContext | null>(null);
 interface Props {
   agentId: string;
   threadId: string;
+  /** Default initial thread message */
   initialMessage?: CreateMessage;
+  /** Disable thread messages */
+  disableThreadMessages?: boolean;
 }
 
 const THREAD_TOOLS_INVALIDATION_TOOL_CALL = new Set([
@@ -67,12 +69,15 @@ export function ChatProvider({
   threadId,
   initialMessage,
   children,
+  disableThreadMessages,
 }: PropsWithChildren<Props>) {
   const agentRoot = useAgentRoot(agentId);
-  const { data: initialMessages } = useMessages(agentId, threadId);
   const invalidateAll = useInvalidateAll();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileDataRef = useRef<FileData[]>([]);
+  const { data: initialMessages } = disableThreadMessages
+    ? { data: [] }
+    : useThreadMessages(agentId, threadId);
 
   const chat = useChat({
     initialMessages,
@@ -204,7 +209,6 @@ export function ChatProvider({
         agentId,
         threadId,
         agentRoot,
-        initialMessages,
         chat: { ...chat, handleSubmit: handleSubmit },
         scrollRef,
         fileDataRef,

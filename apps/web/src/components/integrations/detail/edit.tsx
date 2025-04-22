@@ -80,6 +80,9 @@ export default function Edit() {
   const integrationId = id!;
   const { data: integration } = useIntegration(integrationId);
 
+  const agentId = WELL_KNOWN_AGENT_IDS.teamAgent;
+  const threadId = integrationId;
+
   const form = useForm<Integration>({
     resolver: zodResolver(IntegrationSchema),
     defaultValues: {
@@ -97,8 +100,8 @@ export default function Edit() {
 
   return (
     <ChatProvider
-      agentId={WELL_KNOWN_AGENT_IDS.teamAgent}
-      threadId={integrationId}
+      agentId={agentId}
+      threadId={threadId}
       initialMessage={{
         role: "user",
         content:
