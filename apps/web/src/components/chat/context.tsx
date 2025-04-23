@@ -88,8 +88,7 @@ export function ChatProvider({
     experimental_prepareRequestBody: ({ messages }) => {
       const files = fileDataRef.current;
       const allMessages = (messages as CreateMessage[]).slice(
-        0,
-        LAST_MESSAGES_COUNT,
+        -LAST_MESSAGES_COUNT,
       );
       const last = allMessages.at(-1);
       const annotations = files && files.length > 0
