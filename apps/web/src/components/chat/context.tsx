@@ -17,6 +17,7 @@ import {
 import { trackEvent } from "../../hooks/analytics.ts";
 import { IMAGE_REGEXP, openPreviewPanel } from "./utils/preview.ts";
 
+const LAST_MESSAGES_COUNT = 10;
 interface FileData {
   name: string;
   contentType: string;
@@ -85,27 +86,36 @@ export function ChatProvider({
     headers: { "x-deno-isolate-instance-id": agentRoot },
     api: new URL("/actors/AIAgent/invoke/stream", API_SERVER_URL).href,
     experimental_prepareRequestBody: ({ messages }) => {
-      const message = messages.at(-1);
       const files = fileDataRef.current;
+      const allMessages = (messages as CreateMessage[]).slice(
+        0,
+        LAST_MESSAGES_COUNT,
+      );
+      const last = allMessages.at(-1);
+      const annotations = files && files.length > 0
+        ? [
+          files.map((file: FileData) => ({
+            type: "file",
+            url: file.url,
+            name: file.name,
+            contentType: file.contentType,
+            content:
+              "This message refers to a file uploaded by the user. You might use the file URL as a parameter to a tool call.",
+          })),
+        ]
+        : last?.annotations || [];
+      if (last) {
+        last.annotations = annotations;
+      }
       const searchParams = new URLSearchParams(globalThis.location.search);
       const bypassOpenRouter = searchParams.get("openRouter") === "false";
 
       return {
-        args: [[{
-          ...message,
-          annotations: files && files.length > 0
-            ? [
-              files.map((file: FileData) => ({
-                type: "file",
-                url: file.url,
-                name: file.name,
-                contentType: file.contentType,
-                content:
-                  "This message refers to a file uploaded by the user. You might use the file URL as a parameter to a tool call.",
-              })),
-            ]
-            : message?.annotations || [],
-        }], { model: getModel(), bypassOpenRouter }],
+        args: [allMessages, {
+          model: getModel(),
+          bypassOpenRouter,
+          lastMessages: 0,
+        }],
         metadata: { threadId: threadId ?? agentId },
       };
     },
