@@ -41,6 +41,9 @@ type IContext = {
   threadId: string;
   scrollRef: RefObject<HTMLDivElement | null>;
   fileDataRef: RefObject<FileData[]>;
+  uiOptions?: {
+    showThreadTools?: boolean;
+  };
   setAutoScroll: (e: HTMLDivElement | null, enabled: boolean) => void;
   isAutoScrollEnabled: (e: HTMLDivElement | null) => boolean;
   retry: (context?: string[]) => void;
@@ -56,6 +59,9 @@ interface Props {
   initialMessage?: CreateMessage;
   /** Disable thread messages */
   disableThreadMessages?: boolean;
+  uiOptions?: {
+    showThreadTools?: boolean;
+  };
 }
 
 const THREAD_TOOLS_INVALIDATION_TOOL_CALL = new Set([
@@ -71,6 +77,7 @@ export function ChatProvider({
   initialMessage,
   children,
   disableThreadMessages,
+  uiOptions,
 }: PropsWithChildren<Props>) {
   const agentRoot = useAgentRoot(agentId);
   const invalidateAll = useInvalidateAll();
@@ -224,6 +231,7 @@ export function ChatProvider({
         chat: { ...chat, handleSubmit: handleSubmit },
         scrollRef,
         fileDataRef,
+        uiOptions: uiOptions,
         setAutoScroll,
         isAutoScrollEnabled,
         retry: handleRetry,
