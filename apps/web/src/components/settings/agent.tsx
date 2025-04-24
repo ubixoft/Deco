@@ -145,29 +145,12 @@ function SettingsTab({ formId }: SettingsTabProps) {
             <FormItem>
               <FormLabel>Name</FormLabel>
               <FormControl>
-                <Input placeholder="Enter agent name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Describe your agent's purpose"
-                  className="min-h-36"
+                <Input
+                  className="rounded-md"
+                  placeholder="Enter agent name"
                   {...field}
                 />
               </FormControl>
-              <FormDescription>
-                Used only for organization and search, it does not affect the
-                agent's behaviour
-              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -189,6 +172,26 @@ function SettingsTab({ formId }: SettingsTabProps) {
             </FormItem>
           )}
         />
+        <FormField
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>About this agent</FormLabel>
+              <FormDescription>
+                Used only for organization and search, it does not affect the
+                agent's behaviour
+              </FormDescription>
+              <FormControl>
+                <Textarea
+                  placeholder="Describe your agent's purpose"
+                  className="min-h-18"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           name="max_tokens"
@@ -198,6 +201,7 @@ function SettingsTab({ formId }: SettingsTabProps) {
               <FormControl>
                 <Input
                   type="number"
+                  className="rounded-md"
                   min={ANTHROPIC_MIN_MAX_TOKENS}
                   max={ANTHROPIC_MAX_MAX_TOKENS}
                   {...field}
