@@ -31,6 +31,7 @@ import {
 } from "@deco/ui/components/alert-dialog.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useNavigate } from "react-router";
+import ActionsButton from "../chat/ActionsButton.tsx";
 
 interface Props {
   agentId: string;
@@ -46,6 +47,9 @@ export function ChatHeader() {
         <h1 className="text-sm font-medium tracking-tight">
           New chat
         </h1>
+        <div className="ml-auto">
+          <ActionsButton />
+        </div>
       </Container>
     );
   }
@@ -124,6 +128,7 @@ ChatHeader.UI = ({ agentId }: Props) => {
           </div>
 
           <div>
+            <ActionsButton />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
