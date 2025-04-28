@@ -89,6 +89,7 @@ export function ChatProvider({
   } = useAddOptimisticThread();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileDataRef = useRef<FileData[]>([]);
+  const onceRef = useRef(false);
   const { data: initialMessages } = disableThreadMessages
     ? { data: [] }
     : useThreadMessages(agentId, threadId);
@@ -229,7 +230,11 @@ export function ChatProvider({
   };
 
   useEffect(() => {
-    if (chat.messages.length === 0 && initialMessage) {
+    if (
+      chat.messages.length === 0 && initialMessage &&
+      !onceRef.current
+    ) {
+      onceRef.current = true;
       chat.append(initialMessage);
     }
   }, [initialMessage, chat.messages]);
