@@ -17,14 +17,15 @@ import {
 import { Input } from "@deco/ui/components/input.tsx";
 import { Textarea } from "@deco/ui/components/textarea.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef } from "react";
-import { useForm } from "react-hook-form";
 import { useChatContext } from "../chat/context.tsx";
 import { AgentAvatar } from "../common/Avatar.tsx";
-import { useFocusChat } from "../agents/hooks.ts";
-import { useNavigate } from "react-router";
-
-import { getDiffCount, Integration } from "../toolsets/index.tsx";
+import { Integration } from "../toolsets/index.tsx";
+import {
+  getAgentOverrides,
+  useAgentOverridesSetter,
+  useOnAgentChangesDiscarded,
+} from "../../hooks/useAgentOverrides.ts";
+import { usePersistedDirtyForm } from "../../hooks/usePersistedDirtyForm.ts";
 
 // Token limits for Anthropic models
 const ANTHROPIC_MIN_MAX_TOKENS = 4096;
@@ -39,61 +40,27 @@ function SettingsTab({ formId }: SettingsTabProps) {
   const { data: agent } = useAgent(agentId);
   const { data: installedIntegrations } = useIntegrations();
   const updateAgent = useUpdateAgent();
-  const previousChangesRef = useRef(0);
-  const focusChat = useFocusChat();
-  const navigate = useNavigate();
-  const isDraft = agent?.draft;
 
-  const form = useForm<Agent>({
+  const agentOverrides = useAgentOverridesSetter(agentId);
+
+  const { form, discardChanges, onMutationSuccess } = usePersistedDirtyForm<
+    Agent
+  >({
     resolver: zodResolver(AgentSchema),
     defaultValues: agent,
+    persist: agentOverrides.update,
+    getOverrides: () => getAgentOverrides(agentId),
   });
 
+  useOnAgentChangesDiscarded(agentId, discardChanges);
+
+  const onSubmit = async (data: Agent) => {
+    await updateAgent.mutateAsync(data, {
+      onSuccess: onMutationSuccess,
+    });
+  };
+
   const toolsSet = form.watch("tools_set");
-
-  const numberOfChanges = (() => {
-    const { tools_set: _, ...rest } = form.formState.dirtyFields;
-
-    return Object.keys(rest).length +
-      getDiffCount(toolsSet, agent.tools_set);
-  })();
-
-  // Notify about changes when number of changes updates
-  useEffect(() => {
-    if (numberOfChanges !== previousChangesRef.current) {
-      previousChangesRef.current = numberOfChanges;
-
-      const changeEvent = new CustomEvent("agent:changes-updated", {
-        detail: { numberOfChanges },
-      });
-      globalThis.dispatchEvent(changeEvent);
-    }
-  }, [numberOfChanges]);
-
-  useEffect(() => {
-    if (agent) {
-      form.reset(agent);
-    }
-  }, [agent, form]);
-
-  // Listen for the discard event from the header
-  useEffect(() => {
-    const handleDiscardEvent = () => {
-      if (agent) {
-        form.reset(agent);
-      }
-    };
-
-    globalThis.addEventListener("agent:discard-changes", handleDiscardEvent);
-
-    return () => {
-      globalThis.removeEventListener(
-        "agent:discard-changes",
-        handleDiscardEvent,
-      );
-    };
-  }, [agent, form]);
-
   const setIntegrationTools = (
     integrationId: string,
     tools: string[],
@@ -108,17 +75,6 @@ function SettingsTab({ formId }: SettingsTabProps) {
     }
 
     form.setValue("tools_set", newToolsSet, { shouldDirty: true });
-  };
-
-  const onSubmit = async (data: Agent) => {
-    const newData = { ...data, draft: false };
-    await updateAgent.mutateAsync(newData);
-
-    if (isDraft) {
-      focusChat(agentId, crypto.randomUUID());
-    } else {
-      navigate(-1);
-    }
   };
 
   return (
@@ -173,6 +129,7 @@ function SettingsTab({ formId }: SettingsTabProps) {
               </FormItem>
             )}
           />
+
           <FormField
             name="description"
             render={({ field }) => (

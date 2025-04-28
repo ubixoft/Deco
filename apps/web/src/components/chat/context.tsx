@@ -1,7 +1,6 @@
 import { CreateMessage, useChat } from "@ai-sdk/react";
 import {
   API_SERVER_URL,
-  getModel,
   useAgentRoot,
   useInvalidateAll,
   useThreadMessages,
@@ -16,6 +15,9 @@ import {
 } from "react";
 import { trackEvent } from "../../hooks/analytics.ts";
 import { IMAGE_REGEXP, openPreviewPanel } from "./utils/preview.ts";
+import { getAgentOverrides } from "../../hooks/useAgentOverrides.ts";
+import { useSelectedModel } from "../../hooks/useSelectedModel.ts";
+import { useAddOptimisticThread } from "@deco/sdk";
 
 const LAST_MESSAGES_COUNT = 10;
 interface FileData {
@@ -80,7 +82,11 @@ export function ChatProvider({
   uiOptions,
 }: PropsWithChildren<Props>) {
   const agentRoot = useAgentRoot(agentId);
+  const selectedModel = useSelectedModel();
   const invalidateAll = useInvalidateAll();
+  const {
+    addOptimisticThread,
+  } = useAddOptimisticThread();
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileDataRef = useRef<FileData[]>([]);
   const { data: initialMessages } = disableThreadMessages
@@ -93,6 +99,10 @@ export function ChatProvider({
     headers: { "x-deno-isolate-instance-id": agentRoot },
     api: new URL("/actors/AIAgent/invoke/stream", API_SERVER_URL).href,
     experimental_prepareRequestBody: ({ messages }) => {
+      if (messages.length === 1 && messages[0].role === "user") {
+        addOptimisticThread(threadId, agentId);
+      }
+
       const files = fileDataRef.current;
       const allMessages = (messages as CreateMessage[]).slice(
         -LAST_MESSAGES_COUNT,
@@ -116,9 +126,11 @@ export function ChatProvider({
       const searchParams = new URLSearchParams(globalThis.location.search);
       const bypassOpenRouter = searchParams.get("openRouter") === "false";
 
+      const overrides = getAgentOverrides(agentId);
       return {
         args: [allMessages, {
-          model: getModel(),
+          model: selectedModel.value,
+          instructions: overrides?.instructions,
           bypassOpenRouter,
           lastMessages: 0,
         }],

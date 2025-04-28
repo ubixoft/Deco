@@ -64,10 +64,6 @@ const AgentsList = lazy(
   () => wrapWithUILoadingFallback(import("./components/agents/list.tsx")),
 );
 
-const AgentDetail = lazy(
-  () => wrapWithUILoadingFallback(import("./components/agent/detail.tsx")),
-);
-
 const Chat = lazy(
   () => wrapWithUILoadingFallback(import("./components/agent/chat.tsx")),
 );
@@ -145,6 +141,7 @@ function Router() {
           index
           element={
             <Chat
+              includeThreadTools
               agentId={WELL_KNOWN_AGENT_IDS.teamAgent}
               threadId={crypto.randomUUID()}
               disableThreadMessages
@@ -159,10 +156,6 @@ function Router() {
         <Route
           path="agents"
           element={<AgentsList />}
-        />
-        <Route
-          path="agent/:id"
-          element={<AgentDetail />}
         />
         <Route
           path="chat/:id/:threadId"
