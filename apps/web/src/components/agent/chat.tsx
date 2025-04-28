@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { ChatInput } from "../chat/ChatInput.tsx";
 import { ChatMessages } from "../chat/ChatMessages.tsx";
@@ -160,110 +160,122 @@ function Agent(props: Props) {
     }
   };
 
-  return (
-    <ChatProvider
-      agentId={agentId}
-      threadId={threadId}
-      uiOptions={{ showThreadTools: props.includeThreadTools || false }}
-      disableThreadMessages={props.disableThreadMessages}
-    >
-      <div className="h-screen flex flex-col">
-        <style>{tabStyles}</style>
+  const chatKey = useMemo(() => `${agentId}-${threadId}`, [agentId, threadId]);
 
-        <div
-          className={cn(
-            "px-4 flex justify-between items-center border-b bg-slate-50 h-px overflow-hidden transition-all duration-300",
-            (isMobile || hasChanges) && "h-auto py-2",
-          )}
-        >
-          <div className="flex justify-between gap-2 w-full">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="mr-2 md:invisible"
-            >
-              <Icon name="menu" size={20} />
-            </Button>
-            <Button
-              variant="outline"
-              title="New Chat"
-              className={cn(
-                (hasChanges || !isMobile) && "hidden",
-              )}
-              onClick={() => focusChat(agentId, crypto.randomUUID())}
-            >
-              <Icon name="chat_add_on" />
-              New chat
-            </Button>
-          </div>
-          <div className="flex gap-2">
-            {hasChanges && (
-              <>
-                <Button
-                  variant="outline"
-                  className="text-slate-700"
-                  onClick={discardCurrentChanges}
-                >
-                  Discard
-                </Button>
-                <Button
-                  className="bg-primary-light text-primary-dark hover:bg-primary-light/90 flex items-center justify-center w-[108px] gap-2"
-                  onClick={handleUpdate}
-                  disabled={!hasChanges}
-                >
-                  {isLoading ? <Spinner size="xs" /> : <span>Save</span>}
-                </Button>
-              </>
-            )}
-          </div>
+  return (
+    <Suspense
+      fallback={
+        <div className="h-full w-full flex items-center justify-center">
+          <Spinner />
         </div>
-        <div className="flex-1 overflow-hidden">
-          {isMobile
-            ? (
-              <Tabs
-                defaultValue="chat"
-                className="w-full h-full flex flex-col custom-tabs"
+      }
+      // This make the react render fallback when changin agent+threadid, instead of hang the whole navigation while the subtree isn't changed
+      key={chatKey}
+    >
+      <ChatProvider
+        agentId={agentId}
+        threadId={threadId}
+        uiOptions={{ showThreadTools: props.includeThreadTools || false }}
+        disableThreadMessages={props.disableThreadMessages}
+      >
+        <div className="h-screen flex flex-col">
+          <style>{tabStyles}</style>
+
+          <div
+            className={cn(
+              "px-4 flex justify-between items-center border-b bg-slate-50 h-px overflow-hidden transition-all duration-300",
+              (isMobile || hasChanges) && "h-auto py-2",
+            )}
+          >
+            <div className="flex justify-between gap-2 w-full">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSidebar}
+                className="mr-2 md:invisible"
               >
-                <TabsList className="w-full border-b bg-slate-50 p-0 shadow-none h-12 border-none relative">
-                  <TabsTrigger
+                <Icon name="menu" size={20} />
+              </Button>
+              <Button
+                variant="outline"
+                title="New Chat"
+                className={cn(
+                  (hasChanges || !isMobile) && "hidden",
+                )}
+                onClick={() => focusChat(agentId, crypto.randomUUID())}
+              >
+                <Icon name="chat_add_on" />
+                New chat
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              {hasChanges && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="text-slate-700"
+                    onClick={discardCurrentChanges}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    className="bg-primary-light text-primary-dark hover:bg-primary-light/90 flex items-center justify-center w-[108px] gap-2"
+                    onClick={handleUpdate}
+                    disabled={!hasChanges}
+                  >
+                    {isLoading ? <Spinner size="xs" /> : <span>Save</span>}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {isMobile
+              ? (
+                <Tabs
+                  defaultValue="chat"
+                  className="w-full h-full flex flex-col custom-tabs"
+                >
+                  <TabsList className="w-full border-b bg-slate-50 p-0 shadow-none h-12 border-none relative">
+                    <TabsTrigger
+                      value="chat"
+                      className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-r-0"
+                    >
+                      Chat
+                    </TabsTrigger>
+                    <div className="tab-divider"></div>
+                    <TabsTrigger
+                      value="settings"
+                      className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                    >
+                      Edit Agent
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent
                     value="chat"
-                    className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-r-0"
+                    className="flex-1 overflow-hidden flex flex-col m-0 p-0 border-0 shadow-none"
                   >
-                    Chat
-                  </TabsTrigger>
-                  <div className="tab-divider"></div>
-                  <TabsTrigger
+                    <MobileChat />
+                  </TabsContent>
+                  <TabsContent
                     value="settings"
-                    className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+                    className="flex-1 overflow-auto m-0 p-0 border-0 shadow-none px-4"
                   >
-                    Edit Agent
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent
-                  value="chat"
-                  className="flex-1 overflow-hidden flex flex-col m-0 p-0 border-0 shadow-none"
-                >
-                  <MobileChat />
-                </TabsContent>
-                <TabsContent
-                  value="settings"
-                  className="flex-1 overflow-auto m-0 p-0 border-0 shadow-none px-4"
-                >
-                  <AgentSettings formId="agent-settings-form" />
-                </TabsContent>
-              </Tabs>
-            )
-            : (
-              <DockedPageLayout
-                main={MAIN}
-                tabs={COMPONENTS}
-                key={agentId}
-              />
-            )}
+                    <AgentSettings formId="agent-settings-form" />
+                  </TabsContent>
+                </Tabs>
+              )
+              : (
+                <DockedPageLayout
+                  main={MAIN}
+                  tabs={COMPONENTS}
+                  key={agentId}
+                />
+              )}
+          </div>
         </div>
-      </div>
-    </ChatProvider>
+      </ChatProvider>
+    </Suspense>
   );
 }
 
