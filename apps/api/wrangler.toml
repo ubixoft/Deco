@@ -10,5 +10,8 @@ routes = [
 [vars]
 VITE_USE_LOCAL_BACKEND = false
 
+[observability]
+enabled = true
+
 # [[tail_consumers]]
 # service = "hyperdx-tail"
