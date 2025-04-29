@@ -26,8 +26,8 @@ jobs:
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           workingDirectory: "./apps/api"
           secrets: |
-            DATABASE_URL
+            SUPABASE_URL
             SUPABASE_SERVER_TOKEN
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_SERVER_TOKEN: ${{ secrets.SUPABASE_SERVER_TOKEN }}
