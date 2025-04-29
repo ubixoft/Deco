@@ -9,7 +9,14 @@ interface State {
 }
 
 const client = new QueryClient({
-  defaultOptions: { queries: { retry: 1 } },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: Infinity,
+      gcTime: 5 * 60 * 1000, // 5 minutes in milliseconds
+      networkMode: "offlineFirst",
+    },
+  },
 });
 
 const Context = createContext<State | null>(null);
