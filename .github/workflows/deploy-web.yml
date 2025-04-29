@@ -137,5 +137,5 @@ jobs:
           # Run the TypeScript deploy script
           deno run -A deploy.ts
         env:
-          APP_SLUG: ${{ matrix.app }}
+          APP_SLUG: web
           WEBDRAW_API_TOKEN: ${{ secrets.WEBDRAW_API_TOKEN }}
