@@ -1,21 +1,18 @@
-name: Build and Deploy
+name: Deploy Web
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
   build:
-    name: ${{ matrix.app }} app
+    name: Web
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        app: [web]
-      fail-fast: false
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,15 +25,15 @@ jobs:
       - name: Install dependencies
         run: deno install
 
-      - name: Build ${{ matrix.app }} app
+      - name: Build web app
         run: |
-          cd apps/${{ matrix.app }}
+          cd apps/web
           deno run build
 
-      - name: Deploy to fs.webdraw.app
+      - name: Publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          cd apps/${{ matrix.app }}/dist
+          cd apps/web/dist
 
           # Create a TypeScript deploy script
           cat > deploy.ts << 'EOF'

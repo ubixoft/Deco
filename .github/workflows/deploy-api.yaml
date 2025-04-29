@@ -1,6 +1,4 @@
-# https://docs.github.com/en/actions
-
-name: Cf-API-Deploy
+name: Deploy API
 
 on:
   push:
@@ -9,12 +7,13 @@ on:
 
 jobs:
   deploy:
+    name: API
     runs-on: ubuntu-latest
-    name: deco-chat-api / prod / cloudflare
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Install dependencies
         working-directory: ./apps/api
         run: |
           npm install --legacy-peer-deps
