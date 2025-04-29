@@ -69,12 +69,23 @@ export const callTool = async (
 };
 
 export function useTools(connection: MCPConnection) {
-  return useQuery({
+  const response = useQuery({
     retry: false,
-    queryKey: ["tools", connection],
+    queryKey: [
+      "tools",
+      connection.type,
+      // deno-lint-ignore no-explicit-any
+      (connection as any).url || (connection as any).tenant ||
+      // deno-lint-ignore no-explicit-any
+      (connection as any).name,
+    ],
     queryFn: () => listTools(connection),
-    initialData: INITIAL_DATA,
   });
+
+  return {
+    ...response,
+    data: response.data || INITIAL_DATA,
+  };
 }
 
 export function useToolCall(connection: MCPConnection) {
