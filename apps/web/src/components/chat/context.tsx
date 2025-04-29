@@ -135,7 +135,7 @@ export function ChatProvider({
           bypassOpenRouter,
           lastMessages: 0,
           sendReasoning: true,
-          smoothStreaming: {
+          smoothStream: {
             delayInMs: 20,
             chunk: "word",
           },
