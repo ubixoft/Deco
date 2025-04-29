@@ -5,9 +5,9 @@ import { ChatMessages } from "../chat/ChatMessages.tsx";
 import { ChatProvider } from "../chat/context.tsx";
 import { DockedPageLayout } from "../pageLayout.tsx";
 import AgentSettings from "../settings/agent.tsx";
+import { AgentHeader } from "./DetailHeader.tsx";
 import AgentPreview from "./preview.tsx";
 import ThreadView from "./thread.tsx";
-import ThreadSettingsTab from "../settings/chat.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import {
@@ -22,7 +22,6 @@ import { useIsMobile } from "@deco/ui/hooks/use-mobile.ts";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useAgentHasChanges } from "../../hooks/useAgentOverrides.ts";
 import { useFocusChat } from "../agents/hooks.ts";
-import { ChatHeader } from "./ChatHeader.tsx";
 
 // Custom CSS to override shadow styles
 const tabStyles = `
@@ -51,11 +50,9 @@ const tabStyles = `
 interface Props {
   agentId?: string;
   threadId?: string;
-  disableThreadMessages?: boolean;
-  includeThreadTools?: boolean;
 }
 
-const MainHeader = () => <ChatHeader />;
+const MainHeader = () => <AgentHeader />;
 const MainContent = () => <ChatMessages />;
 const MainFooter = () => <ChatInput />;
 
@@ -70,13 +67,14 @@ const COMPONENTS = {
     Component: ThreadView,
     title: "Thread",
   },
+  settings: {
+    Component: () => <AgentSettings formId="agent-settings-form" />,
+    initialOpen: true,
+    title: "Edit Agent",
+  },
   preview: {
     Component: AgentPreview,
     title: "Preview",
-  },
-  tools: {
-    Component: ThreadSettingsTab,
-    title: "Thread Tools",
   },
 };
 
@@ -104,10 +102,9 @@ function Agent(props: Props) {
     return <div>Agent not found</div>;
   }
 
-  const propThreadId = props.threadId || params.threadId;
   const threadId = useMemo(
-    () => propThreadId || agentId,
-    [propThreadId, agentId],
+    () => props.threadId || params.threadId || agentId,
+    [props.threadId, params.threadId, agentId],
   );
 
   const isMobile = useIsMobile();
@@ -139,14 +136,12 @@ function Agent(props: Props) {
           <Spinner />
         </div>
       }
-      // This make the react render fallback when changin agent+threadid, instead of hang the whole navigation while the subtree isn't changed
       key={chatKey}
     >
       <ChatProvider
         agentId={agentId}
         threadId={threadId}
-        uiOptions={{ showThreadTools: props.includeThreadTools || false }}
-        disableThreadMessages={props.disableThreadMessages}
+        uiOptions={{ showThreadTools: false }}
       >
         <div className="h-screen flex flex-col">
           <style>{tabStyles}</style>
