@@ -1,12 +1,21 @@
 import { type Action, useListActions } from "@deco/sdk";
-import { useChatContext } from "../chat/context.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { useState } from "react";
-import { Icon } from "@deco/ui/components/icon.tsx";
+import { useChatContext } from "../chat/context.tsx";
+import { TabScrollArea } from "../pageLayout.tsx";
 import { ActionCard } from "./actionCard.tsx";
 import { ActionDetails } from "./actionDetails.tsx";
 
 export function ListActions() {
+  return (
+    <TabScrollArea>
+      <ListActionsInner />
+    </TabScrollArea>
+  );
+}
+
+function ListActionsInner() {
   const { agentId } = useChatContext();
   const { data: actions, isLoading } = useListActions(agentId, {
     refetchOnMount: true,
@@ -32,7 +41,7 @@ export function ListActions() {
   }
 
   return (
-    <div className="p-4 grid grid-cols-1 gap-4 w-full">
+    <div className="grid grid-cols-1 gap-4 w-full">
       {actions?.actions?.map((action, index) => (
         <ActionCard
           key={`real-${index}`}
@@ -46,7 +55,7 @@ export function ListActions() {
 
 export function ListActionsLoading() {
   return (
-    <div className="p-4 grid grid-cols-1 gap-4">
+    <div className="grid grid-cols-1 gap-4">
       {Array.from({ length: 3 }).map((_, index) => (
         <Skeleton key={`skeleton-${index}`} className="h-36 w-full" />
       ))}
@@ -56,16 +65,16 @@ export function ListActionsLoading() {
 
 export function ListActionsEmpty() {
   return (
-    <div className="m-4 p-4 border border-dashed rounded-lg flex flex-col items-center justify-center text-center">
+    <div className="border border-dashed rounded-lg flex flex-col items-center justify-center text-center">
       <div className="bg-slate-100 rounded-full p-3 mb-4 h-10">
         <Icon
           name="notifications_active"
           className="text-slate-500"
         />
       </div>
-      <h3 className="text-lg font-medium mb-2">No actions configured</h3>
+      <h3 className="text-lg font-medium mb-2">No triggers configured</h3>
       <p className="text-sm text-muted-foreground max-w-md mb-4">
-        Actions allow you to trigger your agent on a schedule or from external
+        Triggers allow you to trigger your agent on a schedule or from external
         systems.
       </p>
     </div>

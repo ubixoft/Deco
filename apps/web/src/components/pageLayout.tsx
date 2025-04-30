@@ -63,7 +63,7 @@ export function PageLayout({ header, main, footer }: PageProps) {
       </div>
 
       {footer && (
-        <footer className="w-full px-4 py-2">
+        <footer className="w-full">
           {footer}
         </footer>
       )}
@@ -109,6 +109,22 @@ export function DockedPageLayout({ main, tabs }: DockedPageProps) {
     </Context.Provider>
   );
 }
+
+export const TabScrollArea = (
+  { children, className, ...props }:
+    & { children: ReactNode }
+    & ComponentProps<typeof ScrollArea>,
+) => (
+  <ScrollArea
+    className={cn(
+      "h-full w-full bg-gradient-to-b from-white to-slate-50 p-6 text-slate-700",
+      className,
+    )}
+    {...props}
+  >
+    {children}
+  </ScrollArea>
+);
 
 export function DockedToggleButton(
   { id, title, children, className, disabled, ...btnProps }: {

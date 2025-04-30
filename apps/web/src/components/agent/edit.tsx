@@ -1,5 +1,6 @@
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
+import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { useSidebar } from "@deco/ui/components/sidebar.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import {
@@ -10,17 +11,17 @@ import {
 } from "@deco/ui/components/tabs.tsx";
 import { useIsMobile } from "@deco/ui/hooks/use-mobile.ts";
 import { cn } from "@deco/ui/lib/utils.ts";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { useParams } from "react-router";
-import { useAgentHasChanges } from "../../hooks/useAgentOverrides.ts";
+import { useAgent } from "../../../../../packages/sdk/src/index.ts";
 import { ListActions } from "../actions/listActions.tsx";
-import { useFocusChat } from "../agents/hooks.ts";
 import { ChatInput } from "../chat/ChatInput.tsx";
 import { ChatMessages } from "../chat/ChatMessages.tsx";
-import { ChatProvider } from "../chat/context.tsx";
+import { ChatProvider, useChatContext } from "../chat/context.tsx";
+import { AgentAvatar } from "../common/Avatar.tsx";
 import { DockedPageLayout } from "../pageLayout.tsx";
 import AgentSettings from "../settings/agent.tsx";
-import { AgentHeader } from "./DetailHeader.tsx";
+import { AgentHeader, Container } from "./DetailHeader.tsx";
 import AgentPreview from "./preview.tsx";
 import ThreadView from "./thread.tsx";
 
@@ -37,15 +38,7 @@ const tabStyles = `
   outline: none !important;
   box-shadow: none !important;
 }
-.tab-divider {
-  position: absolute;
-  top: 1%;
-  bottom: 1%;
-  width: 1px;
-  background-color: #e2e8f0;
-  left: 50%;
-  transform: translateX(-50%);
-}
+
 `;
 
 interface Props {
@@ -53,25 +46,58 @@ interface Props {
   threadId?: string;
 }
 
-const MainHeader = () => <AgentHeader />;
-const MainContent = () => <ChatMessages />;
-const MainFooter = () => <ChatInput />;
+const Chat = () => {
+  const { agentId, chat } = useChatContext();
+  const { data: agent } = useAgent(agentId);
 
-const MAIN = {
-  header: MainHeader,
-  main: MainContent,
-  footer: MainFooter,
+  return (
+    <div className="flex flex-col h-full min-w-[320px]">
+      <div className="flex-none p-4">
+        <Container>
+          {chat.messages.length > 0 && (
+            <>
+              <div className="w-8 h-8 rounded-[10px] overflow-hidden flex items-center justify-center">
+                <AgentAvatar
+                  name={agent.name}
+                  avatar={agent.avatar}
+                  className="rounded-lg text-xs"
+                />
+              </div>
+              <h1 className="text-sm font-medium tracking-tight">
+                {agent.name}
+              </h1>
+            </>
+          )}
+        </Container>
+      </div>
+      <ScrollArea className="flex-1 min-h-0">
+        <ChatMessages />
+      </ScrollArea>
+      <div className="flex-none pb-4 px-4">
+        <ChatInput />
+      </div>
+    </div>
+  );
 };
 
-const COMPONENTS = {
+const MAIN = {
+  header: AgentHeader,
+  main: () => (
+    <div className="h-full w-full max-w-[640px] mx-auto">
+      <AgentSettings formId="agent-settings-form" />
+    </div>
+  ),
+};
+
+const TABS = {
   chatView: {
     Component: ThreadView,
     title: "Thread",
   },
-  settings: {
-    Component: () => <AgentSettings formId="agent-settings-form" />,
+  chat: {
+    Component: Chat,
     initialOpen: true,
-    title: "Edit Agent",
+    title: "Test agent",
   },
   preview: {
     Component: AgentPreview,
@@ -79,7 +105,7 @@ const COMPONENTS = {
   },
   actions: {
     Component: ListActions,
-    title: "Actions",
+    title: "Triggers",
   },
 };
 
@@ -89,7 +115,7 @@ function MobileChat() {
       <div className="flex-1 overflow-y-auto">
         <ChatMessages />
       </div>
-      <div className="p-2 border-t">
+      <div className="pb-2 px-2">
         <ChatInput />
       </div>
     </>
@@ -114,23 +140,6 @@ function Agent(props: Props) {
 
   const isMobile = useIsMobile();
   const { toggleSidebar } = useSidebar();
-  const [isLoading, setIsLoading] = useState(false);
-  const { hasChanges, discardCurrentChanges } = useAgentHasChanges(agentId);
-  const focusChat = useFocusChat();
-
-  const handleUpdate = () => {
-    setIsLoading(true);
-    try {
-      const form = document.getElementById(
-        "agent-settings-form",
-      ) as HTMLFormElement;
-      if (form) {
-        form.requestSubmit();
-      }
-    } catch (error) {
-      console.error("Error updating agent:", error);
-    }
-  };
 
   const chatKey = useMemo(() => `${agentId}-${threadId}`, [agentId, threadId]);
 
@@ -146,15 +155,18 @@ function Agent(props: Props) {
       <ChatProvider
         agentId={agentId}
         threadId={threadId}
-        uiOptions={{ showThreadTools: false }}
+        uiOptions={{
+          showThreadTools: false,
+          showEditAgent: false,
+        }}
       >
-        <div className="h-screen flex flex-col">
+        <div className="h-full flex flex-col">
           <style>{tabStyles}</style>
 
           <div
             className={cn(
               "px-4 flex justify-between items-center border-b bg-slate-50 h-px overflow-hidden transition-all duration-300",
-              (isMobile || hasChanges) && "h-auto py-2",
+              isMobile && "h-auto py-2",
             )}
           >
             <div className="flex justify-between gap-2 w-full">
@@ -166,60 +178,35 @@ function Agent(props: Props) {
               >
                 <Icon name="menu" size={20} />
               </Button>
-              <Button
-                variant="outline"
-                title="New Chat"
-                className={cn(
-                  (hasChanges || !isMobile) && "hidden",
-                )}
-                onClick={() =>
-                  focusChat(agentId, crypto.randomUUID(), { history: false })}
-              >
-                <Icon name="chat_add_on" />
-                New chat
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              {hasChanges && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="text-slate-700"
-                    onClick={discardCurrentChanges}
-                  >
-                    Discard
-                  </Button>
-                  <Button
-                    className="bg-primary-light text-primary-dark hover:bg-primary-light/90 flex items-center justify-center w-[108px] gap-2"
-                    onClick={handleUpdate}
-                    disabled={!hasChanges}
-                  >
-                    {isLoading ? <Spinner size="xs" /> : <span>Save</span>}
-                  </Button>
-                </>
-              )}
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
             {isMobile
               ? (
                 <Tabs
-                  defaultValue="chat"
+                  defaultValue="settings"
                   className="w-full h-full flex flex-col custom-tabs"
                 >
                   <TabsList className="w-full border-b bg-slate-50 p-0 shadow-none h-12 border-none relative">
-                    <TabsTrigger
-                      value="chat"
-                      className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-r-0"
-                    >
-                      Chat
-                    </TabsTrigger>
-                    <div className="tab-divider"></div>
                     <TabsTrigger
                       value="settings"
                       className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
                     >
                       Edit Agent
+                    </TabsTrigger>
+                    <div className="h-full w-[1px] bg-slate-200" />
+                    <TabsTrigger
+                      value="chat"
+                      className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-r-0"
+                    >
+                      Test Agent
+                    </TabsTrigger>
+                    <div className="h-full w-[1px] bg-slate-200" />
+                    <TabsTrigger
+                      value="triggers"
+                      className="flex-1 rounded-none py-2 px-0 data-[state=active]:bg-white focus:shadow-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 border-r-0"
+                    >
+                      Triggers
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent
@@ -234,12 +221,18 @@ function Agent(props: Props) {
                   >
                     <AgentSettings formId="agent-settings-form" />
                   </TabsContent>
+                  <TabsContent
+                    value="triggers"
+                    className="flex-1 overflow-auto m-0 p-0 border-0 shadow-none px-4"
+                  >
+                    <ListActions />
+                  </TabsContent>
                 </Tabs>
               )
               : (
                 <DockedPageLayout
                   main={MAIN}
-                  tabs={COMPONENTS}
+                  tabs={TABS}
                   key={agentId}
                 />
               )}
