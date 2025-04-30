@@ -12,6 +12,7 @@ import * as teamsAPI from "./api/teams/api.ts";
 import { withContextMiddleware } from "./middlewares/context.ts";
 import { setUserMiddleware } from "./middlewares/user.ts";
 import { ApiHandler, createAIHandler, State } from "./utils/context.ts";
+import { ROUTES as loginRoutes } from "./auth/index.ts";
 
 const app = new Hono();
 
@@ -142,6 +143,11 @@ app.post(
   "/:root/:slug/tools/call/:tool",
   createToolCallHandlerFor(WORKSPACE_TOOLS),
 );
+
+// Login and auth routes
+Object.entries(loginRoutes).forEach(([route, honoApp]) => {
+  app.route(route, honoApp);
+});
 
 // Health check endpoint
 app.get("/health", (c: Context) => c.json({ status: "ok" }));

@@ -76,6 +76,10 @@ const Wallet = lazy(
   () => wrapWithUILoadingFallback(import("./components/wallet/index.tsx")),
 );
 
+const MagicLink = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/login/magicLink.tsx"))
+);
+
 function NotFound() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -137,6 +141,7 @@ function Router() {
   return (
     <Routes>
       <Route path="login" element={<Login />} />
+      <Route path="login/magiclink" element={<MagicLink />} />
 
       <Route path="about" element={<About />} />
 

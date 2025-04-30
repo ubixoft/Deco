@@ -1,16 +1,15 @@
-import { User } from "@deco/sdk";
 import type { CallToolResult } from "@modelcontextprotocol/sdk";
 import { Context } from "hono";
 import { env as honoEnv } from "hono/adapter";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { z } from "zod";
 import { Client } from "../db/client.ts";
-import { Database } from "../db/schema.ts";
+import { type User as SupaUser } from "npm:@supabase/supabase-js@^2.49.4";
 
 export type AppEnv = {
   Variables: {
     db: Client;
-    user: User;
+    user: SupaUser;
   };
   Bindings: {
     SUPABASE_URL?: string;
@@ -19,11 +18,6 @@ export type AppEnv = {
 };
 
 export type AppContext = Context<AppEnv>;
-
-export interface Variables {
-  db: Database;
-  user: User;
-}
 
 const isErrorLike = (error: unknown): error is Error =>
   Boolean((error as Error)?.message);
@@ -45,7 +39,8 @@ export const serializeError = (error: unknown): string => {
 };
 
 export const getEnv = (ctx: AppContext) => {
-  const { SUPABASE_URL, SUPABASE_SERVER_TOKEN } = honoEnv(ctx);
+  const { SUPABASE_URL, SUPABASE_SERVER_TOKEN, VITE_USE_LOCAL_BACKEND } =
+    honoEnv(ctx);
 
   if (
     typeof SUPABASE_URL !== "string" ||
@@ -54,12 +49,17 @@ export const getEnv = (ctx: AppContext) => {
     throw new Error("Missing environment variables");
   }
 
-  return { SUPABASE_URL, SUPABASE_SERVER_TOKEN };
+  return { SUPABASE_URL, SUPABASE_SERVER_TOKEN, VITE_USE_LOCAL_BACKEND };
 };
+
+export const AUTH_URL = (ctx: AppContext) =>
+  getEnv(ctx).VITE_USE_LOCAL_BACKEND === "true"
+    ? "http://localhost:3001"
+    : "https://api.deco.chat";
 
 export const createAIHandler =
   // deno-lint-ignore no-explicit-any
-  (cb: (...args: any[]) => Promise<any>) =>
+  (cb: (...args: any[]) => Promise<any> | any) =>
   // deno-lint-ignore no-explicit-any
   async (...args: any[]): Promise<CallToolResult> => {
     try {
@@ -86,10 +86,10 @@ export const createApiHandler = <
   name: string;
   description: string;
   schema: T;
-  handler: (props: z.infer<T>, c: AppContext) => Promise<R>;
+  handler: (props: z.infer<T>, c: AppContext) => Promise<R> | R;
 }) => ({
   ...definition,
-  handler: (props: z.infer<T>): Promise<R> =>
+  handler: (props: z.infer<T>): Promise<R> | R =>
     definition.handler(props, State.getStore()),
 });
 
