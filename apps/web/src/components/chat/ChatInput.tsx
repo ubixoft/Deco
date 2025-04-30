@@ -16,27 +16,31 @@ import { useChatContext } from "./context.tsx";
 import ToolsButton from "./ToolsButton.tsx";
 import { useSelectedModel } from "../../hooks/useSelectedModel.ts";
 
-export function ChatInput() {
+export function ChatInput({ withoutTools }: { withoutTools?: boolean }) {
   return (
     <ErrorBoundary
-      fallback={<ChatInput.UI disabled />}
+      fallback={<ChatInput.UI disabled withoutTools={withoutTools} />}
       shouldCatch={(e) => e instanceof AgentNotFoundError}
     >
-      <Suspense fallback={<ChatInput.UI disabled />}>
-        <ChatInput.Suspense />
+      <Suspense
+        fallback={<ChatInput.UI disabled withoutTools={withoutTools} />}
+      >
+        <ChatInput.Suspense withoutTools={withoutTools} />
       </Suspense>
     </ErrorBoundary>
   );
 }
 
-ChatInput.Suspense = () => {
+ChatInput.Suspense = ({ withoutTools }: { withoutTools?: boolean }) => {
   const { agentId } = useChatContext();
   const { data: _agent } = useAgent(agentId);
 
-  return <ChatInput.UI disabled={false} />;
+  return <ChatInput.UI disabled={false} withoutTools={withoutTools} />;
 };
 
-ChatInput.UI = ({ disabled }: { disabled?: boolean }) => {
+ChatInput.UI = (
+  { disabled, withoutTools }: { disabled?: boolean; withoutTools?: boolean },
+) => {
   const {
     agentRoot,
     chat: { stop, input, handleInputChange, handleSubmit, status },
@@ -240,7 +244,7 @@ ChatInput.UI = ({ disabled }: { disabled?: boolean }) => {
                     onModelChange={(modelToSelect) =>
                       model.update(modelToSelect)}
                   />
-                  <ToolsButton />
+                  {!withoutTools && <ToolsButton />}
                 </div>
                 <div className="flex items-center gap-4">
                   {input && (

@@ -87,7 +87,7 @@ function MobileChat() {
         <ChatMessages />
       </div>
       <div className="p-2 border-t">
-        <ChatInput />
+        <ChatInput withoutTools />
       </div>
     </>
   );
