@@ -36,7 +36,7 @@ export function ListTriggers() {
   );
 
   return (
-    <div className="mx-16 pb-16">
+    <div className="mx-16 mt-8">
       <div className="flex items-center gap-4 mb-4">
         <div className="relative flex-1">
           <Input
