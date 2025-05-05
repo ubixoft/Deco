@@ -3,17 +3,27 @@ import { Card, CardContent } from "@deco/ui/components/card.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import cronstrue from "cronstrue";
 import { timeAgo } from "../../utils/timeAgo.ts";
+import { Button } from "@deco/ui/components/button.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@deco/ui/components/dropdown-menu.tsx";
+import { useState } from "react";
+import { DeleteTriggerModal } from "./deleteTriggerModal.tsx";
 
-export function TriggerCard({ trigger, onClick }: {
+export function TriggerCard({ trigger, onClick, agentId }: {
   trigger: Trigger;
   onClick: (trigger: Trigger) => void;
+  agentId: string;
 }) {
   return (
-    <Card
-      className="overflow-hidden border border-slate-200 rounded-xl hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => onClick(trigger)}
-    >
-      <CardContent className="p-6 flex flex-col gap-4">
+    <Card className="overflow-hidden border border-slate-200 rounded-xl hover:shadow-md transition-shadow cursor-pointer relative">
+      <CardContent
+        className="p-6 flex flex-col gap-4"
+        onClick={() => onClick(trigger)}
+      >
         <div className="flex items-start justify-between">
           <h3 className="text-lg font-semibold text-slate-900">
             {trigger.title}
@@ -44,6 +54,7 @@ export function TriggerCard({ trigger, onClick }: {
           </span>
         </div>
       </CardContent>
+      <TriggerActions trigger={trigger} agentId={agentId} />
     </Card>
   );
 }
@@ -66,5 +77,41 @@ function TriggerType({ trigger }: { trigger: Trigger }) {
     <span>
       {trigger.cronExp ? cronstrue.toString(trigger.cronExp) : trigger.type}
     </span>
+  );
+}
+
+function TriggerActions({ trigger, agentId }: {
+  trigger: Trigger;
+  agentId: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-6 right-6"
+          >
+            <Icon name="more_vert" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            className="text-red-500"
+            onClick={() => setOpen(true)}
+          >
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DeleteTriggerModal
+        trigger={trigger}
+        agentId={agentId}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
   );
 }
