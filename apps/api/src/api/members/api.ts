@@ -2,15 +2,6 @@ import { z } from "zod";
 import { type AppContext, createApiHandler } from "../../utils/context.ts";
 import { assertUserHasAccessToTeamById } from "../../auth/assertions.ts";
 
-const MemberSchema = z.object({
-  user_id: z.string(),
-  admin: z.boolean().optional(),
-  activity: z.array(z.any()).optional(),
-  created_at: z.string().optional(),
-  deleted_at: z.string().optional(),
-  stripe_customer_id: z.string().optional(),
-});
-
 // Helper function to check if user is admin of a team
 async function verifyTeamAdmin(c: AppContext, teamId: number, userId: string) {
   const { data: teamMember, error } = await c
@@ -71,19 +62,28 @@ export const addTeamMember = createApiHandler({
   description: "Add a new member to a team",
   schema: z.object({
     teamId: z.number(),
-    member: MemberSchema,
+    email: z.string(),
   }),
   handler: async (props, c) => {
-    const { teamId, member } = props;
+    const { teamId, email } = props;
     const user = c.get("user");
 
     // Verify the user has admin access to the team
     await verifyTeamAdmin(c, teamId, user.id);
 
+    // TODO: add flow to invite user that is not present in system.
+    const { data: profile } = await c.get("db").from("profiles").select(
+      "user_id",
+    ).eq("email", email).single();
+
+    if (!profile) {
+      throw new Error("Email not found");
+    }
+
     const { data, error } = await c
       .get("db")
       .from("members")
-      .insert([{ ...member, team_id: teamId }])
+      .insert([{ user_id: profile.user_id, team_id: teamId }])
       .select()
       .single();
 
