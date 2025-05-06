@@ -8,6 +8,7 @@ import {
   createTrigger,
   CreateTriggerInput,
   deleteTrigger,
+  listAllTriggers,
   listRuns,
   type ListRunsResult,
   listTriggers,
@@ -15,7 +16,7 @@ import {
 } from "../crud/trigger.ts";
 import { useSDK } from "./store.tsx";
 
-export function useListTriggers(
+export function useListTriggersByAgentId(
   agentId: string,
   options?: Omit<
     UseQueryOptions<ListTriggersResult, Error, ListTriggersResult, string[]>,
@@ -27,6 +28,14 @@ export function useListTriggers(
     queryKey: ["triggers", agentId],
     queryFn: () => listTriggers(workspace, agentId),
     ...options,
+  });
+}
+
+export function useListTriggers() {
+  const { workspace } = useSDK();
+  return useQuery({
+    queryKey: ["triggers"],
+    queryFn: () => listAllTriggers(workspace),
   });
 }
 
@@ -53,6 +62,7 @@ export function useCreateTrigger(agentId: string) {
     mutationFn: (trigger: CreateTriggerInput) =>
       createTrigger(workspace, agentId, trigger),
     onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["triggers"] });
       client.invalidateQueries({ queryKey: ["triggers", agentId] });
     },
   });
@@ -65,6 +75,7 @@ export function useDeleteTrigger(agentId: string) {
     mutationFn: (triggerId: string) =>
       deleteTrigger(workspace, agentId, triggerId),
     onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["triggers"] });
       client.invalidateQueries({ queryKey: ["triggers", agentId] });
     },
   });
