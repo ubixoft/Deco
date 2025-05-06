@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { type AppContext, createApiHandler } from "../../utils/context.ts";
 import { assertUserHasAccessToTeamById } from "../../auth/assertions.ts";
+import { type AppContext, createApiHandler } from "../../utils/context.ts";
+import { userFromDatabase } from "../../utils/user.ts";
 
 // Helper function to check if user is admin of a team
 async function verifyTeamAdmin(c: AppContext, teamId: number, userId: string) {
@@ -44,16 +45,22 @@ export const getTeamMembers = createApiHandler({
         admin,
         created_at,
         profiles!inner (
-          id,
+          id:user_id,
           name,
-          email
+          email,
+          metadata:users_meta_data_view(id, raw_user_meta_data)
         )
       `)
       .eq("team_id", teamId)
       .is("deleted_at", null);
 
     if (error) throw error;
-    return data;
+
+    return data.map((member) => ({
+      ...member,
+      // @ts-expect-error - Supabase user metadata is not typed
+      profiles: userFromDatabase(member.profiles),
+    }));
   },
 });
 

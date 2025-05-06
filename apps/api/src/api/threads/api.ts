@@ -4,6 +4,7 @@ import { z } from "zod";
 import { assertUserHasAccessToWorkspace } from "../../auth/assertions.ts";
 import { createApiHandler } from "../../utils/context.ts";
 import { generateUUIDv5, toAlphanumericId } from "../../utils/slugify.ts";
+import { convertToUIMessages } from "../../utils/convertToUIMessages.ts";
 
 const safeParse = (str: string) => {
   try {
@@ -59,7 +60,7 @@ export const listThreads = createApiHandler({
   description:
     "List all threads in a workspace with cursor-based pagination and filtering",
   schema: z.object({
-    limit: z.number().min(1).max(10).default(10),
+    limit: z.number().min(1).max(20).default(10),
     agentId: z.string().optional(),
     resourceId: z.string().optional(),
     orderBy: z.enum([
@@ -198,9 +199,11 @@ export const getThread = createApiHandler({
       .map((row: unknown) => MessageSchema.safeParse(row)?.data)
       .filter((a: Message | undefined): a is Message => !!a);
 
+    const uiMessages = convertToUIMessages(messages);
+
     return {
       ...thread,
-      messages,
+      messages: uiMessages,
     };
   },
 });

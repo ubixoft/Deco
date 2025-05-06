@@ -1,19 +1,12 @@
 import { callToolFor } from "../fetcher.ts";
+import { User } from "./user.ts";
 
 export interface Member {
   id: number;
   user_id: string;
-  admin: boolean;
+  admin: boolean | null;
   created_at: string;
-  profiles: {
-    id: string;
-    name: string;
-    email: string;
-  };
-}
-
-export interface MemberFormData {
-  email: string;
+  profiles: User;
 }
 
 /**

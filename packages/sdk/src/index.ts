@@ -16,6 +16,8 @@ export * from "./hooks/tools.ts";
 export * from "./hooks/thread.ts";
 export * from "./hooks/trigger.ts";
 export * from "./hooks/members.ts";
+export * from "./hooks/audit.ts";
+export * from "./hooks/teams.ts";
 
 export * from "./models/agent.ts";
 export * from "./models/mcp.ts";

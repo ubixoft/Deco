@@ -3,7 +3,6 @@ import {
   useInstallFromMarketplace,
   useMarketplaceIntegrations,
   useUpdateThreadMessages,
-  WELL_KNOWN_AGENT_IDS,
 } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Card, CardContent } from "@deco/ui/components/card.tsx";
@@ -17,9 +16,8 @@ import {
 } from "@deco/ui/components/dialog.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import { type ChangeEvent, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
 import { trackEvent } from "../../../hooks/analytics.ts";
-import { useBasePath } from "../../../hooks/useBasePath.ts";
+import { useNavigateWorkspace } from "../../../hooks/useNavigateWorkspace.ts";
 import { IntegrationPage } from "./breadcrumb.tsx";
 import { IntegrationIcon } from "./common.tsx";
 
@@ -41,8 +39,7 @@ function AvailableIntegrationCard({
     createdIntegrationId,
     setCreatedIntegrationId,
   ] = useState<string | null>(null);
-  const navigate = useNavigate();
-  const withBasePath = useBasePath();
+  const navigateWorkspace = useNavigateWorkspace();
   const updateThreadMessages = useUpdateThreadMessages();
 
   const isPending = isInstalling;
@@ -77,8 +74,8 @@ function AvailableIntegrationCard({
 
   const handleEditIntegration = () => {
     if (!createdIntegrationId) return;
-    updateThreadMessages(WELL_KNOWN_AGENT_IDS.setupAgent, createdIntegrationId);
-    navigate(withBasePath(`/integration/${createdIntegrationId}`));
+    updateThreadMessages(createdIntegrationId);
+    navigateWorkspace(`/integration/${createdIntegrationId}`);
   };
 
   const handleCloseModal = () => {
