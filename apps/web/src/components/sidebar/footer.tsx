@@ -65,7 +65,7 @@ function LoggedUser() {
         align="start"
         className="md:w-[200px] text-slate-700"
       >
-        <ResponsiveDropdownItem className="p-0" asChild>
+        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
           <Link
             to="/wallet"
             className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs"
@@ -76,7 +76,7 @@ function LoggedUser() {
           </Link>
         </ResponsiveDropdownItem>
         <ResponsiveDropdownSeparator />
-        <ResponsiveDropdownItem className="p-0" asChild>
+        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
           <a
             href="https://github.com/deco-cx/chat"
             target="_blank"
@@ -95,7 +95,7 @@ function LoggedUser() {
 
         <ResponsiveDropdownSeparator />
 
-        <ResponsiveDropdownItem className="p-0" asChild>
+        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
           <a
             href={logoutUrl}
             className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs"
