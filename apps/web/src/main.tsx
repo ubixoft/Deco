@@ -15,7 +15,10 @@ import {
 import { About } from "./components/about/index.tsx";
 import { PageviewTracker } from "./components/analytics/PageviewTracker.tsx";
 import { EmptyState } from "./components/common/EmptyState.tsx";
-import { Layout } from "./components/layout.tsx";
+import {
+  WorkspaceLayout,
+  WorkspaceSettingsLayout,
+} from "./components/layout.tsx";
 import Login from "./components/login/index.tsx";
 import { ErrorBoundary, useError } from "./ErrorBoundary.tsx";
 import { trackException } from "./hooks/analytics.ts";
@@ -90,6 +93,22 @@ const MagicLink = lazy(() =>
   wrapWithUILoadingFallback(import("./components/login/magicLink.tsx"))
 );
 
+const GeneralSettings = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/general.tsx"))
+);
+
+const MembersSettings = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/members.tsx"))
+);
+
+const BillingSettings = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/billing.tsx"))
+);
+
+const UsageSettings = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/usage.tsx"))
+);
+
 function NotFound() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -155,7 +174,16 @@ function Router() {
 
       <Route path="about" element={<About />} />
 
-      <Route path="/:teamSlug?" element={<Layout />}>
+      <Route path="/:teamSlug?" element={<WorkspaceSettingsLayout />}>
+        <Route path="settings" element={<GeneralSettings />} />
+        <Route path="settings/members" element={<MembersSettings />} />
+        <Route path="settings/billing" element={<BillingSettings />} />
+        <Route path="settings/usage" element={<UsageSettings />} />
+        <Route path="settings/audit" element={<AuditList />} />
+        <Route path="settings/audit/:id" element={<AuditDetail />} />
+      </Route>
+
+      <Route path="/:teamSlug?" element={<WorkspaceLayout />}>
         <Route
           index
           element={
@@ -203,14 +231,6 @@ function Router() {
         <Route
           path="trigger/:agentId/:triggerId"
           element={<TriggerDetails />}
-        />
-        <Route
-          path="audits"
-          element={<AuditList />}
-        />
-        <Route
-          path="audit/:id"
-          element={<AuditDetail />}
         />
       </Route>
 
