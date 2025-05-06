@@ -27,7 +27,7 @@ export default function GeneralSettings() {
           </div>
           <div className="max-w-[500px] mx-auto space-y-8">
             <div className="flex flex-col items-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-green-800 flex items-center justify-center mb-4">
+              <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center mb-4">
                 <Avatar
                   fallback={teamName}
                   url={avatarURL}
