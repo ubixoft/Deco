@@ -171,7 +171,7 @@ function SwitchTeam() {
   const filteredTeams = availableTeamsToSwitch
     .filter((team) =>
       team.label.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 4);
+    );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
