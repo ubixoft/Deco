@@ -401,7 +401,7 @@ function AuditListContent() {
 
 function AuditList() {
   return (
-    <div className="container h-full max-w-7xl text-slate-700">
+    <div className="h-full text-slate-700">
       <SettingsMobileHeader currentPage="chat logs" />
       <div className="flex flex-col gap-6 w-full px-6 py-10 h-full">
         <div className="text-slate-700 text-2xl hidden md:block">
