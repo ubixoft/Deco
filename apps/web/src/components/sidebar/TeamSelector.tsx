@@ -78,7 +78,7 @@ function CurrentTeamDropdownTrigger({ fallback }: { fallback?: boolean }) {
   const { open } = useSidebar();
   const { avatarURL, label, isPersonalTeam } = useCurrentTeam();
   const teamName =
-    useTeam((isPersonalTeam && !fallback) ? "" : label)?.data?.name || label;
+    useTeam((isPersonalTeam || fallback) ? "" : label)?.data?.name || label;
 
   return (
     <ResponsiveDropdownTrigger asChild>
