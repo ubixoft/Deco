@@ -21,7 +21,7 @@ export const bundler = async (
   );
 
   if (!response.ok) {
-    throw new Error("Failed to bundle");
+    throw new Error(`Failed to bundle ${await response.text()}`);
   }
 
   const responseJson: { base64: string } = await response.json();
