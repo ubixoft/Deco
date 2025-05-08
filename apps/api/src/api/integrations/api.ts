@@ -38,6 +38,7 @@ export const listIntegrations = createApiHandler({
   handler: async (_, c) => {
     const root = c.req.param("root");
     const slug = c.req.param("slug");
+    const workspace = `${root}/${slug}`;
 
     const [
       _assertions,
@@ -48,11 +49,11 @@ export const listIntegrations = createApiHandler({
       c.get("db")
         .from("deco_chat_integrations")
         .select("*")
-        .ilike("workspace", `%${root}/${slug}`),
+        .ilike("workspace", `%${workspace}`),
       c.get("db")
         .from("deco_chat_agents")
         .select("*")
-        .ilike("workspace", `%${root}/${slug}`),
+        .ilike("workspace", `%${workspace}`),
     ]);
 
     const error = integrations.error || agents.error;
@@ -62,7 +63,9 @@ export const listIntegrations = createApiHandler({
     }
 
     return [
-      ...integrations.data.map((item) => ({
+      ...integrations.data.map((
+        item,
+      ) => ({
         ...item,
         id: formatId("i", item.id),
       })),

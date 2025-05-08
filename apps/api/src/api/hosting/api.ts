@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Database } from "../../db/schema.ts";
 import { AppContext, createApiHandler, getEnv } from "../../utils/context.ts";
+import { bundler } from "./bundler.ts";
 
 const SCRIPT_FILE_NAME = "script.mjs";
 const HOSTING_APPS_DOMAIN = ".deco.page";
@@ -23,24 +24,35 @@ const AppInputSchema = z.object({
   appSlug: z.string(), // defaults to 'default'
 });
 
-const DeployAppSchema = z.object({
-  appSlug: z.string(), // defaults to 'default'
-  script: z.string(),
-});
-
 const DECO_CHAT_HOSTING_APPS_TABLE = "deco_chat_hosting_apps" as const;
 
 type AppRow =
   Database["public"]["Tables"][typeof DECO_CHAT_HOSTING_APPS_TABLE]["Row"];
+
 export type App = z.infer<typeof AppSchema>;
 
 const Mappers = {
-  toApp: (data: AppRow): App & { id: string; workspace: string } => {
+  toApp: (
+    data: AppRow,
+  ): App & {
+    id: string;
+    workspace: string;
+    files: z.infer<typeof FileSchema>[];
+  } => {
+    const files = Object.entries(
+      data.files ?? {} as Record<string, string>,
+    ).map((
+      [path, content],
+    ) => ({
+      path,
+      content,
+    }));
     return {
       id: data.id,
       slug: data.slug,
       entrypoint: Entrypoint.build(data.slug),
       workspace: data.workspace,
+      files,
     };
   },
 };
@@ -72,6 +84,102 @@ export const listApps = createApiHandler({
   },
 });
 
+// Common types and utilities
+type DeployResult = {
+  etag?: string;
+  id?: string;
+};
+
+async function deployToCloudflare(
+  c: AppContext,
+  scriptSlug: string,
+  mainModule: string,
+  files: Record<string, File>,
+): Promise<DeployResult> {
+  const env = getEnv(c);
+  const metadata = {
+    main_module: mainModule,
+    compatibility_flags: ["nodejs_compat"],
+    compatibility_date: "2024-11-27",
+  };
+
+  const body = {
+    metadata: new File([JSON.stringify(metadata)], METADATA_FILE_NAME, {
+      type: "application/json",
+    }),
+    ...files,
+  };
+
+  const result = await c.var.cf.workersForPlatforms.dispatch.namespaces
+    .scripts.update(
+      env.CF_DISPATCH_NAMESPACE,
+      scriptSlug,
+      {
+        account_id: env.CF_ACCOUNT_ID,
+        metadata: {
+          main_module: mainModule,
+          compatibility_flags: ["nodejs_compat"],
+        },
+      },
+      {
+        method: "put",
+        body,
+      },
+    );
+
+  return {
+    etag: result.etag,
+    id: result.id,
+  };
+}
+
+async function updateDatabase(
+  c: AppContext,
+  workspace: string,
+  scriptSlug: string,
+  result: DeployResult,
+  files?: Record<string, string>,
+) {
+  // Try to update first
+  const { data: updated, error: updateError } = await c.var.db
+    .from(DECO_CHAT_HOSTING_APPS_TABLE)
+    .update({
+      updated_at: new Date().toISOString(),
+      cloudflare_script_hash: result.etag,
+      cloudflare_worker_id: result.id,
+      files,
+    })
+    .eq("slug", scriptSlug)
+    .select("*")
+    .single();
+
+  if (updateError && updateError.code !== "PGRST116") { // PGRST116: Results contain 0 rows
+    throw updateError;
+  }
+
+  if (updated) {
+    return Mappers.toApp(updated);
+  }
+
+  // If not updated, insert
+  const { data: inserted, error: insertError } = await c.var.db
+    .from(DECO_CHAT_HOSTING_APPS_TABLE)
+    .insert({
+      workspace,
+      slug: scriptSlug,
+      updated_at: new Date().toISOString(),
+      cloudflare_script_hash: result.etag,
+      cloudflare_worker_id: result.id,
+      files,
+    })
+    .select("*")
+    .single();
+
+  if (insertError) throw insertError;
+
+  return Mappers.toApp(inserted);
+}
+
 let created = false;
 const createNamespaceOnce = async (c: AppContext) => {
   if (created) return;
@@ -83,91 +191,103 @@ const createNamespaceOnce = async (c: AppContext) => {
     account_id: env.CF_ACCOUNT_ID,
   }).catch(() => {});
 };
-// 2. Create app (on demand, e.g. on first deploy)
-export const deployApp = createApiHandler({
+
+const ENTRYPOINT = "main.ts";
+
+// First, let's define a new type for the file structure
+const FileSchema = z.object({
+  path: z.string(),
+  content: z.string(),
+});
+
+// Update the schema in deployFiles
+export const deployFiles = createApiHandler({
   name: "HOSTING_APP_DEPLOY",
   description:
-    "Create a new app script for the given workspace. It should follow a javascript-only module that implements fetch api using export default { fetch (req) { return new Response('Hello, world!') } }",
-  schema: DeployAppSchema,
-  handler: async ({ appSlug, script }, c) => {
+    `Deploy multiple TypeScript files that use Deno as runtime. The entrypoint should always be ${ENTRYPOINT}.
+
+Common patterns:
+1. Use a deps.ts file to centralize dependencies:
+   // deps.ts
+   export { default as lodash } from "npm:lodash";
+   export { z } from "npm:zod";
+   export { createClient } from "npm:@supabase/supabase-js";
+
+2. Import from deps.ts in your files:
+   // main.ts
+   import { lodash, z, createClient } from "./deps.ts";
+
+Example of files deployment:
+[
+  {
+    "path": "main.ts",
+    "content": \`
+      import { z } from "./deps.ts";
+      
+      export default {
+        async fetch(req: Request) {
+          return new Response("Hello from Deno!");
+        }
+      }
+    \`
+  },
+  {
+    "path": "deps.ts",
+    "content": \`
+      export { z } from "npm:zod";
+    \`
+  }
+]
+
+Note: 
+- Do not use Deno.* namespace functions
+- Use npm: or jsr: specifiers for dependencies
+- No package.json or deno.json needed
+- Dependencies are imported directly using npm: or jsr: specifiers`,
+  schema: z.object({
+    appSlug: z.string().describe("The slug identifier for the app"),
+    files: z.array(FileSchema).describe(
+      "An array of files with their paths and contents. Must include main.ts as entrypoint",
+    ),
+  }),
+  handler: async ({ appSlug, files }, c) => {
+    // Convert array to record for bundler
+    const filesRecord = files.reduce((acc, file) => {
+      acc[file.path] = file.content;
+      return acc;
+    }, {} as Record<string, string>);
+
+    if (!(ENTRYPOINT in filesRecord)) {
+      throw new Error(`${ENTRYPOINT} is not in the files`);
+    }
+
     await createNamespaceOnce(c);
     const { workspace, slug: scriptSlug } = getWorkspaceParams(c, appSlug);
-    // Use the fixed dispatcher namespace
-    const env = getEnv(c);
 
-    const metadata = {
-      main_module: SCRIPT_FILE_NAME,
-      compatibility_flags: ["nodejs_compat"],
-      compatibility_date: "2024-11-27",
+    // Bundle the files
+    const bundledScript = await bundler(filesRecord, ENTRYPOINT);
+
+    const fileObjects = {
+      [SCRIPT_FILE_NAME]: new File(
+        [bundledScript],
+        SCRIPT_FILE_NAME,
+        {
+          type: "application/javascript+module",
+        },
+      ),
     };
 
-    const body = {
-      metadata: new File([JSON.stringify(metadata)], METADATA_FILE_NAME, {
-        type: "application/json",
-      }),
-      [SCRIPT_FILE_NAME]: new File([script], SCRIPT_FILE_NAME, {
-        type: "application/javascript+module",
-      }),
-    };
-
-    // 2. Create or update the script under the fixed namespace
-    const result = await c.var.cf.workersForPlatforms.dispatch.namespaces
-      .scripts.update(
-        env.CF_DISPATCH_NAMESPACE,
-        scriptSlug,
-        {
-          account_id: env.CF_ACCOUNT_ID,
-          metadata: {
-            main_module: SCRIPT_FILE_NAME,
-            compatibility_flags: ["nodejs_compat"],
-          },
-        },
-        {
-          method: "put",
-          body,
-        },
-      );
-    // 1. Try to update first
-    const { data: updated, error: updateError } = await c.var.db
-      .from(DECO_CHAT_HOSTING_APPS_TABLE)
-      .update({
-        updated_at: new Date().toISOString(),
-        cloudflare_script_hash: result.etag,
-        cloudflare_worker_id: result.id,
-      })
-      .eq("slug", scriptSlug)
-      .select("*")
-      .single();
-
-    if (updateError && updateError.code !== "PGRST116") { // PGRST116: Results contain 0 rows
-      throw updateError;
-    }
-
-    if (updated) {
-      // Row existed and was updated
-      return Mappers.toApp(updated);
-    }
-
-    // 2. If not updated, insert
-    const { data: inserted, error: insertError } = await c.var.db
-      .from(DECO_CHAT_HOSTING_APPS_TABLE)
-      .insert({
-        workspace,
-        slug: scriptSlug,
-        updated_at: new Date().toISOString(),
-        cloudflare_script_hash: result.etag,
-        cloudflare_worker_id: result.id,
-      })
-      .select("*")
-      .single();
-
-    if (insertError) throw insertError;
-
-    return Mappers.toApp(inserted);
+    const result = await deployToCloudflare(
+      c,
+      scriptSlug,
+      SCRIPT_FILE_NAME,
+      fileObjects,
+    );
+    return updateDatabase(c, workspace, scriptSlug, result, filesRecord);
   },
 });
 
-// 3. Delete app (and worker)
+// Delete app (and worker)
 export const deleteApp = createApiHandler({
   name: "HOSTING_APP_DELETE",
   description: "Delete an app and its worker",
@@ -205,15 +325,13 @@ export const deleteApp = createApiHandler({
   },
 });
 
-// 4. Get app info (metadata, endpoint, etc)
+// Get app info (metadata, endpoint, etc)
 export const getAppInfo = createApiHandler({
   name: "HOSTING_APP_INFO",
   description: "Get info/metadata for an app (including endpoint)",
   schema: AppInputSchema,
   handler: async ({ appSlug }, c) => {
     const { workspace, slug } = getWorkspaceParams(c, appSlug);
-    const entrypoint = Entrypoint.build(slug);
-    const env = getEnv(c);
     // 1. Fetch from DB
     const { data, error } = await c.var.db
       .from(DECO_CHAT_HOSTING_APPS_TABLE)
@@ -226,22 +344,6 @@ export const getAppInfo = createApiHandler({
       throw new Error("App not found");
     }
 
-    const cf = c.var.cf;
-    const namespace = env.CF_DISPATCH_NAMESPACE;
-    const content = await cf.workersForPlatforms.dispatch.namespaces.scripts
-      .content.get(
-        namespace,
-        slug,
-        { account_id: env.CF_ACCOUNT_ID },
-      );
-
-    // @ts-ignore: formData is not typed
-    const form = await content.formData();
-
-    return {
-      app: slug,
-      entrypoint,
-      content: form.get(SCRIPT_FILE_NAME)?.toString(),
-    };
+    return Mappers.toApp(data);
   },
 });
