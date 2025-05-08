@@ -1,5 +1,24 @@
 import { z } from "zod";
 import { createApiHandler } from "../../utils/context.ts";
+import {
+  assertUserHasAccessToTeamBySlug,
+  assertUserIsTeamAdmin,
+} from "../../auth/assertions.ts";
+
+const OWNER_ROLE_ID = 1;
+
+export const sanitizeTeamName = (name: string): string => {
+  if (!name) return "";
+  const nameWithoutAccents = removeNameAccents(name);
+  return nameWithoutAccents.trim().replace(/\s+/g, " ").replace(
+    /[^\w\s\-.+@]/g,
+    "",
+  );
+};
+
+export const removeNameAccents = (name: string): string => {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
 
 export const getTeam = createApiHandler({
   name: "TEAMS_GET",
@@ -11,25 +30,22 @@ export const getTeam = createApiHandler({
     const { slug } = props;
     const user = c.get("user");
 
-    const { data, error } = await c
+    // check user belongs to team
+    await assertUserHasAccessToTeamBySlug(
+      { teamSlug: slug, userId: user.id },
+      c,
+    );
+    const { data: teamData, error } = await c
       .get("db")
       .from("teams")
-      .select(`
-        *,
-        members!inner (
-          id,
-          user_id,
-          admin
-        )
-      `)
+      .select("*")
       .eq("slug", slug)
-      .eq("members.user_id", user.id)
       .single();
 
     if (error) throw error;
-    if (!data) throw new Error("Team not found or user does not have access");
-
-    const { members: _members, ...teamData } = data;
+    if (!teamData) {
+      throw new Error("Team not found or user does not have access");
+    }
 
     return teamData;
   },
@@ -43,31 +59,75 @@ export const createTeam = createApiHandler({
     slug: z.string().optional(),
     stripe_subscription_id: z.string().optional(),
   }),
+  /**
+   * This function handle this steps:
+   * 1. check if team slug already exists;
+   * 2. If team slug is free ok, procceed, and create team
+   * 3. Add user that made the request as team member of team with activity
+   * 4. Add member role as onwer (id: 1).
+   */
   handler: async (props, c) => {
     const { name, slug, stripe_subscription_id } = props;
     const user = c.get("user");
+
+    // Enforce unique slug if provided
+    if (slug) {
+      const { data: existingTeam, error: slugError } = await c
+        .get("db")
+        .from("teams")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (slugError) throw slugError;
+      if (existingTeam) {
+        throw new Error("A team with this slug already exists.");
+      }
+    }
 
     // Create the team
     const { data: team, error: createError } = await c
       .get("db")
       .from("teams")
-      .insert([{ name, slug, stripe_subscription_id }])
+      .insert([{ name: sanitizeTeamName(name), slug, stripe_subscription_id }])
       .select()
       .single();
 
     if (createError) throw createError;
 
     // Add the creator as an admin member
-    const { error: memberError } = await c
+    const { data: member, error: memberError } = await c
       .get("db")
       .from("members")
-      .insert([{
-        team_id: team.id,
-        user_id: user.id,
-        admin: true,
-      }]);
+      .insert([
+        {
+          team_id: team.id,
+          user_id: user.id,
+          activity: [{
+            action: "add_member",
+            timestamp: new Date().toISOString(),
+          }],
+        },
+      ])
+      .select()
+      .single();
 
-    if (memberError) throw memberError;
+    if (memberError) {
+      await c.get("db").from("teams").delete().eq("id", team.id);
+      throw memberError;
+    }
+
+    // Set the member's role_id to 1 in member_roles
+    const { error: roleError } = await c
+      .get("db")
+      .from("member_roles")
+      .insert([
+        {
+          member_id: member.id,
+          role_id: OWNER_ROLE_ID,
+        },
+      ]);
+
+    if (roleError) throw roleError;
 
     return team;
   },
@@ -80,7 +140,7 @@ export const updateTeam = createApiHandler({
     id: z.number(),
     data: z.object({
       name: z.string().optional(),
-      slug: z.string().optional(),
+      slug: z.string(),
       stripe_subscription_id: z.string().optional(),
     }),
   }),
@@ -89,33 +149,32 @@ export const updateTeam = createApiHandler({
     const user = c.get("user");
 
     // First verify the user has admin access to the team
-    const { data: team, error: teamError } = await c
-      .get("db")
-      .from("teams")
-      .select(`
-        *,
-        members!inner (
-          id,
-          user_id,
-          admin
-        )
-      `)
-      .eq("id", id)
-      .eq("members.user_id", user.id)
-      .eq("members.admin", true)
-      .single();
+    await assertUserIsTeamAdmin(c, id, user.id);
 
-    if (teamError) throw teamError;
-
-    if (!team) {
-      throw new Error("Team not found or user does not have admin access");
+    // TODO: check if it's required
+    // Enforce unique slug if being updated
+    if (data.slug) {
+      const { data: existingTeam, error: slugError } = await c
+        .get("db")
+        .from("teams")
+        .select("id")
+        .eq("slug", data.slug)
+        .neq("id", id)
+        .maybeSingle();
+      if (slugError) throw slugError;
+      if (existingTeam) {
+        throw new Error("A team with this slug already exists.");
+      }
     }
 
     // Update the team
     const { data: updatedTeam, error: updateError } = await c
       .get("db")
       .from("teams")
-      .update(data)
+      .update({
+        ...data,
+        ...(data.name ? { name: sanitizeTeamName(data.name) } : {}),
+      })
       .eq("id", id)
       .select()
       .single();
@@ -136,33 +195,29 @@ export const deleteTeam = createApiHandler({
     const { teamId } = props;
     const user = c.get("user");
 
-    // Verify admin access
-    const { data: team, error: teamError } = await c
-      .get("db")
-      .from("teams")
-      .select(`
-        *,
-        members!inner (
-          id,
-          user_id,
-          admin
-        )
-      `)
-      .eq("id", teamId)
-      .eq("members.user_id", user.id)
-      .eq("members.admin", true)
-      .single();
+    // First verify the user has admin access to the team
+    await assertUserIsTeamAdmin(c, teamId, user.id);
 
-    if (teamError) throw teamError;
-    if (!team) {
-      throw new Error("Team not found or user does not have admin access");
+    const members = await c.get("db")
+      .from("members")
+      .select("id")
+      .eq("team_id", teamId);
+
+    const memberIds = members.data?.map((member) => Number(member.id));
+
+    if (!memberIds) {
+      return { data: null, error: "No members found" };
     }
 
-    const { error } = await c
-      .get("db")
-      .from("teams")
-      .delete()
-      .eq("id", teamId);
+    // TODO: delete roles, policies and role_policy
+    await c.get("db").from("member_roles").delete().in("member_id", memberIds);
+    await c.get("db").from("members").delete().eq("team_id", teamId);
+
+    const { error } = await c.get("db").from("teams").delete().eq(
+      "id",
+      teamId,
+    )
+      .select("id");
 
     if (error) throw error;
     return { success: true };

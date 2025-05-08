@@ -38,9 +38,11 @@ export async function assertUserIsTeamAdmin(
   const { data: teamMember, error } = await c
     .get("db")
     .from("members")
-    .select("*")
+    .select("user_id")
     .eq("team_id", teamId)
-    .order("created_at", { ascending: true })
+    .order("created_at", {
+      ascending: true,
+    })
     .limit(1)
     .single();
 
