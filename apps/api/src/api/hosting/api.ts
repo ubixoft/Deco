@@ -204,7 +204,7 @@ const FileSchema = z.object({
 export const deployFiles = createApiHandler({
   name: "HOSTING_APP_DEPLOY",
   description:
-    `Deploy multiple TypeScript files that use Deno as runtime. The entrypoint should always be ${ENTRYPOINT}.
+    `Deploy multiple TypeScript files that use Deno as runtime for Cloudflare Workers. The entrypoint should always be ${ENTRYPOINT}.
 
 Common patterns:
 1. Use a deps.ts file to centralize dependencies:
@@ -225,8 +225,8 @@ Example of files deployment:
       import { z } from "./deps.ts";
       
       export default {
-        async fetch(req: Request) {
-          return new Response("Hello from Deno!");
+        async fetch(request: Request): Promise<Response> {
+          return new Response("Hello from Deno on Cloudflare!");
         }
       }
     \`
@@ -239,7 +239,9 @@ Example of files deployment:
   }
 ]
 
-Note: 
+Important Notes: 
+- Always use Cloudflare Workers syntax with export default and proper fetch handler signature
+- When using template literals inside content strings, escape backticks with a backslash (\\) or use string concatenation (+)
 - Do not use Deno.* namespace functions
 - Use npm: or jsr: specifiers for dependencies
 - No package.json or deno.json needed
