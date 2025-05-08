@@ -1,8 +1,8 @@
 import { Hono } from "hono";
+import { getRuntimeKey } from "hono/adapter";
 import { Entrypoint } from "./api/hosting/api.ts";
 import { APPS_DOMAIN_QS, appsDomainOf } from "./app.ts";
 import { AppEnv } from "./utils/context.ts";
-
 export type DispatcherFetch = typeof fetch;
 export const app = new Hono<AppEnv>();
 app.all("/*", async (c) => {
@@ -32,12 +32,17 @@ app.all("/*", async (c) => {
   }
   const scriptFetcher = dispatcher.get(script);
   const req = new Request(url, c.req.raw);
-  return await scriptFetcher.fetch(req).catch((err) => {
+  const response = await scriptFetcher.fetch(req).catch((err) => {
     if ("message" in err && err.message.startsWith("Worker not found")) {
       // we tried to get a worker that doesn't exist in our dispatch namespace
       return new Response("worker not found", { status: 404 });
     }
     throw err;
   });
+
+  if (getRuntimeKey() === "workerd") { // needs to be copied when resp is from an a external dispatcher.
+    return new Response(response.body, response);
+  }
+  return response;
 });
 export default app;
