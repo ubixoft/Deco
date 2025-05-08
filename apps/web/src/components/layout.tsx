@@ -5,11 +5,11 @@ import { useUser } from "../hooks/data/useUser.ts";
 import { AppSidebar } from "./sidebar/index.tsx";
 import { SettingsSidebar } from "./sidebar/settings.tsx";
 
-function BaseLayout({
-  sidebar,
-}: {
-  sidebar: React.ReactNode;
-}) {
+export const WorkspaceSettingsLayout = () => (
+  <Layout sidebar={<SettingsSidebar />} />
+);
+
+export const Layout = ({ sidebar }: { sidebar?: React.ReactNode }) => {
   const { teamSlug } = useParams();
   const user = useUser();
 
@@ -19,23 +19,20 @@ function BaseLayout({
 
   return (
     <SidebarProvider
-      className="h-full"
+      className="h-full bg-slate-50"
       style={{
         "--sidebar-width": "16rem",
         "--sidebar-width-mobile": "14rem",
       } as Record<string, string>}
     >
       <SDKProvider workspace={rootContext}>
-        {sidebar}
-        <SidebarInset className="h-full">
-          <Outlet />
+        {sidebar ?? <AppSidebar />}
+        <SidebarInset className="h-full p-2 bg-slate-50">
+          <div className="h-full bg-background rounded-xl shadow-md overflow-hidden">
+            <Outlet />
+          </div>
         </SidebarInset>
       </SDKProvider>
     </SidebarProvider>
   );
-}
-
-export const WorkspaceLayout = () => <BaseLayout sidebar={<AppSidebar />} />;
-export const WorkspaceSettingsLayout = () => (
-  <BaseLayout sidebar={<SettingsSidebar />} />
-);
+};
