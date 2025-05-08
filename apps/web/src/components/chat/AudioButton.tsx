@@ -6,7 +6,6 @@ import type {
   SpeechRecognitionEvent,
 } from "../../types/speech.d.ts";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { cn } from "@deco/ui/lib/utils.js";
 
 interface AudioButtonProps {
   onMessage: (message: string) => void;
@@ -87,12 +86,9 @@ export const AudioButton: React.FC<AudioButtonProps> = ({ onMessage }) => {
           variant={isListening ? "default" : "outline"}
           size="icon"
           onClick={toggleListening}
-          className="h-8 w-8 rounded-full cursor-pointer"
+          className="h-8 w-8"
         >
           <Icon
-            className={cn(
-              "text-sm",
-            )}
             filled
             name={isListening ? "stop" : "mic"}
           />
