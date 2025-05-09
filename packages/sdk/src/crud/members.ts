@@ -96,3 +96,9 @@ export const removeTeamMember = async (
 
   return data;
 };
+
+export const registerActivity = (teamId: number) => {
+  callToolFor("", "TEAM_MEMBER_ACTIVITY_REGISTER", {
+    teamId,
+  });
+};

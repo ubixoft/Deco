@@ -3,9 +3,11 @@ import { SidebarInset, SidebarProvider } from "@deco/ui/components/sidebar.tsx";
 import { PropsWithChildren, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Outlet, useParams } from "react-router";
+import { lazy, Suspense } from "react";
 import { useUser } from "../hooks/data/useUser.ts";
 import { AppSidebar } from "./sidebar/index.tsx";
 import { SettingsSidebar } from "./sidebar/settings.tsx";
+const RegisterActivity = lazy(() => import("./common/RegisterActivity.tsx"));
 
 export const WorkspaceSettingsLayout = () => (
   <Layout sidebar={<SettingsSidebar />} />
@@ -61,6 +63,9 @@ export function Layout(
             <Outlet />
           </div>
         </SidebarInset>
+        <Suspense fallback={null}>
+          <RegisterActivity teamSlug={teamSlug} />
+        </Suspense>
       </SDKProvider>
     </SidebarProvider>
   );

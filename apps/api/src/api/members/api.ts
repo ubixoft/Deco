@@ -327,3 +327,30 @@ export const removeTeamMember = createApiHandler({
     return { success: true };
   },
 });
+
+export const registerMemberActivity = createApiHandler({
+  name: "TEAM_MEMBER_ACTIVITY_REGISTER",
+  description: "Register that the user accessed a team",
+  schema: z.object({
+    teamId: z.number(),
+  }),
+  handler: async (props, c) => {
+    const { teamId } = props;
+    const user = c.get("user");
+
+    // Verify the user has admin access to the team
+    await assertUserHasAccessToTeamById({
+      teamId,
+      userId: user.id,
+    }, c);
+
+    await c.get("db").from("user_activity").insert({
+      user_id: user.id,
+      resource: "team",
+      key: "id",
+      value: `${teamId}`,
+    });
+
+    return { success: true };
+  },
+});
