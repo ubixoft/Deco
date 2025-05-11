@@ -134,6 +134,7 @@ export function ModelSelector({
           <ResponsiveSelectItem
             key={model.id}
             value={model.id}
+            hideCheck
             className={cn(
               "p-0 focus:bg-slate-100 focus:text-foreground",
               model.id === selectedModel?.id && "bg-slate-50",
