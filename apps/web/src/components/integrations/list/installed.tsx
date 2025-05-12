@@ -16,13 +16,13 @@ import {
 import { Button } from "@deco/ui/components/button.tsx";
 import { Card, CardContent } from "@deco/ui/components/card.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { Input } from "@deco/ui/components/input.tsx";
+import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { type ChangeEvent, type MouseEvent, useReducer } from "react";
+import { type MouseEvent, useReducer } from "react";
 import { trackEvent } from "../../../hooks/analytics.ts";
 import { useNavigateWorkspace } from "../../../hooks/useNavigateWorkspace.ts";
 import { EmptyState } from "../../common/EmptyState.tsx";
-import { IntegrationPage } from "./breadcrumb.tsx";
+import { Breadcrumb, IntegrationPageLayout } from "./breadcrumb.tsx";
 import { IntegrationIcon } from "./common.tsx";
 
 // Integration Card Component
@@ -131,7 +131,7 @@ function listReducer(state: ListState, action: ListAction): ListState {
   }
 }
 
-export default function InstalledIntegrations() {
+function InstalledIntegrationsTab() {
   const [state, dispatch] = useReducer(listReducer, initialState);
   const navigateWorkspace = useNavigateWorkspace();
   const { mutateAsync: removeIntegration } = useRemoveIntegration();
@@ -194,18 +194,15 @@ export default function InstalledIntegrations() {
   };
 
   return (
-    <IntegrationPage>
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <Input
-            placeholder="Filter integrations..."
-            className="max-w-[373px] rounded-[46px] border-slate-200 placeholder:text-slate-400 text-slate-500"
-            value={filter}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              dispatch({ type: "SET_FILTER", payload: e.target.value })}
-          />
-        </div>
+    <div className="flex flex-col gap-4 h-full py-4">
+      <div className="px-4">
+        <Breadcrumb
+          value={filter}
+          setValue={(value) => dispatch({ type: "SET_FILTER", payload: value })}
+        />
+      </div>
 
+      <ScrollArea className="flex-1 min-h-0">
         {!installedIntegrations
           ? (
             <div className="flex h-48 items-center justify-center">
@@ -226,7 +223,7 @@ export default function InstalledIntegrations() {
           )
           : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 peer">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 peer">
                 {filteredIntegrations.map((integration) => (
                   <IntegrationCard
                     key={integration.id}
@@ -236,7 +233,7 @@ export default function InstalledIntegrations() {
                   />
                 ))}
               </div>
-              <div className="flex-col items-center justify-center h-48 peer-empty:flex hidden">
+              <div className="flex-col items-center justify-center h-48 peer-empty:flex px-4 hidden">
                 <Icon name="search_off" />
                 <p className="text-muted-foreground">
                   No integrations match your filter. Try adjusting your search.
@@ -244,42 +241,56 @@ export default function InstalledIntegrations() {
               </div>
             </>
           )}
+      </ScrollArea>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog
-          open={deleteDialogOpen}
-          onOpenChange={handleDeleteDialogOpenChange}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will permanently delete the integration. This action cannot
-                be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                disabled={deleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
-              >
-                {deleting
-                  ? (
-                    <>
-                      <Spinner />
-                      Deleting...
-                    </>
-                  )
-                  : (
-                    "Delete"
-                  )}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    </IntegrationPage>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={handleDeleteDialogOpenChange}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the integration. This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
+            >
+              {deleting
+                ? (
+                  <>
+                    <Spinner />
+                    Deleting...
+                  </>
+                )
+                : (
+                  "Delete"
+                )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <IntegrationPageLayout
+      tabs={{
+        installed: {
+          title: "Installed",
+          Component: InstalledIntegrationsTab,
+          initialOpen: true,
+        },
+      }}
+    />
   );
 }

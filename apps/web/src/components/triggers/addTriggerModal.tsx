@@ -1,4 +1,6 @@
-import { useState } from "react";
+import type { Agent } from "@deco/sdk";
+import { useAgents } from "@deco/sdk";
+import { Button } from "@deco/ui/components/button.tsx";
 import {
   Dialog,
   DialogContent,
@@ -6,18 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@deco/ui/components/dialog.tsx";
-import { Button } from "@deco/ui/components/button.tsx";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@deco/ui/components/tabs.tsx";
-import { WebhookTriggerForm } from "./webhookTriggerForm.tsx";
-import { CronTriggerForm } from "./cronTriggerForm.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { useAgents } from "@deco/sdk";
-import { AgentAvatar } from "../common/Avatar.tsx";
 import {
   Select,
   SelectContent,
@@ -25,9 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@deco/ui/components/select.tsx";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@deco/ui/components/tabs.tsx";
+import { useState } from "react";
+import { AgentAvatar } from "../common/Avatar.tsx";
 import { EmptyState } from "../common/EmptyState.tsx";
-import type { Agent } from "@deco/sdk";
-import { HeaderSlot } from "../layout.tsx";
+import { CronTriggerForm } from "./cronTriggerForm.tsx";
+import { WebhookTriggerForm } from "./webhookTriggerForm.tsx";
 
 function AgentSelect({
   agents,
@@ -84,12 +83,9 @@ function AgentSelect({
   );
 }
 
-export function AddTriggerModal(
-  { agentId, variant = "layout" }: {
-    agentId?: string;
-    variant?: "layout" | "standalone";
-  },
-) {
+export function AddTriggerModal({ agentId }: {
+  agentId?: string;
+}) {
   const { data: agents = [] } = useAgents();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<string>(
@@ -99,7 +95,7 @@ export function AddTriggerModal(
 
   const hasAgents = agents.length > 0;
 
-  const standalone = (
+  return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
@@ -187,23 +183,5 @@ export function AddTriggerModal(
           )}
       </DialogContent>
     </Dialog>
-  );
-
-  if (variant === "standalone") {
-    return standalone;
-  }
-
-  return (
-    <>
-      <HeaderSlot position="start">
-        <div className="flex items-center gap-3">
-          <Icon name="conversion_path" />
-          Triggers
-        </div>
-      </HeaderSlot>
-      <HeaderSlot position="end">
-        {standalone}
-      </HeaderSlot>
-    </>
   );
 }

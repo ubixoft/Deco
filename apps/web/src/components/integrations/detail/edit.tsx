@@ -4,87 +4,55 @@ import {
   useIntegration,
   WELL_KNOWN_AGENT_IDS,
 } from "@deco/sdk";
-import { Button } from "@deco/ui/components/button.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
+import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useParams } from "react-router";
-import { useNavigateWorkspace } from "../../../hooks/useNavigateWorkspace.ts";
 import { ChatInput } from "../../chat/ChatInput.tsx";
 import { ChatMessages } from "../../chat/ChatMessages.tsx";
 import { ChatProvider } from "../../chat/context.tsx";
-import { HeaderSlot } from "../../layout.tsx";
-import { DockedPageLayout, DockedToggleButton } from "../../pageLayout.tsx";
+import { Tab } from "../../dock/index.tsx";
+import { DefaultBreadcrumb, PageLayout } from "../../layout.tsx";
 import ThreadSettingsTab from "../../settings/chat.tsx";
 import { Context } from "./context.ts";
 import { DetailForm } from "./form.tsx";
 import { Inspector } from "./inspector.tsx";
 
-const MAIN = {
-  header: Header,
-  main: ChatMessages,
-  footer: () => (
-    <div className="h-full w-full pb-4">
-      <ChatInput />
+function MainChat() {
+  return (
+    <div className="flex flex-col h-full">
+      <ScrollArea className="flex-1 min-h-0">
+        <ChatMessages />
+      </ScrollArea>
+      <div className="pb-4">
+        <ChatInput />
+      </div>
     </div>
-  ),
-};
+  );
+}
 
-const TABS = {
+const TABS: Record<string, Tab> = {
+  main: {
+    Component: MainChat,
+    title: "Chat setup",
+    initialOpen: true,
+  },
   inspector: {
     Component: Inspector,
-    title: "Inspect",
+    title: "Test integration",
     initialOpen: true,
   },
   form: {
     Component: DetailForm,
-    title: "Configure",
+    title: "Setup",
     initialOpen: true,
   },
   tools: {
     Component: ThreadSettingsTab,
     title: "Tools",
+    hideFromViews: true,
   },
 };
-
-function Header() {
-  const navigateWorkspace = useNavigateWorkspace();
-
-  return (
-    <>
-      <HeaderSlot position="start">
-        <Button
-          variant="ghost"
-          onClick={() => navigateWorkspace("/integrations")}
-        >
-          <Icon name="arrow_back" />
-          Back
-        </Button>
-      </HeaderSlot>
-
-      <HeaderSlot position="end">
-        <div className="flex items-center gap-2">
-          <DockedToggleButton
-            id="form"
-            title="Settings"
-            variant="outline"
-            size="icon"
-          >
-            <Icon name="settings" />
-          </DockedToggleButton>
-          <DockedToggleButton
-            id="inspector"
-            title="Inspector"
-            variant="outline"
-            size="icon"
-          >
-            <Icon name="frame_inspect" />
-          </DockedToggleButton>
-        </div>
-      </HeaderSlot>
-    </>
-  );
-}
 
 export default function Edit() {
   const { id } = useParams();
@@ -120,7 +88,16 @@ export default function Edit() {
       }}
     >
       <Context.Provider value={{ form, integration }}>
-        <DockedPageLayout main={MAIN} tabs={TABS} />
+        <PageLayout
+          tabs={TABS}
+          breadcrumb={
+            <DefaultBreadcrumb
+              icon="widgets"
+              list="Integrations"
+              item={integration?.name}
+            />
+          }
+        />
       </Context.Provider>
     </ChatProvider>
   );

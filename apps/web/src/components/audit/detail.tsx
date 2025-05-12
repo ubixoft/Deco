@@ -1,17 +1,10 @@
 import { useThread } from "@deco/sdk";
-import { Button } from "@deco/ui/components/button.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
-import { format } from "date-fns";
+import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { useParams } from "react-router";
 import { ChatMessages } from "../chat/ChatMessages.tsx";
 import { ChatProvider } from "../chat/context.tsx";
-import { AgentInfo, UserInfo } from "../common/TableCells.tsx";
-import { DockedPageLayout } from "../pageLayout.tsx";
-
-const MAIN = {
-  header: Header,
-  main: ChatMessages,
-};
+import { Tab } from "../dock/index.tsx";
+import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
 
 const useThreadId = () => {
   const { id } = useParams();
@@ -23,75 +16,41 @@ const useThreadId = () => {
   return id;
 };
 
-function Header() {
-  const id = useThreadId();
-  const {
-    data: {
-      createdAt,
-      updatedAt,
-      resourceId,
-      metadata: { agentId } = {},
-    } = {},
-  } = useThread(id);
+const TABS: Record<string, Tab> = {
+  main: {
+    title: "Audit",
+    Component: () => (
+      <ScrollArea className="h-full py-6">
+        <ChatMessages />
+      </ScrollArea>
+    ),
+    initialOpen: true,
+  },
+};
 
-  return (
-    <div className="flex justify-between items-center gap-2 w-full">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={() => globalThis.history.back()}>
-          <Icon name="arrow_back" />
-          Back
-        </Button>
-      </div>
-      <div className="flex flex-wrap gap-2 md:gap-6 items-center">
-        {/* Agent info */}
-        <AgentInfo agentId={agentId} />
-        {/* User info */}
-        <UserInfo userId={resourceId} showDetails />
-        {/* Created at */}
-        <div className="flex-col gap-1 min-w-[150px] hidden md:flex">
-          <div className="flex items-center gap-2 text-left leading-tight">
-            <span className="text-xs text-muted-foreground font-medium mr-1">
-              Created at
-            </span>
-            <span className="text-xs font-medium text-slate-800">
-              {createdAt ? format(new Date(createdAt), "MMM dd, yyyy") : "-"}
-            </span>
-            <span className="text-xs font-normal text-slate-500">
-              {createdAt ? format(new Date(createdAt), "HH:mm:ss") : "-"}
-            </span>
-          </div>
-        </div>
-        {/* Last updated */}
-        <div className="flex-col gap-1 min-w-[150px] hidden md:flex">
-          <div className="flex items-center gap-2 text-left leading-tight">
-            <span className="text-xs text-muted-foreground font-medium mr-1">
-              Last updated
-            </span>
-            <span className="text-xs font-medium text-slate-800">
-              {updatedAt ? format(new Date(updatedAt), "MMM dd, yyyy") : "-"}
-            </span>
-            <span className="text-xs font-normal text-slate-500">
-              {updatedAt ? format(new Date(updatedAt), "HH:mm:ss") : "-"}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AuditDetail() {
+function Page() {
   const id = useThreadId();
   const { data: thread } = useThread(id);
+  const { data: { title } = {} } = useThread(id);
 
   return (
     <ChatProvider
       agentId={thread?.metadata?.agentId ?? id}
       threadId={id}
     >
-      <DockedPageLayout main={MAIN} tabs={{}} />
+      <PageLayout
+        tabs={TABS}
+        breadcrumb={
+          <DefaultBreadcrumb
+            icon="manage_search"
+            list="Chat logs"
+            item={title}
+          />
+        }
+        displayViewsTrigger={false}
+      />
     </ChatProvider>
   );
 }
 
-export default AuditDetail;
+export default Page;
