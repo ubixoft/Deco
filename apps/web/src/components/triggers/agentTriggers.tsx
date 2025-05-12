@@ -46,7 +46,7 @@ export function AgentTriggers() {
             placeholder="Search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full py-2 rounded-full border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
+            className="w-full py-2 border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
           />
         </div>
         <AddTriggerModalButton agentId={agentId} variant="standalone" />
