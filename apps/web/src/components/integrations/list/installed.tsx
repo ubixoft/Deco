@@ -18,14 +18,50 @@ import { Card, CardContent } from "@deco/ui/components/card.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { type MouseEvent, useReducer } from "react";
+import { type MouseEvent, useReducer, useState } from "react";
 import { trackEvent } from "../../../hooks/analytics.ts";
 import { useNavigateWorkspace } from "../../../hooks/useNavigateWorkspace.ts";
 import { EmptyState } from "../../common/EmptyState.tsx";
 import { Breadcrumb, IntegrationPageLayout } from "./breadcrumb.tsx";
 import { IntegrationIcon } from "./common.tsx";
+import { Table, TableColumn } from "../../common/Table.tsx";
+import { IntegrationInfo } from "../../common/TableCells.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@deco/ui/components/dropdown-menu.tsx";
 
-// Integration Card Component
+interface IntegrationActionsProps {
+  onDelete: () => void;
+  disabled?: boolean;
+}
+function IntegrationActions({ onDelete, disabled }: IntegrationActionsProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="focus:bg-accent/30"
+          disabled={disabled}
+        >
+          <Icon name="more_vert" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={onDelete}
+          className="text-destructive focus:bg-destructive/10"
+        >
+          <Icon name="delete" className="mr-2" /> Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function IntegrationCard({
   integration,
   onConfigure,
@@ -57,24 +93,15 @@ function IntegrationCard({
             </div>
           </div>
 
-          <Button
-            size="icon"
-            variant="ghost"
-            className="hover:text-destructive focus:bg-destructive/10 focus:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e: MouseEvent<HTMLButtonElement>) => {
-              e.stopPropagation();
-              onDelete(integration.id);
-            }}
-          >
-            <Icon name="delete" />
-          </Button>
+          <div onClick={(e) => e.stopPropagation()}>
+            <IntegrationActions onDelete={() => onDelete(integration.id)} />
+          </div>
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// Define the state interface
 interface ListState {
   filter: string;
   deleteDialogOpen: boolean;
@@ -82,7 +109,6 @@ interface ListState {
   deleting: boolean;
 }
 
-// Define action types
 type ListAction =
   | { type: "SET_FILTER"; payload: string }
   | { type: "CONFIRM_DELETE"; payload: string }
@@ -90,7 +116,6 @@ type ListAction =
   | { type: "DELETE_START" }
   | { type: "DELETE_END" };
 
-// Initial state
 const initialState: ListState = {
   filter: "",
   deleteDialogOpen: false,
@@ -98,7 +123,6 @@ const initialState: ListState = {
   deleting: false,
 };
 
-// Reducer function
 function listReducer(state: ListState, action: ListAction): ListState {
   switch (action.type) {
     case "SET_FILTER": {
@@ -131,33 +155,117 @@ function listReducer(state: ListState, action: ListAction): ListState {
   }
 }
 
+function CardsView(
+  { integrations, onConfigure, onDelete }: {
+    integrations: Integration[];
+    onConfigure: (integration: Integration) => void;
+    onDelete: (integrationId: string) => void;
+  },
+) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 peer">
+      {integrations.map((integration) => (
+        <IntegrationCard
+          key={integration.id}
+          integration={integration}
+          onConfigure={onConfigure}
+          onDelete={onDelete}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TableView(
+  { integrations, onConfigure, onDelete }: {
+    integrations: Integration[];
+    onConfigure: (integration: Integration) => void;
+    onDelete: (integrationId: string) => void;
+  },
+) {
+  const [sortKey, setSortKey] = useState<string>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  function getSortValue(row: Integration, key: string): string {
+    if (key === "description") return row.description?.toLowerCase() || "";
+    return row.name?.toLowerCase() || "";
+  }
+  const sortedIntegrations = [...integrations].sort((a, b) => {
+    const aVal = getSortValue(a, sortKey);
+    const bVal = getSortValue(b, sortKey);
+    if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+    if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const columns: TableColumn<Integration>[] = [
+    {
+      id: "name",
+      header: "Name",
+      render: (integration) => <IntegrationInfo integration={integration} />,
+      sortable: true,
+    },
+    {
+      id: "description",
+      header: "Description",
+      accessor: (integration) => integration.description,
+      sortable: true,
+    },
+    {
+      id: "actions",
+      header: "",
+      render: (integration) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <IntegrationActions onDelete={() => onDelete(integration.id)} />
+        </div>
+      ),
+    },
+  ];
+
+  function handleSort(key: string) {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
+
+  return (
+    <Table
+      columns={columns}
+      data={sortedIntegrations}
+      sortKey={sortKey}
+      sortDirection={sortDirection}
+      onSort={handleSort}
+      onRowClick={onConfigure}
+    />
+  );
+}
+
 function InstalledIntegrationsTab() {
   const [state, dispatch] = useReducer(listReducer, initialState);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const navigateWorkspace = useNavigateWorkspace();
   const { mutateAsync: removeIntegration } = useRemoveIntegration();
   const { filter, deleteDialogOpen, integrationToDelete, deleting } = state;
 
-  // Use SDK's useIntegrations hook to get all integrations
   const { data: installedIntegrations } = useIntegrations();
 
-  // Filter installed integrations based on the filter text
   const filteredIntegrations =
     installedIntegrations?.filter((integration) =>
       integration.name.toLowerCase().includes(filter.toLowerCase()) &&
       integration.connection.type !== "INNATE"
     ) ?? [];
 
-  // Function to handle configuring/editing an existing integration
   const handleConfigure = (integration: Integration) => {
     navigateWorkspace(`/integration/${integration.id}`);
   };
 
-  // Function to handle delete confirmation
   const handleDeleteConfirm = (integrationId: string) => {
     dispatch({ type: "CONFIRM_DELETE", payload: integrationId });
   };
 
-  // Function to handle actual deletion
   const handleDelete = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
 
@@ -166,7 +274,6 @@ function InstalledIntegrationsTab() {
     try {
       dispatch({ type: "DELETE_START" });
 
-      // Use the removeIntegration mutation from the hook
       await removeIntegration(integrationToDelete);
 
       trackEvent("integration_delete", {
@@ -186,7 +293,6 @@ function InstalledIntegrationsTab() {
     }
   };
 
-  // Handle delete dialog close
   const handleDeleteDialogOpenChange = (open: boolean) => {
     if (!open && !deleting) {
       dispatch({ type: "CANCEL_DELETE" });
@@ -199,10 +305,12 @@ function InstalledIntegrationsTab() {
         <Breadcrumb
           value={filter}
           setValue={(value) => dispatch({ type: "SET_FILTER", payload: value })}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
         />
       </div>
 
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea className="flex-1 min-h-0 px-4">
         {!installedIntegrations
           ? (
             <div className="flex h-48 items-center justify-center">
@@ -222,28 +330,24 @@ function InstalledIntegrationsTab() {
             />
           )
           : (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 px-4 peer">
-                {filteredIntegrations.map((integration) => (
-                  <IntegrationCard
-                    key={integration.id}
-                    integration={integration}
-                    onConfigure={handleConfigure}
-                    onDelete={handleDeleteConfirm}
-                  />
-                ))}
-              </div>
-              <div className="flex-col items-center justify-center h-48 peer-empty:flex px-4 hidden">
-                <Icon name="search_off" />
-                <p className="text-muted-foreground">
-                  No integrations match your filter. Try adjusting your search.
-                </p>
-              </div>
-            </>
+            viewMode === "cards"
+              ? (
+                <CardsView
+                  integrations={filteredIntegrations}
+                  onConfigure={handleConfigure}
+                  onDelete={handleDeleteConfirm}
+                />
+              )
+              : (
+                <TableView
+                  integrations={filteredIntegrations}
+                  onConfigure={handleConfigure}
+                  onDelete={handleDeleteConfirm}
+                />
+              )
           )}
       </ScrollArea>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={deleteDialogOpen}
         onOpenChange={handleDeleteDialogOpenChange}
