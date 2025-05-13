@@ -1,7 +1,6 @@
 import type { Trigger } from "@deco/sdk";
 import { useListTriggers } from "@deco/sdk";
 import { Input } from "@deco/ui/components/input.tsx";
-import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { Suspense, useState } from "react";
 import { useNavigateWorkspace } from "../../hooks/useNavigateWorkspace.ts";
@@ -116,11 +115,11 @@ function ListTriggersSuspended() {
         />
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 px-4">
+      <div className="flex-1 min-h-0 px-4 overflow-x-auto">
         {viewMode === "table"
           ? <TableView triggers={filteredTriggers} />
           : <CardsView triggers={filteredTriggers} />}
-      </ScrollArea>
+      </div>
     </div>
   );
 }
