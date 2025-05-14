@@ -1,10 +1,12 @@
 import {
   type Agent,
   AgentSchema,
+  type Integration as IntegrationType,
   useAgent,
   useIntegrations,
   useUpdateAgent,
 } from "@deco/sdk";
+import { Button } from "@deco/ui/components/button.tsx";
 import {
   Form,
   FormControl,
@@ -14,6 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@deco/ui/components/form.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import { Textarea } from "@deco/ui/components/textarea.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +33,7 @@ import { AgentAvatar } from "../common/Avatar.tsx";
 import { FormSubmitControls } from "../common/FormSubmit.tsx";
 import { Integration } from "../toolsets/index.tsx";
 import { ModelSelector } from "../chat/ModelSelector.tsx";
+import { ToolsetSelector } from "../toolsets/selector.tsx";
 
 // Token limits for Anthropic models
 const ANTHROPIC_MIN_MAX_TOKENS = 4096;
@@ -87,6 +91,16 @@ function SettingsTab({ formId }: SettingsTabProps) {
     }
 
     form.setValue("tools_set", newToolsSet, { shouldDirty: true });
+  };
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedIntegrationId, setSelectedIntegrationId] = useState<
+    string | null
+  >(null);
+
+  const handleIntegrationClick = (integration: IntegrationType) => {
+    setSelectedIntegrationId(integration.id);
+    setIsModalOpen(true);
   };
 
   return (
@@ -150,7 +164,7 @@ function SettingsTab({ formId }: SettingsTabProps) {
                 <FormControl>
                   <Textarea
                     placeholder="Enter the agent's system prompt"
-                    className="min-h-36"
+                    className="min-h-36 border-slate-200"
                     {...field}
                   />
                 </FormControl>
@@ -164,14 +178,14 @@ function SettingsTab({ formId }: SettingsTabProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>About this agent</FormLabel>
-                <FormDescription>
+                <FormDescription className="text-xs text-slate-400">
                   Used only for organization and search, it does not affect the
                   agent's behaviour
                 </FormDescription>
                 <FormControl>
                   <Textarea
                     placeholder="Describe your agent's purpose"
-                    className="min-h-18"
+                    className="min-h-18 border-slate-200"
                     {...field}
                   />
                 </FormControl>
@@ -188,7 +202,7 @@ function SettingsTab({ formId }: SettingsTabProps) {
                 <FormControl>
                   <Input
                     type="number"
-                    className="rounded-md"
+                    className="rounded-md border-slate-200"
                     min={ANTHROPIC_MIN_MAX_TOKENS}
                     max={ANTHROPIC_MAX_MAX_TOKENS}
                     {...field}
@@ -202,23 +216,41 @@ function SettingsTab({ formId }: SettingsTabProps) {
 
           {/* Tools Section */}
           <div className="space-y-2 mb-8">
-            <FormLabel className="text-lg font-medium">
-              Integrations
-            </FormLabel>
-            <FormDescription>
-              Enable or disable integrations to customize your agent's
-              capabilities
-            </FormDescription>
+            <div className="flex items-center justify-between space-y-1">
+              <div>
+                <FormLabel>Tools</FormLabel>
+                <FormDescription className="text-xs text-slate-400">
+                  Extensions that expand the agent's abilities.
+                </FormDescription>
+              </div>
+              <Button
+                size="icon"
+                className="h-8 w-8 bg-slate-700 hover:bg-slate-600 rounded-lg"
+                onClick={() => {
+                  setSelectedIntegrationId(null);
+                  setIsModalOpen(true);
+                }}
+                aria-label="Add tools"
+              >
+                <Icon name="add" />
+              </Button>
+            </div>
             <div className="flex-1">
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
                 {installedIntegrations
                   .filter((i) => !i.id.includes(agentId))
+                  .filter((integration) =>
+                    Array.isArray(agent?.tools_set?.[integration.id]) ||
+                    (toolsSet[integration.id] &&
+                      toolsSet[integration.id].length > 0)
+                  )
                   .map((integration) => (
                     <Integration
                       key={integration.id}
                       integration={integration}
                       setIntegrationTools={setIntegrationTools}
                       enabledTools={toolsSet[integration.id] || []}
+                      onIntegrationClick={handleIntegrationClick}
                     />
                   ))}
               </div>
@@ -232,6 +264,19 @@ function SettingsTab({ formId }: SettingsTabProps) {
           />
         </form>
       </div>
+      <ToolsetSelector
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) {
+            setSelectedIntegrationId(null);
+          }
+        }}
+        installedIntegrations={installedIntegrations}
+        toolsSet={toolsSet}
+        setIntegrationTools={setIntegrationTools}
+        initialSelectedIntegration={selectedIntegrationId}
+      />
     </Form>
   );
 }
