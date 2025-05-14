@@ -5,8 +5,8 @@ import { Context } from "hono";
 import { env as honoEnv } from "hono/adapter";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { z } from "zod";
-import { Client } from "../db/client.ts";
 import type { TimingVariables } from "hono/timing";
+import type { Client } from "../db/client.ts";
 
 export type AppEnv = {
   Variables: {
@@ -57,6 +57,7 @@ export const getEnv = (ctx: AppContext) => {
     SUPABASE_SERVER_TOKEN,
     TURSO_GROUP_DATABASE_TOKEN,
     TURSO_ORGANIZATION,
+    RESEND_API_KEY,
   } = honoEnv(ctx);
 
   if (
@@ -80,6 +81,7 @@ export const getEnv = (ctx: AppContext) => {
     SUPABASE_SERVER_TOKEN,
     TURSO_GROUP_DATABASE_TOKEN,
     TURSO_ORGANIZATION,
+    RESEND_API_KEY,
   };
 };
 
