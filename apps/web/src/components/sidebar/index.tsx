@@ -73,12 +73,15 @@ function buildThreadUrl(thread: Thread): string {
 }
 
 function SidebarThreadList({ threads }: { threads: Thread[] }) {
+  const { isMobile, toggleSidebar } = useSidebar();
+
   const handleThreadClick = (thread: Thread) => {
     trackEvent("sidebar_thread_click", {
       threadId: thread.id,
       threadTitle: thread.title,
       agentId: thread.metadata.agentId,
     });
+    isMobile && toggleSidebar();
   };
 
   return threads.map((thread) => (
@@ -210,16 +213,10 @@ function InvitesLink() {
 }
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, toggleSidebar, isMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const workspaceLink = useWorkspaceLink();
   const focusChat = useFocusChat();
-
-  const handleStaticItemClick = (title: string) => {
-    trackEvent("sidebar_navigation_click", {
-      item: title,
-    });
-  };
 
   return (
     <Sidebar variant="sidebar">
@@ -239,12 +236,14 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       className="cursor-pointer"
-                      onClick={() =>
+                      onClick={() => {
                         focusChat(
                           WELL_KNOWN_AGENT_IDS.teamAgent,
                           crypto.randomUUID(),
                           { history: false },
-                        )}
+                        );
+                        isMobile && toggleSidebar();
+                      }}
                     >
                       <Icon name="edit_square" size={16} />
                       <span className="truncate">New chat</span>
@@ -265,8 +264,12 @@ export function AppSidebar() {
                             >
                               <Link
                                 to={href}
-                                onClick={() =>
-                                  handleStaticItemClick(item.title)}
+                                onClick={() => {
+                                  trackEvent("sidebar_navigation_click", {
+                                    item: item.title,
+                                  });
+                                  isMobile && toggleSidebar();
+                                }}
                               >
                                 <Icon name={item.icon} filled={isActive} />
                                 <span className="truncate">{item.title}</span>
