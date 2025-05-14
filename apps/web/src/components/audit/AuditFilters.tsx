@@ -1,4 +1,4 @@
-import { Label } from "@deco/ui/components/label.tsx";
+import type { Agent, Member } from "@deco/sdk";
 import {
   Select,
   SelectContent,
@@ -6,7 +6,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@deco/ui/components/select.tsx";
-import type { Agent, Member } from "@deco/sdk";
 
 interface AuditFiltersProps {
   agents: Agent[];
@@ -55,7 +54,6 @@ export function AuditFilters({
       </div>
       {sortedMembers.length > 0 && (
         <div className="flex flex-col gap-2 min-w-[180px]">
-          <Label htmlFor="user-select">Used by</Label>
           <Select
             value={selectedUser ?? "all"}
             onValueChange={onUserChange}
