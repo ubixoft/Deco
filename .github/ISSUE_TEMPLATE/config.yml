@@ -1,0 +1,7 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Deco Discord
+    url: https://deco.cx/discord
+    about: You can contact us here.
+default_assignees:
+  - viktormarinho
