@@ -12,7 +12,7 @@ import {
   ResponsiveSelectValue,
 } from "@deco/ui/components/responsive-select.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
-import { DEFAULT_REASONING_MODEL, MODELS } from "@deco/sdk";
+import { DEFAULT_MODEL, MODELS } from "@deco/sdk";
 import { useState } from "react";
 
 const mapLegacyModelId = (modelId: string): string => {
@@ -45,6 +45,12 @@ const CAPABILITY_CONFIGS = {
     text: "text-amber-700",
     label: "Can search the web to answer questions",
   },
+  mixed: {
+    icon: "cyclone",
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+    label: "Mixed capabilities",
+  },
 } as const;
 
 function CapabilityBadge(
@@ -74,6 +80,24 @@ function CapabilityBadge(
 }
 
 function ModelItemContent({ model }: { model: typeof MODELS[0] }) {
+  if (model.id === "auto") {
+    return (
+      <div className="p-2 md:w-[400px] flex flex-col gap-1">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-normal font-medium">Auto</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <CapabilityBadge capability="mixed" />
+          </div>
+        </div>
+        {model.description && (
+          <p className="text-[10px] max-w-[250px] text-gray-500">
+            {model.description}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-2 md:w-[400px] flex items-center justify-between gap-4">
       <div className="flex items-center gap-2">
@@ -92,7 +116,7 @@ function ModelItemContent({ model }: { model: typeof MODELS[0] }) {
 function SelectedModelDisplay({ model }: { model: typeof MODELS[0] }) {
   return (
     <div className="flex items-center gap-1.5">
-      <img src={model.logo} className="w-3 h-3" />
+      {model.logo && <img src={model.logo} className="w-3 h-3" />}
       <span className="text-xs">{model.name}</span>
     </div>
   );
@@ -105,7 +129,7 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({
-  model = DEFAULT_REASONING_MODEL,
+  model = DEFAULT_MODEL,
   onModelChange,
   variant = "borderless",
 }: ModelSelectorProps) {
