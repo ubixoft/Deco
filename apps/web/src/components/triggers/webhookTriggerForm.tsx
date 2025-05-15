@@ -15,6 +15,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@deco/ui/components/form.tsx";
+import { SingleToolSelector } from "../toolsets/single-selector.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
 
 function JsonSchemaInput({ value, onChange }: {
   value: string;
@@ -101,6 +103,7 @@ export function WebhookTriggerForm({
       description: "",
       passphrase: "",
       schema: "",
+      outputTool: "",
       type: "webhook",
     },
   });
@@ -129,6 +132,7 @@ export function WebhookTriggerForm({
         passphrase: data.passphrase || undefined,
         // deno-lint-ignore no-explicit-any
         schema: schemaObj as unknown as any || undefined,
+        outputTool: data.outputTool || undefined,
       },
       {
         onSuccess: () => {
@@ -221,6 +225,41 @@ export function WebhookTriggerForm({
                   onChange={handleOutputSchemaChange}
                 />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="outputTool"
+          render={({ field }) => (
+            <FormItem>
+              <div className="flex flex-col gap-1 px-1 justify-between">
+                <FormLabel>Output Tool</FormLabel>
+                <span className="text-xs text-slate-400">
+                  When selected, this webhook trigger will always end calling
+                  the selected tool
+                </span>
+              </div>
+              <div className="flex gap-2 items-center">
+                <FormControl>
+                  <SingleToolSelector
+                    value={field.value || null}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+                {field.value && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="p-1"
+                    onClick={() => field.onChange("")}
+                  >
+                    <Icon name="close" size={12} className="text-slate-400" />
+                  </Button>
+                )}
+              </div>
               <FormMessage />
             </FormItem>
           )}

@@ -3,6 +3,8 @@ import type { Message } from "../types.ts";
 import { threadOf } from "./tools.ts";
 import type { TriggerHooks } from "./trigger.ts";
 import type { TriggerData } from "./services.ts";
+import { handleOutputTool } from "./outputTool.ts";
+import { getWorkspaceFromAgentId } from "../utils/workspace.ts";
 
 export interface WebhookArgs {
   threadId?: string;
@@ -65,6 +67,19 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
         ]
         : []),
     ];
+
+    const outputTool = url?.searchParams.get("outputTool");
+    if (outputTool) {
+      const workspace = getWorkspaceFromAgentId(trigger.agentId);
+      return handleOutputTool({
+        outputTool,
+        agent,
+        messages,
+        trigger,
+        workspace,
+      });
+    }
+
     if (
       data.schema ||
       (typeof args === "object" &&
