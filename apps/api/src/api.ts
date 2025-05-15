@@ -1,70 +1,62 @@
 import { HttpServerTransport } from "@deco/mcp/http";
+import { GLOBAL_TOOLS, MCPError, WORKSPACE_TOOLS } from "@deco/sdk/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Context, Hono } from "hono";
-import { getRuntimeKey } from "hono/adapter";
+import { env, getRuntimeKey } from "hono/adapter";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
 import { endTime, startTime } from "hono/timing";
-import * as agentsAPI from "./api/agents/api.ts";
-import * as hostingAPI from "./api/hosting/api.ts";
-import * as integrationsAPI from "./api/integrations/api.ts";
-import * as membersAPI from "./api/members/api.ts";
-import * as profilesAPI from "./api/profiles/api.ts";
-import * as teamsAPI from "./api/teams/api.ts";
-import * as threadsAPI from "./api/threads/api.ts";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ROUTES as loginRoutes } from "./auth/index.ts";
 import { withActorsMiddleware } from "./middlewares/actors.ts";
 import { withActorsStubMiddleware } from "./middlewares/actorsStub.ts";
 import { withContextMiddleware } from "./middlewares/context.ts";
 import { setUserMiddleware } from "./middlewares/user.ts";
-import { ApiHandler, AppEnv, createAIHandler, State } from "./utils/context.ts";
+import {
+  ApiHandler,
+  AppContext,
+  AppEnv,
+  createAIHandler,
+  createMCPToolsStub,
+  State,
+} from "./utils/context.ts";
 
 export const app = new Hono<AppEnv>();
 
-// Register tools for each API handler
-const GLOBAL_TOOLS = [
-  teamsAPI.getTeam,
-  teamsAPI.createTeam,
-  teamsAPI.updateTeam,
-  teamsAPI.deleteTeam,
-  teamsAPI.listTeams,
-  membersAPI.getTeamMembers,
-  membersAPI.updateTeamMember,
-  membersAPI.removeTeamMember,
-  membersAPI.registerMemberActivity,
-  membersAPI.getMyInvites,
-  membersAPI.acceptInvite,
-  membersAPI.inviteTeamMembers,
-  membersAPI.teamRolesList,
-  profilesAPI.getProfile,
-  profilesAPI.updateProfile,
-  integrationsAPI.callTool,
-  integrationsAPI.listTools,
-];
+export const honoCtxToAppCtx = (c: Context<AppEnv>): AppContext => {
+  const envs = env(c);
+  const slug = c.req.param("slug");
+  const root = c.req.param("root");
+  const workspace = `/${root}/${slug}`;
 
-// Tools tied to an specific workspace
-const WORKSPACE_TOOLS = [
-  agentsAPI.getAgent,
-  agentsAPI.deleteAgent,
-  agentsAPI.createAgent,
-  agentsAPI.updateAgent,
-  agentsAPI.listAgents,
-  integrationsAPI.getIntegration,
-  integrationsAPI.createIntegration,
-  integrationsAPI.updateIntegration,
-  integrationsAPI.deleteIntegration,
-  integrationsAPI.listIntegrations,
-  threadsAPI.listThreads,
-  threadsAPI.getThread,
-  threadsAPI.getThreadMessages,
-  threadsAPI.getThreadTools,
-  hostingAPI.listApps,
-  hostingAPI.deployFiles,
-  hostingAPI.deleteApp,
-  hostingAPI.getAppInfo,
-];
+  return {
+    ...c.var,
+    envVars: envs,
+    cookie: c.req.header("Cookie"),
+    host: c.req.header("Host"),
+    workspace: slug && root
+      ? {
+        root,
+        slug,
+        value: workspace,
+      }
+      : undefined,
+  };
+};
 
+const mapMCPErrorToHTTPExceptionOrThrow = (err: Error) => {
+  if (!(err instanceof MCPError)) {
+    throw err;
+  }
+
+  throw new HTTPException(
+    (err.code as ContentfulStatusCode | undefined) ?? 500,
+    {
+      message: err.message,
+    },
+  );
+};
 /**
  * Creates and sets up an MCP server for the given tools
  */
@@ -94,10 +86,10 @@ const createMCPHandlerFor = (
 
     startTime(c, "mcp-handle-message");
     c.res = await State.run(
-      c,
+      honoCtxToAppCtx(c),
       transport.handleMessage.bind(transport),
       c.req.raw,
-    );
+    ).catch(mapMCPErrorToHTTPExceptionOrThrow);
     endTime(c, "mcp-handle-message");
 
     return c.res;
@@ -109,19 +101,18 @@ const createMCPHandlerFor = (
  * UIs can call the tools without suffering the serialization
  * of the protocol.
  */
-const createToolCallHandlerFor = (tools: ApiHandler[]) => {
+const createToolCallHandlerFor = (tools: readonly ApiHandler[]) => {
   const toolMap = new Map(tools.map((t) => [t.name, t]));
 
   return async (c: Context) => {
+    const client = createMCPToolsStub({ tools });
     const tool = c.req.param("tool");
     const args = await c.req.json();
 
     const t = toolMap.get(tool);
-
     if (!t) {
       throw new HTTPException(404, { message: "Tool not found" });
     }
-
     const { data, error } = t.schema.safeParse(args);
 
     if (error || !data) {
@@ -131,7 +122,11 @@ const createToolCallHandlerFor = (tools: ApiHandler[]) => {
     }
 
     startTime(c, tool);
-    const result = await State.run(c, t.handler, data);
+    const result = await State.run(
+      honoCtxToAppCtx(c),
+      (args) => client[tool](args),
+      data,
+    ).catch(mapMCPErrorToHTTPExceptionOrThrow);
     endTime(c, tool);
 
     return c.json({ data: result });

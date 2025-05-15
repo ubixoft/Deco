@@ -1,12 +1,17 @@
-import { Hono } from "hono";
+import { createSupabaseClient } from "@deco/sdk/storage";
 import {
   EmailOtpType,
   type Provider,
   type User as SupaUser,
 } from "@supabase/supabase-js";
-import { createSupabaseClient } from "@deco/sdk/storage";
+import { Hono } from "hono";
+import { honoCtxToAppCtx } from "../api.ts";
+import {
+  AUTH_URL,
+  getEnv,
+  HonoAppContext as AppContext,
+} from "../utils/context.ts";
 import { getCookies, setHeaders } from "../utils/cookie.ts";
-import { AppContext, AUTH_URL, getEnv } from "../utils/context.ts";
 import { authSetCookie, getServerClientOptions } from "../utils/db.ts";
 
 const AUTH_CALLBACK_OAUTH = "/auth/callback/oauth";
@@ -19,7 +24,7 @@ export const ROUTES = {
 } as const;
 
 const createDbAndHeadersForRequest = (ctx: AppContext) => {
-  const { SUPABASE_URL, SUPABASE_SERVER_TOKEN } = getEnv(ctx);
+  const { SUPABASE_URL, SUPABASE_SERVER_TOKEN } = getEnv(honoCtxToAppCtx(ctx));
   const request = ctx.req.raw;
   const { headers, setCookie } = authSetCookie({ request });
   const db = createSupabaseClient(
@@ -38,7 +43,7 @@ const createDbAndHeadersForRequest = (ctx: AppContext) => {
 export const getUser = async (
   ctx: AppContext,
 ): Promise<SupaUser | undefined> => {
-  const { SUPABASE_URL, SUPABASE_SERVER_TOKEN } = getEnv(ctx);
+  const { SUPABASE_URL, SUPABASE_SERVER_TOKEN } = getEnv(honoCtxToAppCtx(ctx));
 
   const cookies = getCookies(ctx.req.raw.headers);
   const supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_SERVER_TOKEN, {
@@ -106,7 +111,7 @@ appLogin.all("/oauth", async (ctx: AppContext) => {
   const provider = (url.searchParams.get("provider") ?? "google") as Provider;
   const redirectTo = new URL(
     AUTH_CALLBACK_OAUTH,
-    AUTH_URL(ctx),
+    AUTH_URL(honoCtxToAppCtx(ctx)),
   );
 
   const next = url.searchParams.get("next");
