@@ -96,8 +96,9 @@ To run database migrations with Supabase:
    ```
 3. Link the project:
    ```sh
-   supabase link --project-ref ozksgdmyrqcxcwhnbepg
+   supabase link --project-ref $projectId
    ```
+   Use `ozksgdmyrqcxcwhnbepg` for deco.cx
 4. Get the database password from
    [1Password](https://decocx.1password.com/app#/v254wmdcgkot7sbjm2rrzsqgzu/Search/v254wmdcgkot7sbjm2rrzsqgzu63fbqw56r7ee5okdfbbk3s2q5a?itemListId=supabase).
 5. You can create a new migration by running
