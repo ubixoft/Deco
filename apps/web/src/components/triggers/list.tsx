@@ -175,7 +175,7 @@ function TableView(
   const columns: TableColumn<z.infer<typeof TriggerOutputSchema>>[] = [
     {
       id: "active",
-      header: "",
+      header: "Active",
       render: (t) => <TriggerToggle trigger={t} />,
     },
     {
