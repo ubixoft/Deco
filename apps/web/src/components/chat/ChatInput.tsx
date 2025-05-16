@@ -67,27 +67,48 @@ const useGlobalDrop = (handleFileDrop: (e: DragEvent) => void) => {
 
   /** Global file drop handler */
   useEffect(() => {
+    /**
+     * These drag events conflict with the ones from dockview.
+     * This variable is drue when dragging elements from dockview, preventing
+     * us setting the dragging state to true.
+     */
+    let skip = false;
+
     function handleDrop(e: Event) {
       setIsDragging(false);
+      skip = false;
       const dragEvent = e as unknown as DragEvent;
       handleFileDrop(dragEvent);
     }
     function handleDragOver(e: Event) {
+      if (skip) {
+        return;
+      }
       e.preventDefault();
       setIsDragging(true);
     }
-    function handleStopDragging() {
+    function handleDragEnd() {
+      skip = false;
       setIsDragging(false);
+    }
+    /**
+     * This is fired when dragging elements from dockview. Dragging files
+     * do not fire this event
+     */
+    function handleDrag() {
+      skip = true;
     }
 
     globalThis.addEventListener("drop", handleDrop);
+    globalThis.addEventListener("drag", handleDrag);
     globalThis.addEventListener("dragover", handleDragOver);
-    globalThis.addEventListener("dragleave", handleStopDragging);
+    globalThis.addEventListener("dragend", handleDragEnd);
 
     return () => {
       globalThis.removeEventListener("drop", handleDrop);
+      globalThis.removeEventListener("drag", handleDrag);
       globalThis.removeEventListener("dragover", handleDragOver);
-      globalThis.removeEventListener("dragleave", handleStopDragging);
+      globalThis.removeEventListener("dragend", handleDragEnd);
     };
   }, [handleFileDrop]);
 
@@ -274,10 +295,11 @@ ChatInput.UI = (
     }
   };
 
-  const _isDragging = useGlobalDrop(handleFileDrop);
+  const isDragging = useGlobalDrop(handleFileDrop);
 
   return (
-    <div className="w-full max-w-[640px] mx-auto">
+    <div className="w-full max-w-2xl mx-auto">
+      <FileDropOverlay display={isDragging} />
       <form
         onSubmit={onSubmit}
         className={cn(
@@ -364,7 +386,7 @@ ChatInput.UI = (
           </div>
 
           {uploadedFiles.length > 0 && (
-            <div className="w-fit absolute z-20 bottom-full mb-2 left-0 flex flex-wrap gap-2">
+            <div className="w-fit absolute z-10 bottom-full mb-2 left-0 flex flex-wrap gap-2">
               {uploadedFiles.map((uf, index) => (
                 <FilePreviewItem
                   key={uf.file.name + uf.file.size}
@@ -380,28 +402,36 @@ ChatInput.UI = (
           )}
         </div>
       </form>
-      {/* <FileDropOverlay display={isDragging} /> */}
     </div>
   );
 };
 
-// function FileDropOverlay({ display }: { display: boolean }) {
-//   if (!display) return null;
+function FileDropOverlay({ display }: { display: boolean }) {
+  if (!display) {
+    return null;
+  }
 
-//   return (
-//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 pointer-events-none animate-fade-in">
-//       <div className="flex flex-col items-center gap-4 bg-white/90 rounded-2xl p-8 shadow-2xl border border-slate-200">
-//         <Icon name="upload" size={48} className="text-foreground" />
-//         <span className="text-lg font-semibold text-foreground">
-//           Drop files to upload
-//         </span>
-//         <span className="text-sm text-muted-foreground">
-//           (Max 5 files, images or PDFs)
-//         </span>
-//       </div>
-//     </div>
-//   );
-// }
+  return (
+    <div className="relative">
+      <div
+        className={cn(
+          "absolute bottom-2 left-0 right-0 z-50",
+          "flex flex-col items-center justify-center gap-2",
+          "pointer-events-none animate-fade-in",
+          "p-8 shadow-2xl rounded-2xl border border-slate-200 bg-background/95",
+        )}
+      >
+        <Icon name="upload" size={48} className="text-foreground" />
+        <span className="text-lg font-semibold text-foreground">
+          Drop files to upload
+        </span>
+        <span className="text-sm text-muted-foreground">
+          (Max 5 files, images or PDFs)
+        </span>
+      </div>
+    </div>
+  );
+}
 
 interface FilePreviewItemProps {
   uploadedFile: UploadedFile;
