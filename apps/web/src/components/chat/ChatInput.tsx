@@ -76,18 +76,18 @@ const useGlobalDrop = (handleFileDrop: (e: DragEvent) => void) => {
       e.preventDefault();
       setIsDragging(true);
     }
-    function handleDragLeave() {
+    function handleStopDragging() {
       setIsDragging(false);
     }
 
     globalThis.addEventListener("drop", handleDrop);
     globalThis.addEventListener("dragover", handleDragOver);
-    globalThis.addEventListener("dragleave", handleDragLeave);
+    globalThis.addEventListener("dragleave", handleStopDragging);
 
     return () => {
       globalThis.removeEventListener("drop", handleDrop);
       globalThis.removeEventListener("dragover", handleDragOver);
-      globalThis.removeEventListener("dragleave", handleDragLeave);
+      globalThis.removeEventListener("dragleave", handleStopDragging);
     };
   }, [handleFileDrop]);
 
@@ -274,7 +274,7 @@ ChatInput.UI = (
     }
   };
 
-  const isDragging = useGlobalDrop(handleFileDrop);
+  const _isDragging = useGlobalDrop(handleFileDrop);
 
   return (
     <div className="w-full max-w-[640px] mx-auto">
@@ -380,28 +380,28 @@ ChatInput.UI = (
           )}
         </div>
       </form>
-      <FileDropOverlay display={isDragging} />
+      {/* <FileDropOverlay display={isDragging} /> */}
     </div>
   );
 };
 
-function FileDropOverlay({ display }: { display: boolean }) {
-  if (!display) return null;
+// function FileDropOverlay({ display }: { display: boolean }) {
+//   if (!display) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 pointer-events-none animate-fade-in">
-      <div className="flex flex-col items-center gap-4 bg-white/90 rounded-2xl p-8 shadow-2xl border border-slate-200">
-        <Icon name="upload" size={48} className="text-foreground" />
-        <span className="text-lg font-semibold text-foreground">
-          Drop files to upload
-        </span>
-        <span className="text-sm text-muted-foreground">
-          (Max 5 files, images or PDFs)
-        </span>
-      </div>
-    </div>
-  );
-}
+//   return (
+//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 pointer-events-none animate-fade-in">
+//       <div className="flex flex-col items-center gap-4 bg-white/90 rounded-2xl p-8 shadow-2xl border border-slate-200">
+//         <Icon name="upload" size={48} className="text-foreground" />
+//         <span className="text-lg font-semibold text-foreground">
+//           Drop files to upload
+//         </span>
+//         <span className="text-sm text-muted-foreground">
+//           (Max 5 files, images or PDFs)
+//         </span>
+//       </div>
+//     </div>
+//   );
+// }
 
 interface FilePreviewItemProps {
   uploadedFile: UploadedFile;
