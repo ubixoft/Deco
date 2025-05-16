@@ -4,9 +4,7 @@ import {
   listToolsByConnectionType,
   patchApiDecoChatTokenHTTPConnection,
 } from "@deco/ai/mcp";
-import { createSupabaseStorage } from "@deco/ai/storage";
 import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { createServerClient } from "@supabase/ssr";
 import { z } from "zod";
 import {
   Agent,
@@ -16,18 +14,18 @@ import {
   IntegrationSchema,
   NEW_INTEGRATION_TEMPLATE,
 } from "../../index.ts";
+import type { Workspace } from "../../path.ts";
 import {
   assertHasWorkspace,
   assertUserHasAccessToWorkspace,
 } from "../assertions.ts";
-import { createApiHandler, getEnv } from "../context.ts";
+import { createApiHandler } from "../context.ts";
 
 const ensureStartingSlash = (path: string) =>
   path.startsWith("/") ? path : `/${path}`;
 
 const parseId = (id: string) => {
-  const [type, uuid] = id.split(":");
-
+  const [type, uuid] = id.includes(":") ? id.split(":") : ["i", id];
   return {
     type: (type || "i") as "i" | "a",
     uuid: uuid || id,
@@ -105,15 +103,10 @@ export const listTools = createApiHandler({
     connection: true,
   }),
   handler: async ({ connection }, c) => {
-    const env = getEnv(c);
-    const storage = createSupabaseStorage(
-      createServerClient(
-        env.SUPABASE_URL,
-        env.SUPABASE_SERVER_TOKEN,
-        { cookies: { getAll: () => [] } },
-      ),
+    const result = await listToolsByConnectionType(
+      connection,
+      c,
     );
-    const result = await listToolsByConnectionType(connection, storage);
 
     // Sort tools by name for consistent UI
     if (Array.isArray(result?.tools)) {
@@ -212,25 +205,27 @@ export const getIntegration = createApiHandler({
     id: z.string(),
   }),
   handler: async ({ id }, c) => {
-    assertHasWorkspace(c);
-
     const { uuid, type } = parseId(id);
+    if (uuid in INNATE_INTEGRATIONS) {
+      const data =
+        INNATE_INTEGRATIONS[uuid as keyof typeof INNATE_INTEGRATIONS];
+      return IntegrationSchema.parse({
+        ...data,
+        id: formatId(type, data.id),
+      });
+    }
+    assertHasWorkspace(c);
 
     const [
       _assertions,
       { data, error },
     ] = await Promise.all([
       assertUserHasAccessToWorkspace(c),
-      uuid in INNATE_INTEGRATIONS
-        ? {
-          data: INNATE_INTEGRATIONS[uuid as keyof typeof INNATE_INTEGRATIONS],
-          error: null,
-        }
-        : c.db
-          .from(type === "i" ? "deco_chat_integrations" : "deco_chat_agents")
-          .select("*")
-          .eq("id", uuid)
-          .single(),
+      c.db
+        .from(type === "i" ? "deco_chat_integrations" : "deco_chat_agents")
+        .select("*")
+        .eq("id", uuid)
+        .single(),
     ]);
 
     if (error) {
@@ -239,6 +234,16 @@ export const getIntegration = createApiHandler({
 
     if (!data) {
       throw new Error("Integration not found");
+    }
+
+    if (type === "a") {
+      const mapAgentToIntegration = agentAsIntegrationFor(
+        c.workspace.value as Workspace,
+      );
+      return IntegrationSchema.parse({
+        ...mapAgentToIntegration(data as unknown as Agent),
+        id: formatId(type, data.id),
+      });
     }
 
     return IntegrationSchema.parse({

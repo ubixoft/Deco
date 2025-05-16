@@ -18,6 +18,7 @@ export interface Vars {
   host?: string;
   db: Client;
   user: SupaUser;
+  isLocal?: boolean;
   cf: Cloudflare;
   immutableRes?: boolean;
   stub: <
@@ -42,7 +43,9 @@ export interface EnvVars {
   CF_DISPATCH_NAMESPACE: string;
 }
 
-export type AppContext = Vars & { envVars: EnvVars };
+export type AppContext = Vars & {
+  envVars: EnvVars;
+};
 
 const isErrorLike = (error: unknown): error is Error =>
   Boolean((error as Error)?.message);
