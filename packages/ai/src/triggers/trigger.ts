@@ -122,16 +122,16 @@ export class Trigger {
     });
   }
 
-  private async loadData(): Promise<TriggerData> {
+  private async loadData(): Promise<TriggerData | null> {
     const triggerData = await this.mcpClient.TRIGGERS_GET({
       id: this.getTriggerId(),
     });
 
     if (!triggerData) {
-      throw new Error("Trigger not found");
+      return null;
     }
 
-    return mapTriggerToTriggerData(triggerData)!;
+    return mapTriggerToTriggerData(triggerData);
   }
 
   enrichMetadata(metadata: TriggerMetadata, req: Request): TriggerMetadata {
