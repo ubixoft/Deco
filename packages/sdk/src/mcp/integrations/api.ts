@@ -171,7 +171,7 @@ export const listIntegrations = createApiHandler({
       description: "Manage your agents, integrations and threads",
       connection: {
         type: "HTTP",
-        url: `${baseUrl}${workspace}}/mcp`,
+        url: `${baseUrl}${workspace}/mcp`,
       },
       icon: "https://assets.webdraw.app/uploads/deco-avocado-light.png",
       workspace,
