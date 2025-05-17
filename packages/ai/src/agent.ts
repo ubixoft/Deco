@@ -131,7 +131,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   private agentId: string;
   private wallet: AgentWallet;
   private db: Awaited<ReturnType<typeof createServerClient>>;
-
+  private agentScoppedMcpClient: MCPClientStub<WorkspaceTools>;
   constructor(
     public readonly state: ActorState,
     protected override env: any,
@@ -159,6 +159,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       { cookies: { getAll: () => [] } },
     );
 
+    this.agentScoppedMcpClient = this.createMCPClient();
     this.state.blockConcurrencyWhile(async () => {
       await this.init();
     });
@@ -175,15 +176,16 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return path;
   }
 
-  createMCPClient(metadata: AgentMetadata, req: Request) {
+  createMCPClient(metadata?: AgentMetadata, req?: Request) {
     return MCPClient.forContext({
       envVars: this.env,
       db: this.db,
-      user: metadata.principal!,
+      user: metadata?.principal ?? undefined,
+      isLocal: metadata?.principal == null,
       stub: this.state.stub as AppContext["stub"],
-      cookie: metadata.principalCookie ?? undefined,
+      cookie: metadata?.principalCookie ?? undefined,
       workspace: fromWorkspaceString(this.workspace),
-      host: req.headers.get("host") ?? undefined,
+      host: req?.headers.get("host") ?? undefined,
       cf: new Cloudflare({ apiToken: this.env.CF_API_TOKEN }),
     });
   }
@@ -527,9 +529,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   // Warning: This method also updates the configuration in memory
   async configuration(): Promise<Configuration> {
+    const client = this.metadata?.mcpClient ?? this.agentScoppedMcpClient;
     const manifest = this.agentId in WELL_KNOWN_AGENTS
       ? WELL_KNOWN_AGENTS[this.agentId as keyof typeof WELL_KNOWN_AGENTS]
-      : await this.metadata?.mcpClient?.AGENTS_GET({
+      : await client.AGENTS_GET({
         id: this.agentId,
       }).catch((err) => {
         console.error("Error getting agent", err);
