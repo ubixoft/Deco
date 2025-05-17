@@ -3,7 +3,7 @@ export * from "./src/actors.ts";
 import { Hosts } from "@deco/sdk/hosts";
 import { instrument } from "@deco/sdk/observability";
 import { getRuntimeKey } from "hono/adapter";
-import { AsyncLocalStorage } from "node:async_hooks";
+import { contextStorage } from "@deco/sdk/fetch";
 import { default as app } from "./src/app.ts";
 
 // Choose instrumented app depending on runtime
@@ -11,10 +11,6 @@ const instrumentedApp = getRuntimeKey() === "deno" ? app : instrument(app);
 
 // Domains we consider "self"
 const SELF_DOMAINS: string[] = [Hosts.API, "localhost"];
-
-const contextStorage = new AsyncLocalStorage<
-  { env: any; ctx: ExecutionContext }
->();
 
 // Patch fetch globally
 const originalFetch = globalThis.fetch;

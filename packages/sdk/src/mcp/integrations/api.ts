@@ -126,7 +126,7 @@ const virtualIntegrationsFor = (workspace: string) => {
     description: "Manage your teams, invites and profile",
     connection: {
       type: "HTTP",
-      url: `${API_SERVER_URL}/mcp`,
+      url: new URL("/mcp", API_SERVER_URL).href,
     },
     icon: "https://i.imgur.com/GD4o7vx.png",
     workspace,
@@ -140,7 +140,7 @@ const virtualIntegrationsFor = (workspace: string) => {
     description: "Manage your agents, integrations and threads",
     connection: {
       type: "HTTP",
-      url: `${API_SERVER_URL}${workspace}/mcp`,
+      url: new URL(`${workspace}/mcp`, API_SERVER_URL).href,
     },
     icon: "https://assets.webdraw.app/uploads/deco-avocado-light.png",
     workspace,

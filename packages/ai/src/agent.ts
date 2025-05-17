@@ -10,6 +10,7 @@ import {
 } from "@deco/sdk";
 import { type AuthMetadata, BaseActor } from "@deco/sdk/actors";
 import { SUPABASE_URL } from "@deco/sdk/auth";
+import { contextStorage } from "@deco/sdk/fetch";
 import {
   AppContext,
   fromWorkspaceString,
@@ -134,9 +135,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   private agentScoppedMcpClient: MCPClientStub<WorkspaceTools>;
   constructor(
     public readonly state: ActorState,
-    protected override env: any,
+    protected actorEnv: any,
   ) {
-    super(removeNonSerializableFields(env));
+    super(removeNonSerializableFields(actorEnv));
 
     this.id = toAlphanumericId(this.state.id);
     this.env = {
@@ -149,7 +150,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       agentId: this.id,
       agentPath: this.state.id,
       workspace: this.workspace,
-      wallet: createWalletClient(this.env.WALLET_API_KEY, env?.WALLET),
+      wallet: createWalletClient(this.env.WALLET_API_KEY, actorEnv?.WALLET),
     });
     this.agentMemoryConfig = null as unknown as AgentMemoryConfig;
     this.agentId = this.state.id.split("/").pop() ?? "";
@@ -161,7 +162,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     this.agentScoppedMcpClient = this.createMCPClient();
     this.state.blockConcurrencyWhile(async () => {
-      await this.init();
+      await this.runWithContext(async () => {
+        await this.init();
+      });
     });
   }
 
@@ -178,7 +181,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   createMCPClient(metadata?: AgentMetadata) {
     return MCPClient.forContext({
-      envVars: this.env,
+      envVars: this.env as any,
       db: this.db,
       user: metadata?.principal ?? undefined,
       isLocal: metadata?.principal == null,
@@ -367,7 +370,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     const serverTools = await mcpServerTools(
       { ...integration, id: mcpId },
       this,
-      this.env,
+      this.env as any,
     );
 
     if (Object.keys(serverTools ?? {}).length === 0) {
@@ -712,6 +715,16 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     return agent;
   }
+  private runWithContext<T>(fn: () => Promise<T>) {
+    return contextStorage.run({
+      env: this.actorEnv,
+      ctx: {
+        passThroughOnException: () => {},
+        waitUntil: () => {},
+        props: {},
+      },
+    }, fn);
+  }
 
   async onBeforeInvoke(
     opts: InvokeMiddlewareOptions,
@@ -719,9 +732,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   ) {
     const timings = createServerTimings();
     const methodTiming = timings.start(`actor-${opts.method}`);
-    const response = await next({
-      ...opts,
-      metadata: { ...opts?.metadata ?? {}, timings },
+    const response = await this.runWithContext(async () => {
+      return await next({
+        ...opts,
+        metadata: { ...opts?.metadata ?? {}, timings },
+      });
     });
     methodTiming.end();
     try {

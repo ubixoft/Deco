@@ -47,6 +47,7 @@
     "./http": "./src/http.ts",
     "./wallet": "./src/wallets/index.ts",
     "./storage": "./src/storage/index.ts",
-    "./mcp": "./src/mcp/index.ts"
+    "./mcp": "./src/mcp/index.ts",
+    "./fetch": "./src/fetch.ts"
   }
 }
