@@ -15,7 +15,6 @@ export interface Vars {
     value: string;
   };
   cookie?: string;
-  host?: string;
   db: Client;
   user: SupaUser;
   isLocal?: boolean;

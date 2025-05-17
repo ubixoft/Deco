@@ -34,7 +34,6 @@ export const honoCtxToAppCtx = (c: Context<AppEnv>): AppContext => {
     ...c.var,
     envVars: envs,
     cookie: c.req.header("Cookie"),
-    host: c.req.header("Host"),
     workspace: slug && root
       ? {
         root,

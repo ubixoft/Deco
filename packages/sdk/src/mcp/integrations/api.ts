@@ -9,6 +9,7 @@ import { z } from "zod";
 import {
   Agent,
   AgentSchema,
+  API_SERVER_URL,
   INNATE_INTEGRATIONS,
   Integration,
   IntegrationSchema,
@@ -117,6 +118,40 @@ export const listTools = createApiHandler({
   },
 });
 
+const virtualIntegrationsFor = (workspace: string) => {
+  // Create a virtual User Management integration
+  const userManagementIntegration = {
+    id: formatId("i", "user-management"),
+    name: "User Management",
+    description: "Manage your teams, invites and profile",
+    connection: {
+      type: "HTTP",
+      url: `${API_SERVER_URL}/mcp`,
+    },
+    icon: "https://i.imgur.com/GD4o7vx.png",
+    workspace,
+    created_at: new Date().toISOString(),
+  };
+
+  // Create a virtual Workspace Management integration
+  const workspaceManagementIntegration = {
+    id: formatId("i", "workspace-management"),
+    name: "Workspace Management",
+    description: "Manage your agents, integrations and threads",
+    connection: {
+      type: "HTTP",
+      url: `${API_SERVER_URL}${workspace}/mcp`,
+    },
+    icon: "https://assets.webdraw.app/uploads/deco-avocado-light.png",
+    workspace,
+    created_at: new Date().toISOString(),
+  };
+
+  return [
+    userManagementIntegration,
+    workspaceManagementIntegration,
+  ];
+};
 export const listIntegrations = createApiHandler({
   name: "INTEGRATIONS_LIST",
   description: "List all integrations",
@@ -124,9 +159,6 @@ export const listIntegrations = createApiHandler({
   handler: async (_, c) => {
     assertHasWorkspace(c);
     const workspace = c.workspace.value;
-    const host = c.host || "deco.chat";
-    const protocol = host.includes("localhost") ? "http" : "https";
-    const baseUrl = `${protocol}://${host}`;
 
     const [
       _assertions,
@@ -150,39 +182,8 @@ export const listIntegrations = createApiHandler({
       throw new Error(error.message || "Failed to list integrations");
     }
 
-    // Create a virtual User Management integration
-    const userManagementIntegration = {
-      id: formatId("i", "user-management"),
-      name: "User Management",
-      description: "Manage your teams, invites and profile",
-      connection: {
-        type: "HTTP",
-        url: `${baseUrl}/mcp`,
-      },
-      icon: "https://i.imgur.com/GD4o7vx.png",
-      workspace,
-      created_at: new Date().toISOString(),
-    };
-
-    // Create a virtual Workspace Management integration
-    const workspaceManagementIntegration = {
-      id: formatId("i", "workspace-management"),
-      name: "Workspace Management",
-      description: "Manage your agents, integrations and threads",
-      connection: {
-        type: "HTTP",
-        url: `${baseUrl}${workspace}/mcp`,
-      },
-      icon: "https://assets.webdraw.app/uploads/deco-avocado-light.png",
-      workspace,
-      created_at: new Date().toISOString(),
-    };
-
-    // TODO: Make Actor Backend able to handle these two virtual integrations
-
     return [
-      userManagementIntegration,
-      workspaceManagementIntegration,
+      ...virtualIntegrationsFor(workspace),
       ...integrations.data.map((item) => ({
         ...item,
         id: formatId("i", item.id),
@@ -215,6 +216,15 @@ export const getIntegration = createApiHandler({
       });
     }
     assertHasWorkspace(c);
+
+    const virtualIntegrations = virtualIntegrationsFor(c.workspace.value);
+
+    if (virtualIntegrations.some((i) => i.id === id)) {
+      return IntegrationSchema.parse({
+        ...virtualIntegrations.find((i) => i.id === id),
+        id: formatId(type, id),
+      });
+    }
 
     const [
       _assertions,

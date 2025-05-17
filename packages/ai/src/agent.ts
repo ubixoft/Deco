@@ -176,7 +176,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return path;
   }
 
-  createMCPClient(metadata?: AgentMetadata, req?: Request) {
+  createMCPClient(metadata?: AgentMetadata) {
     return MCPClient.forContext({
       envVars: this.env,
       db: this.db,
@@ -185,7 +185,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       stub: this.state.stub as AppContext["stub"],
       cookie: metadata?.principalCookie ?? undefined,
       workspace: fromWorkspaceString(this.workspace),
-      host: req?.headers.get("host") ?? undefined,
       cf: new Cloudflare({ apiToken: this.env.CF_API_TOKEN }),
     });
   }
@@ -212,7 +211,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     // Propagate supabase token from request to integration token
     this.metadata.principalCookie = req.headers.get("cookie");
-    this.metadata.mcpClient = this.createMCPClient(this.metadata, req);
+    this.metadata.mcpClient = this.createMCPClient(this.metadata);
     enrichMetadata?.end();
     return this.metadata;
   }
