@@ -15,7 +15,6 @@ import {
   type DockviewReadyEvent,
   IDockviewPanelHeaderProps,
   type IDockviewPanelProps,
-  type SerializedDockview,
 } from "dockview-react";
 import {
   ComponentProps,
@@ -149,14 +148,6 @@ export const openPanel = <T extends object>(
   channel.dispatchEvent(
     new CustomEvent("message", { detail: { type: "open", payload: detail } }),
   );
-};
-
-const safeParse = (value: string | null) => {
-  try {
-    return JSON.parse(value || "null");
-  } catch {
-    return null;
-  }
 };
 
 export interface Tab {
