@@ -95,6 +95,12 @@ export interface AgentMetadata extends AuthMetadata {
   mcpClient?: MCPClientStub<WorkspaceTools>;
 }
 
+const normalizeMCPId = (mcpId: string) => {
+  return mcpId.startsWith("i:") || mcpId.startsWith("a:")
+    ? mcpId.slice(2)
+    : mcpId;
+};
+
 const DEFAULT_MEMORY_LAST_MESSAGES = 8;
 const DEFAULT_MAX_STEPS = 25;
 const MAX_STEPS = 25;
@@ -401,38 +407,39 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     timings?: ServerTimingsBuilder,
   ): Promise<ToolsetsInput> {
     const tools: ToolsetsInput = {};
-
-    for (const [mcpId, filterList] of Object.entries(tool_set)) {
-      const getOrCreateCallableToolSetTiming = timings?.start(
-        `connect-mcp-${mcpId}`,
-      );
-      const allToolsFor = await this.getOrCreateCallableToolSet(mcpId)
-        .catch(() => {
-          return null;
-        });
-      getOrCreateCallableToolSetTiming?.end();
-      if (!allToolsFor) {
-        console.warn(`No tools found for server: ${mcpId}. Skipping.`);
-        continue;
-      }
-
-      if (filterList.length === 0) {
-        tools[mcpId] = allToolsFor;
-        continue;
-      }
-      const toolsInput: ToolsInput = {};
-      for (const item of filterList) {
-        const slug = slugify(item);
-        if (slug in allToolsFor) {
-          toolsInput[slug] = allToolsFor[slug];
-          continue;
+    await Promise.all(
+      Object.entries(tool_set).map(async ([mcpId, filterList]) => {
+        const getOrCreateCallableToolSetTiming = timings?.start(
+          `connect-mcp-${normalizeMCPId(mcpId)}`,
+        );
+        const allToolsFor = await this.getOrCreateCallableToolSet(mcpId)
+          .catch(() => {
+            return null;
+          });
+        getOrCreateCallableToolSetTiming?.end();
+        if (!allToolsFor) {
+          console.warn(`No tools found for server: ${mcpId}. Skipping.`);
+          return;
         }
 
-        console.warn(`Tool ${item} not found in callableToolSet[${mcpId}]`);
-      }
+        if (filterList.length === 0) {
+          tools[mcpId] = allToolsFor;
+          return;
+        }
+        const toolsInput: ToolsInput = {};
+        for (const item of filterList) {
+          const slug = slugify(item);
+          if (slug in allToolsFor) {
+            toolsInput[slug] = allToolsFor[slug];
+            continue;
+          }
 
-      tools[mcpId] = toolsInput;
-    }
+          console.warn(`Tool ${item} not found in callableToolSet[${mcpId}]`);
+        }
+
+        tools[mcpId] = toolsInput;
+      }),
+    );
 
     return tools;
   }
