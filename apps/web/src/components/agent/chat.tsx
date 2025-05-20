@@ -88,11 +88,8 @@ function ActionsButtons() {
   const { workspace } = useSDK();
 
   return (
-
     <div className="hidden md:flex items-center gap-2">
-      {workspace === "shared/deco.cx" && (
-        <WhatsAppButton />
-      )}
+      {workspace === "shared/deco.cx" && <WhatsAppButton />}
 
       {displayNewChat && (
         <Tooltip>
