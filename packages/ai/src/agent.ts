@@ -398,15 +398,19 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   protected async pickCallableTools(
     tool_set: Configuration["tools_set"],
+    timings?: ServerTimingsBuilder,
   ): Promise<ToolsetsInput> {
     const tools: ToolsetsInput = {};
 
     for (const [mcpId, filterList] of Object.entries(tool_set)) {
+      const getOrCreateCallableToolSetTiming = timings?.start(
+        `connect-mcp-${mcpId}`,
+      );
       const allToolsFor = await this.getOrCreateCallableToolSet(mcpId)
         .catch(() => {
           return null;
         });
-
+      getOrCreateCallableToolSetTiming?.end();
       if (!allToolsFor) {
         console.warn(`No tools found for server: ${mcpId}. Skipping.`);
         continue;
@@ -699,7 +703,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     const tool_set = await this.getThreadTools();
     getThreadToolsTiming?.end();
     const pickCallableToolsTiming = timings?.start("pick-callable-tools");
-    const toolsets = await this.pickCallableTools(tool_set);
+    const toolsets = await this.pickCallableTools(tool_set, timings);
     pickCallableToolsTiming?.end();
     const filtered = this.filterToolsets(toolsets, restrictedTools);
     return filtered;
