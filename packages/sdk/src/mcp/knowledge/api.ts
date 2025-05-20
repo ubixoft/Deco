@@ -79,13 +79,21 @@ export const deleteBase = createApiHandler({
     await assertUserHasAccessToWorkspace(c);
     const vector = await getVector(c);
     await vector.deleteIndex(name);
+    return {
+      name,
+    };
   },
 });
 export const createBase = createApiHandler({
   name: "KNOWLEDGE_BASE_CREATE",
   description: "Create a knowledge base",
   schema: z.object({
-    name: z.string().describe("The name of the knowledge base"),
+    name: z.string()
+      .regex(
+        /^[a-z0-9-_]+$/,
+        "Name can only contain lowercase letters, numbers, hyphens, and underscores",
+      )
+      .describe("The name of the knowledge base"),
     dimension: z.number().describe("The dimension of the knowledge base")
       .optional(),
   }),
@@ -96,6 +104,10 @@ export const createBase = createApiHandler({
       indexName: name,
       dimension: dimension ?? DEFAULT_DIMENSION,
     });
+    return {
+      name,
+      dimension,
+    };
   },
 });
 
@@ -109,6 +121,9 @@ export const forget = createKnowledgeBaseApiHandler({
     await assertUserHasAccessToWorkspace(c);
     const vector = await getVector(c);
     await vector.deleteIndexById(c.name, docId);
+    return {
+      docId,
+    };
   },
 });
 
