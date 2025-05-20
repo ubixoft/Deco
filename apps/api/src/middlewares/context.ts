@@ -3,7 +3,6 @@ import Cloudflare from "cloudflare";
 import type { MiddlewareHandler } from "hono";
 import { honoCtxToAppCtx } from "../api.ts";
 import { AppEnv, getEnv } from "../utils/context.ts";
-
 export const withContextMiddleware: MiddlewareHandler<AppEnv> = async (
   ctx,
   next,

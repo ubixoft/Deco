@@ -1,11 +1,11 @@
 import { Options } from "../crud/thread.ts";
-import type { Workspace } from "../index.ts";
+import type { FileSystemOptions, Workspace } from "../index.ts";
 
 export const KEYS = {
   FILE: (
-    workspace: string,
     path: string,
-  ) => ["file", workspace, path],
+    options?: FileSystemOptions,
+  ) => ["file", path, options?.encoding, options?.mode, options?.flag],
   AGENT: (
     workspace: Workspace,
     agentId?: string,
