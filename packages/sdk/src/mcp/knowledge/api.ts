@@ -135,7 +135,6 @@ export const remember = createKnowledgeBaseApiHandler({
       "The id of the content being remembered",
     ),
     content: z.string().describe("The content to remember"),
-    name: z.string().describe("The name of the knowledge base").optional(),
     metadata: z.record(z.string(), z.string()).describe(
       "The metadata to remember",
     ).optional(),
