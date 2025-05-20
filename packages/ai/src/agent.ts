@@ -51,8 +51,13 @@ import { join } from "node:path/posix";
 import process from "node:process";
 import { pickCapybaraAvatar } from "./capybaras.ts";
 import { mcpServerTools } from "./mcp.ts";
-import type { AgentMemoryConfig } from "./memory/memory.ts";
-import { AgentMemory, buildMemoryId } from "./memory/memory.ts";
+import type { AgentMemoryConfig } from "@deco/sdk/memory";
+import {
+  AgentMemory,
+  buildMemoryId,
+  slugify,
+  toAlphanumericId,
+} from "@deco/sdk/memory";
 import { createLLM } from "./models.ts";
 import type {
   AIAgent as IIAgent,
@@ -62,7 +67,6 @@ import type {
   ThreadQueryOptions,
 } from "./types.ts";
 import { GenerateOptions } from "./types.ts";
-import { slugify, toAlphanumericId } from "./utils/slugify.ts";
 import { AgentWallet } from "./wallet/index.ts";
 
 const TURSO_AUTH_TOKEN_KEY = "turso-auth-token";
@@ -186,8 +190,16 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return path;
   }
 
+  public get embedder() {
+    const openai = createOpenAI({
+      apiKey: this.env.OPENAI_API_KEY,
+    });
+    return openai.embedding("text-embedding-3-small");
+  }
+
   createAppContext(metadata?: AgentMetadata): AppContext {
     return {
+      params: {},
       envVars: this.env as any,
       db: this.db,
       user: metadata?.principal!,
@@ -450,9 +462,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     tokenLimit: number,
   ) {
     if (this.memoryId !== memoryId || !this.memory) {
-      const openai = createOpenAI({
-        apiKey: this.env.OPENAI_API_KEY,
-      });
       const tursoOrganization = this.env.TURSO_ORGANIZATION ?? "decoai";
       const tokenStorage = this.env.TURSO_GROUP_DATABASE_TOKEN ?? {
         getToken: (memoryId: string) => {
@@ -475,7 +484,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         tursoOrganization,
         tokenStorage,
         processors: [new TokenLimiter({ limit: tokenLimit })],
-        embedder: openai.embedding("text-embedding-3-small"),
+        embedder: this.embedder,
         workspace: this.workspace,
         options: {
           semanticRecall: false,
