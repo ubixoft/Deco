@@ -1,62 +1,84 @@
-import { MCPClient } from "../fetcher.ts";
+import { fetchAPI } from "../fetcher.ts";
 
-interface ListOptions {
-  workspace: string;
-  root: string;
+// File system module interfaces
+export interface FileSystemOptions {
+  /** Encoding to use for file operations */
+  encoding?: string;
+  /** File mode (permissions) */
+  mode?: number;
+  /** File flags */
+  flag?: string;
 }
 
-export const listFiles = async ({ workspace, root }: ListOptions) => {
-  const { data } = await MCPClient
-    .forWorkspace(workspace)
-    .FS_LIST({ prefix: root });
+export const readFile = async (path: string, options?: FileSystemOptions) => {
+  const response = await fetchAPI({
+    path: `/fs/file?path=${encodeURIComponent(path)}&opts=${
+      JSON.stringify(options)
+    }`,
+    method: "GET",
+  });
 
-  return data;
+  if (!response.ok) {
+    throw new Error(`Failed to read file: ${response.statusText}`);
+  }
+
+  return response.text();
 };
 
-interface WriteOptions {
-  path: string;
-  workspace: string;
-  content: Uint8Array;
-  contentType: string;
-  expiresIn?: number;
-}
+export const readDirectory = async (
+  path: string,
+  options?: FileSystemOptions,
+) => {
+  const response = await fetchAPI({
+    path: `/fs/directory?path=${encodeURIComponent(path)}&opts=${
+      JSON.stringify(options)
+    }`,
+    method: "GET",
+  });
 
-export const writeFile = async ({
-  path,
-  workspace,
-  content,
-  contentType,
-  expiresIn,
-}: WriteOptions) => {
-  const { data: uploadUrl } = await MCPClient
-    .forWorkspace(workspace)
-    .FS_WRITE({ path, contentType, ...(expiresIn ? { expiresIn } : {}) });
+  if (!response.ok) {
+    throw new Error(`Failed to read directory: ${response.statusText}`);
+  }
 
-  const response = await fetch(uploadUrl!, {
-    method: "PUT",
-    body: content,
+  return response.json();
+};
+
+export const writeFile = async (
+  path: string,
+  content: string | Uint8Array,
+  options?: FileSystemOptions,
+) => {
+  const response = await fetchAPI({
+    path: `/fs/file?path=${encodeURIComponent(path)}&opts=${
+      JSON.stringify(options)
+    }`,
+    method: "POST",
+    body: typeof content === "string" ? JSON.stringify({ content }) : content,
     headers: {
-      "Content-Type": contentType,
+      "content-type": typeof content === "string"
+        ? "application/json"
+        : "application/octet-stream",
     },
   });
 
-  return response;
+  if (!response.ok) {
+    throw new Error(`Failed to create file: ${response.statusText}`);
+  }
+
+  return response.json();
 };
 
-interface ReadOptions {
-  workspace: string;
-  path: string;
-  expiresIn?: number;
-}
+export const deleteFile = async (path: string, options?: FileSystemOptions) => {
+  const response = await fetchAPI({
+    path: `/fs/file?path=${encodeURIComponent(path)}&opts=${
+      JSON.stringify(options)
+    }`,
+    method: "DELETE",
+  });
 
-export const readFile = async ({
-  workspace,
-  path,
-  expiresIn,
-}: ReadOptions) => {
-  const { data } = await MCPClient
-    .forWorkspace(workspace)
-    .FS_READ({ path, ...(expiresIn ? { expiresIn } : {}) });
+  if (!response.ok) {
+    throw new Error(`Failed to delete file: ${response.statusText}`);
+  }
 
-  return data; // presigned GET url
+  return response.json();
 };

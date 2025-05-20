@@ -1,52 +1,54 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { listFiles, readFile, writeFile } from "../crud/fs.tsx";
-import { useSDK } from "../index.ts";
+import { deleteFile, readDirectory, readFile, writeFile } from "../crud/fs.tsx";
+import { type FileSystemOptions } from "../index.ts";
 import { KEYS } from "./api.ts";
 
-export const useFile = (path: string) => {
-  const { workspace } = useSDK();
-
+export const useFile = (path: string, options?: FileSystemOptions) => {
   return useQuery({
-    queryKey: KEYS.FILE(workspace, path),
-    queryFn: () => readFile({ workspace, path }),
+    queryKey: KEYS.FILE(path, options),
+    queryFn: () => readFile(path, options),
   });
 };
 
-export const useFiles = (root: string) => {
-  const { workspace } = useSDK();
-
+export const useDirectory = (path: string, options?: FileSystemOptions) => {
   return useQuery({
-    queryKey: KEYS.FILE(workspace, root),
-    queryFn: () => listFiles({ workspace, root }),
+    queryKey: KEYS.FILE(path, options),
+    queryFn: () => readDirectory(path, options),
   });
 };
 
 export const useWriteFile = () => {
   const queryClient = useQueryClient();
-  const { workspace } = useSDK();
 
   return useMutation({
-    mutationFn: ({ path, content, contentType }: {
+    mutationFn: ({
+      path,
+      content,
+      options,
+    }: {
       path: string;
-      content: Uint8Array;
-      contentType: string;
-    }) => writeFile({ path, workspace, content, contentType }),
-    onMutate: async ({ path, content, contentType }: {
+      content: string | Uint8Array;
+      options?: FileSystemOptions;
+    }) => writeFile(path, content, options),
+    onMutate: async ({
+      path,
+      content,
+      options,
+    }: {
       path: string;
-      content: Uint8Array;
-      contentType: string;
+      content: string | Uint8Array;
+      options?: FileSystemOptions;
     }) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: KEYS.FILE(workspace, path) });
+      await queryClient.cancelQueries({ queryKey: KEYS.FILE(path, options) });
 
       // Snapshot the previous value
-      const previousData = queryClient.getQueryData(KEYS.FILE(workspace, path));
+      const previousData = queryClient.getQueryData(KEYS.FILE(path, options));
 
       // Optimistically update to the new value
-      queryClient.setQueryData(KEYS.FILE(workspace, path), () => ({
+      queryClient.setQueryData(KEYS.FILE(path, options), () => ({
         path,
         content,
-        contentType,
         exists: true,
       }));
 
@@ -56,7 +58,7 @@ export const useWriteFile = () => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousData) {
         queryClient.setQueryData(
-          KEYS.FILE(workspace, variables.path),
+          KEYS.FILE(variables.path, variables.options),
           context.previousData,
         );
       }
@@ -64,8 +66,41 @@ export const useWriteFile = () => {
     onSettled: (_, __, variables) => {
       // Always refetch after error or success to ensure data is in sync
       queryClient.invalidateQueries({
-        queryKey: KEYS.FILE(workspace, variables.path),
+        queryKey: KEYS.FILE(variables.path, variables.options),
       });
+    },
+  });
+};
+
+export const useDeleteFile = (path: string, options?: FileSystemOptions) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => deleteFile(path, options),
+    onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: KEYS.FILE(path, options) });
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData(KEYS.FILE(path, options));
+
+      // Optimistically update to the new value
+      queryClient.removeQueries({ queryKey: KEYS.FILE(path, options) });
+
+      return { previousData };
+    },
+    onError: (_err, _variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          KEYS.FILE(path, options),
+          context.previousData,
+        );
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure data is in sync
+      queryClient.invalidateQueries({ queryKey: KEYS.FILE(path, options) });
     },
   });
 };
