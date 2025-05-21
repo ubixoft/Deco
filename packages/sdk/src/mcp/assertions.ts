@@ -153,13 +153,16 @@ export const assertHasUser = (c: AppContext) => {
   }
 };
 
-export const bypass = () => Promise.resolve(true);
+export const bypass = (): Promise<boolean> => Promise.resolve(true);
 
 export const canAccessWorkspaceResource = async (
   resource: string,
   _: unknown,
   c: AppContext,
 ): Promise<boolean> => {
+  if (c.isLocal) {
+    return bypass();
+  }
   assertHasUser(c);
   assertHasWorkspace(c);
   const user = c.user;
