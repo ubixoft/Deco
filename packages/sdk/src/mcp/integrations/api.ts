@@ -20,7 +20,8 @@ import {
 import type { Workspace } from "../../path.ts";
 import {
   assertHasWorkspace,
-  assertUserHasAccessToWorkspace,
+  bypass,
+  canAccessWorkspaceResource,
 } from "../assertions.ts";
 import { createApiHandler } from "../context.ts";
 import { NotFoundError } from "../index.ts";
@@ -58,6 +59,8 @@ export const callTool = createApiHandler({
   schema: IntegrationSchema.pick({
     connection: true,
   }).merge(CallToolRequestSchema.pick({ params: true })),
+  // The tool call will be authorized itself. This is a proxy
+  canAccess: bypass,
   handler: async ({ connection: reqConnection, params: toolCall }, c) => {
     const connection = isApiDecoChatMCPConnection(reqConnection)
       ? patchApiDecoChatTokenHTTPConnection(
@@ -107,6 +110,7 @@ export const listTools = createApiHandler({
   schema: IntegrationSchema.pick({
     connection: true,
   }),
+  canAccess: bypass,
   handler: async ({ connection }, c) => {
     const result = await listToolsByConnectionType(
       connection,
@@ -177,21 +181,21 @@ const virtualIntegrationsFor = (
     }),
   ];
 };
+
 export const listIntegrations = createApiHandler({
   name: "INTEGRATIONS_LIST",
   description: "List all integrations",
   schema: z.object({}),
+  canAccess: canAccessWorkspaceResource,
   handler: async (_, c) => {
     assertHasWorkspace(c);
     const workspace = c.workspace.value;
 
     const [
-      _assertions,
       integrations,
       agents,
       knowledgeBases,
     ] = await Promise.all([
-      assertUserHasAccessToWorkspace(c),
       c.db
         .from("deco_chat_integrations")
         .select("*")
@@ -236,6 +240,13 @@ export const getIntegration = createApiHandler({
   schema: z.object({
     id: z.string(),
   }),
+  async canAccess(name, props, c) {
+    const { id } = props;
+    if (INNATE_INTEGRATIONS[id as keyof typeof INNATE_INTEGRATIONS]) {
+      return true;
+    }
+    return await canAccessWorkspaceResource(name, props, c);
+  },
   handler: async ({ id }, c) => {
     const { uuid, type } = parseId(id);
     if (uuid in INNATE_INTEGRATIONS) {
@@ -261,17 +272,11 @@ export const getIntegration = createApiHandler({
       });
     }
 
-    const [
-      _assertions,
-      { data, error },
-    ] = await Promise.all([
-      assertUserHasAccessToWorkspace(c),
-      c.db
-        .from(type === "i" ? "deco_chat_integrations" : "deco_chat_agents")
-        .select("*")
-        .eq("id", uuid)
-        .single(),
-    ]);
+    const { data, error } = await c.db
+      .from(type === "i" ? "deco_chat_integrations" : "deco_chat_agents")
+      .select("*")
+      .eq("id", uuid)
+      .single();
 
     if (error) {
       throw new InternalServerError(error.message);
@@ -302,10 +307,9 @@ export const createIntegration = createApiHandler({
   name: "INTEGRATIONS_CREATE",
   description: "Create a new integration",
   schema: IntegrationSchema.partial(),
+  canAccess: canAccessWorkspaceResource,
   handler: async (integration, c) => {
     assertHasWorkspace(c);
-
-    await assertUserHasAccessToWorkspace(c);
 
     const { data, error } = await c.db
       .from("deco_chat_integrations")
@@ -335,10 +339,9 @@ export const updateIntegration = createApiHandler({
     id: z.string(),
     integration: IntegrationSchema,
   }),
+  canAccess: canAccessWorkspaceResource,
   handler: async ({ id, integration }, c) => {
     assertHasWorkspace(c);
-
-    await assertUserHasAccessToWorkspace(c);
 
     const { uuid, type } = parseId(id);
 
@@ -374,10 +377,9 @@ export const deleteIntegration = createApiHandler({
   schema: z.object({
     id: z.string(),
   }),
+  canAccess: canAccessWorkspaceResource,
   handler: async ({ id }, c) => {
     assertHasWorkspace(c);
-
-    await assertUserHasAccessToWorkspace(c);
 
     const { uuid, type } = parseId(id);
 
