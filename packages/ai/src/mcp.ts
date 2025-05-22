@@ -171,13 +171,12 @@ export const mcpServerTools = async (
 
   // Propagate req token to api.deco.chat integration
   if (isApiDecoChatMCPConnection(mcpServer.connection)) {
-    const cookie = createSessionTokenCookie(
-      await agent.token(),
-      new URL(mcpServer.connection.url).hostname,
-    );
     mcpServer.connection = patchApiDecoChatTokenHTTPConnection(
       mcpServer.connection,
-      agent.metadata?.userCookie ?? cookie,
+      agent.metadata?.userCookie ?? createSessionTokenCookie(
+        await agent.token(),
+        new URL(mcpServer.connection.url).hostname,
+      ),
     );
   }
 
