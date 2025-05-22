@@ -62,11 +62,11 @@ const getMCPServerTools = async (
 
   try {
     const { tools } = await client.listTools();
+    await client.close();
     const mtools: Record<string, ToolAction<any, any, any>> = Object
       .fromEntries(
         tools.map((tool: typeof tools[number]) => {
           const slug = slugify(tool.name);
-
           return [
             slug,
             createTool({
@@ -74,11 +74,19 @@ const getMCPServerTools = async (
               description: tool.description! ?? "",
               inputSchema: jsonSchemaToModel(tool.inputSchema),
               execute: async ({ context }) => {
+                const innerClient = await createServerClient(mcpServer).catch(
+                  console.error,
+                );
+                if (!innerClient) {
+                  return { error: "Failed to create inner client" };
+                }
                 try {
-                  return await client.callTool({
+                  const result = await innerClient.callTool({
                     name: tool.name,
                     arguments: context,
                   });
+                  await innerClient.close();
+                  return result;
                 } catch (error) {
                   agent.resetCallableToolSet(mcpServer.id);
                   throw error;

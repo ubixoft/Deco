@@ -417,11 +417,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       return null;
     }
 
-    // Do not cache SSE connections, they are unreliable it seems
-    if (integration.connection.type === "SSE") {
-      return serverTools;
-    }
-
     this.callableToolSet[mcpId] = serverTools;
 
     return this.callableToolSet[mcpId];
