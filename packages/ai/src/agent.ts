@@ -44,6 +44,7 @@ import type { StorageThreadType } from "@mastra/core";
 import type { ToolsetsInput, ToolsInput } from "@mastra/core/agent";
 import { Agent } from "@mastra/core/agent";
 import type { MastraMemory } from "@mastra/core/memory";
+import { OpenAIVoice } from "@mastra/voice-openai";
 import { TokenLimiter } from "@mastra/memory/processors";
 import { createServerClient } from "@supabase/ssr";
 import {
@@ -71,6 +72,8 @@ import type {
 } from "./types.ts";
 import { GenerateOptions } from "./types.ts";
 import { AgentWallet } from "./wallet/index.ts";
+import { Buffer } from "node:buffer";
+import { AudioMessage } from "./index.ts";
 
 const TURSO_AUTH_TOKEN_KEY = "turso-auth-token";
 const DEFAULT_ACCOUNT_ID = "c95fc4cec7fc52453228d9db170c372c";
@@ -80,6 +83,9 @@ const ANONYMOUS_INSTRUCTIONS =
 
 const ANONYMOUS_NAME = "Anonymous";
 const LOAD_TOOLS_TIMEOUT_MS = 5_000;
+const DEFAULT_TEXT_TO_SPEECH_MODEL = "tts-1";
+const DEFAULT_SPEECH_TO_TEXT_MODEL = "whisper-1";
+const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // 25MB
 
 export interface Env {
   ANTHROPIC_API_KEY: string;
@@ -128,6 +134,10 @@ const removeNonSerializableFields = (obj: any) => {
   }
   return newObj;
 };
+
+function isAudioMessage(message: AIMessage): message is AudioMessage {
+  return "audioBase64" in message && typeof message.audioBase64 === "string";
+}
 
 @Actor()
 export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
@@ -535,6 +545,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       name: config.name,
       instructions: config.instructions,
       model: llm,
+      voice: this.createVoiceConfig(),
     });
   }
 
@@ -583,6 +594,16 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return this._agent ?? this.anonymous;
   }
 
+  /**
+   * Get the audio transcription of the given audio stream
+   * @param audioStream - The audio stream to get the transcription of
+   * @returns The transcription of the audio stream
+   */
+  private async getAudioTranscription(audioStream: ReadableStream) {
+    const transcription = await this.agent.voice.listen(audioStream as any);
+    return transcription as string;
+  }
+
   public getAgentName() {
     return this._configuration?.name ?? ANONYMOUS_NAME;
   }
@@ -608,6 +629,16 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       model: DEFAULT_MODEL,
       views: [],
       visibility: "WORKSPACE",
+      voice: {
+        textToSpeech: {
+          enabled: false,
+          model: DEFAULT_TEXT_TO_SPEECH_MODEL,
+        },
+        speechToText: {
+          enabled: true,
+          model: DEFAULT_SPEECH_TO_TEXT_MODEL,
+        },
+      },
       ...manifest,
     };
 
@@ -663,7 +694,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     payload: AIMessage[],
     jsonSchema: JSONSchema7,
   ): Promise<GenerateObjectResult<TObject>> {
-    const result = await this.agent.generate(payload, {
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this.convertToAIMessage(msg)),
+    );
+    const result = await this.agent.generate(aiMessages, {
       ...this.thread,
       output: jsonSchema,
       maxSteps: this.maxSteps(),
@@ -704,6 +738,27 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     );
   }
 
+  private async handleAudioTranscription(audio: {
+    audioBase64: string;
+  }): Promise<string> {
+    const buffer = Buffer.from(audio.audioBase64, "base64");
+    if (buffer.length > MAX_AUDIO_SIZE) {
+      throw new Error("Audio size exceeds the maximum allowed size");
+    }
+    const audioStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          new Uint8Array(buffer),
+        );
+        controller.close();
+      },
+    });
+
+    const transcription = await this.getAudioTranscription(audioStream as any);
+
+    return transcription;
+  }
+
   async generate(
     payload: AIMessage[],
     options?: GenerateOptions,
@@ -712,7 +767,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const agent = this.withAgentOverrides(options);
 
-    return agent.generate(payload, {
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this.convertToAIMessage(msg)),
+    );
+
+    return agent.generate(aiMessages, {
       ...this.thread,
       maxSteps: this.maxSteps(),
       maxTokens: this.maxTokens(),
@@ -749,6 +808,25 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return filtered;
   }
 
+  private createVoiceConfig() {
+    if (!this.env.OPENAI_API_KEY) {
+      return undefined;
+    }
+
+    return new OpenAIVoice({
+      listeningModel: {
+        apiKey: this.env.OPENAI_API_KEY,
+        name: this._configuration?.voice?.speechToText?.model ??
+          DEFAULT_SPEECH_TO_TEXT_MODEL as any,
+      },
+      speechModel: {
+        apiKey: this.env.OPENAI_API_KEY,
+        name: this._configuration?.voice?.textToSpeech?.model ??
+          DEFAULT_TEXT_TO_SPEECH_MODEL as any,
+      },
+    });
+  }
+
   private withAgentOverrides(options?: GenerateOptions): Agent {
     let agent = this.agent;
 
@@ -768,6 +846,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         instructions: this._configuration?.instructions ??
           ANONYMOUS_INSTRUCTIONS,
         model: llm,
+        voice: this.createVoiceConfig(),
       });
     }
 
@@ -782,6 +861,21 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         props: {},
       },
     }, fn);
+  }
+
+  private async convertToAIMessage(message: AIMessage): Promise<Message> {
+    if (isAudioMessage(message)) {
+      const transcription = await this.handleAudioTranscription({
+        audioBase64: message.audioBase64,
+      });
+
+      return {
+        role: "user",
+        id: crypto.randomUUID(),
+        content: transcription,
+      };
+    }
+    return message;
   }
 
   async onBeforeInvoke(
@@ -879,50 +973,57 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       maxLimit - this.maxTokens(),
     );
 
-    const response = await agent.stream(payload, {
-      ...this.thread,
-      context,
-      toolsets,
-      instructions: options?.instructions,
-      maxSteps: this.maxSteps(),
-      maxTokens: this.maxTokens(),
-      experimental_transform: experimentalTransform,
-      providerOptions: budgetTokens > MIN_THINKING_TOKENS
-        ? {
-          anthropic: {
-            thinking: {
-              type: "enabled",
-              budgetTokens,
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this.convertToAIMessage(msg)),
+    );
+
+    const response = await agent.stream(
+      aiMessages,
+      {
+        ...this.thread,
+        context,
+        toolsets,
+        instructions: options?.instructions,
+        maxSteps: this.maxSteps(),
+        maxTokens: this.maxTokens(),
+        experimental_transform: experimentalTransform,
+        providerOptions: budgetTokens > MIN_THINKING_TOKENS
+          ? {
+            anthropic: {
+              thinking: {
+                type: "enabled",
+                budgetTokens,
+              },
             },
-          },
-        }
-        : {},
-      ...(typeof options?.lastMessages === "number"
-        ? {
-          memoryOptions: {
-            lastMessages: options.lastMessages,
-            semanticRecall: false,
-          },
-        }
-        : {}),
-      onChunk: () => {
-        endTtfbSpan();
+          }
+          : {},
+        ...(typeof options?.lastMessages === "number"
+          ? {
+            memoryOptions: {
+              lastMessages: options.lastMessages,
+              semanticRecall: false,
+            },
+          }
+          : {}),
+        onChunk: () => {
+          endTtfbSpan();
+        },
+        onError: () => {
+          // TODO(@mcandeia): add error tracking with posthog
+        },
+        onFinish: (result) => {
+          if (userId) {
+            wallet.computeLLMUsage({
+              userId,
+              usage: result.usage,
+              threadId: this.thread.threadId,
+              model: this._configuration?.model ?? DEFAULT_MODEL,
+              agentName: this._configuration?.name ?? ANONYMOUS_NAME,
+            });
+          }
+        },
       },
-      onError: () => {
-        // TODO(@mcandeia): add error tracking with posthog
-      },
-      onFinish: (result) => {
-        if (userId) {
-          wallet.computeLLMUsage({
-            userId,
-            usage: result.usage,
-            threadId: this.thread.threadId,
-            model: this._configuration?.model ?? DEFAULT_MODEL,
-            agentName: this._configuration?.name ?? ANONYMOUS_NAME,
-          });
-        }
-      },
-    });
+    );
     streamTiming.end();
 
     const dataStreamResponseTiming = timings.start("data-stream-response");
@@ -955,7 +1056,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     const tool_set = await this.getThreadTools();
     const toolsets = await this.pickCallableTools(tool_set);
 
-    const response = await this.agent.stream(payload, {
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this.convertToAIMessage(msg)),
+    );
+
+    const response = await this.agent.stream(aiMessages, {
       ...this.thread,
       maxSteps: this.maxSteps(),
       maxTokens: this.maxTokens(),

@@ -66,27 +66,38 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
         resourceId: resourceId ?? data.id ?? undefined,
       });
 
+    const audioFromArgs = args && typeof args === "object" &&
+        "audioBase64" in args && typeof args.audioBase64 === "string"
+      ? args.audioBase64
+      : undefined;
+
     const messagesFromArgs = args && typeof args === "object" &&
         "messages" in args && isAIMessages(args.messages)
       ? args.messages
       : undefined;
 
-    const messages = messagesFromArgs ?? [
-      {
+    const messages = audioFromArgs
+      ? [{
+        audioBase64: audioFromArgs,
         id: crypto.randomUUID(),
         role: "user" as const,
-        content: `the webhook is triggered with the following messages:`,
-      },
-      ...(args
-        ? [
-          {
-            id: crypto.randomUUID(),
-            role: "user" as const,
-            content: `\`\`\`json\n${JSON.stringify(args)}\`\`\``,
-          },
-        ]
-        : []),
-    ];
+      }]
+      : messagesFromArgs ?? [
+        {
+          id: crypto.randomUUID(),
+          role: "user" as const,
+          content: `the webhook is triggered with the following messages:`,
+        },
+        ...(args
+          ? [
+            {
+              id: crypto.randomUUID(),
+              role: "user" as const,
+              content: `\`\`\`json\n${JSON.stringify(args)}\`\`\``,
+            },
+          ]
+          : []),
+      ];
 
     const outputTool = url?.searchParams.get("outputTool");
     if (outputTool) {
