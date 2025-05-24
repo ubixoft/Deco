@@ -629,16 +629,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       model: DEFAULT_MODEL,
       views: [],
       visibility: "WORKSPACE",
-      voice: {
-        textToSpeech: {
-          enabled: false,
-          model: DEFAULT_TEXT_TO_SPEECH_MODEL,
-        },
-        speechToText: {
-          enabled: true,
-          model: DEFAULT_SPEECH_TO_TEXT_MODEL,
-        },
-      },
       ...manifest,
     };
 
@@ -816,13 +806,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return new OpenAIVoice({
       listeningModel: {
         apiKey: this.env.OPENAI_API_KEY,
-        name: this._configuration?.voice?.speechToText?.model ??
-          DEFAULT_SPEECH_TO_TEXT_MODEL as any,
+        name: DEFAULT_SPEECH_TO_TEXT_MODEL as any,
       },
       speechModel: {
         apiKey: this.env.OPENAI_API_KEY,
-        name: this._configuration?.voice?.textToSpeech?.model ??
-          DEFAULT_TEXT_TO_SPEECH_MODEL as any,
+        name: DEFAULT_TEXT_TO_SPEECH_MODEL as any,
       },
     });
   }
