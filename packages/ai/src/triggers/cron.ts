@@ -7,8 +7,12 @@ export const hooks: TriggerHooks<TriggerData & { type: "cron" }> = {
   type: "cron",
   onCreated: async (data, trigger) => {
     const cron = new Cron(data.cronExp);
+    console.log("[CRON] onCreated", data);
+    console.log("[CRON] cron", cron);
     const dt = cron.nextRun();
+    console.log("[CRON] dt", dt);
     if (dt) {
+      console.log("[CRON] setAlarm", dt.getTime());
       await trigger.state.storage.setAlarm(dt.getTime());
     }
   },
