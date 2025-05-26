@@ -222,8 +222,6 @@ export class Trigger {
   private setData(data: TriggerData) {
     this.data = data;
     this.hooks = this.data ? hooks[this.data?.type ?? "cron"] : cron;
-    console.log("[TRIGGER] setData", JSON.stringify(this.data, null, 2));
-    console.log("[TRIGGER] hooks", JSON.stringify(this.hooks, null, 2));
   }
 
   private getTriggerId() {
@@ -244,16 +242,11 @@ export class Trigger {
   }
 
   async run(args?: unknown) {
-    console.log("[TRIGGER] run", args);
     const runData: Record<string, unknown> = {};
     try {
       const data = this.data;
       runData.data = data;
       runData.metadata = this.metadata;
-      console.log("[TRIGGER] runData", JSON.stringify(runData, null, 2));
-      console.log("[TRIGGER] data", JSON.stringify(data, null, 2));
-      console.log("[TRIGGER] hooks", JSON.stringify(this.hooks, null, 2));
-      console.log("[TRIGGER] args", JSON.stringify(args, null, 2));
       if (!data) {
         return;
       }
@@ -264,7 +257,6 @@ export class Trigger {
       );
       return runData.result;
     } catch (error) {
-      console.log("[TRIGGER] run error", JSON.stringify(error, null, 2));
       runData.error = JSON.stringify(error);
     } finally {
       await this.saveRun({
@@ -281,7 +273,6 @@ export class Trigger {
   }
 
   async alarm() {
-    console.log("[TRIGGER] alarm");
     await this.run();
   }
 
@@ -316,7 +307,6 @@ export class Trigger {
   }
 
   async create(data: TriggerData) {
-    console.log("[TRIGGER] create", JSON.stringify(data, null, 2));
     if (this.metadata?.internalCall === false) {
       return {
         success: false,

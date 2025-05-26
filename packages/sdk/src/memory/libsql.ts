@@ -34,9 +34,7 @@ export class LibSQLStore extends MastraLibSQLStore {
       metadata: Record<string, unknown>;
     },
   ): Promise<StorageThreadType> {
-    await this.threadCache.delete(args.id).catch((error) => {
-      console.log("error deleting thread cache 1", error);
-    });
+    await this.threadCache.delete(args.id);
     return super.updateThread(args).then(async (thread) => {
       await this.threadCache.set(thread.id, thread);
       return thread;
@@ -45,8 +43,9 @@ export class LibSQLStore extends MastraLibSQLStore {
   override async saveThread(
     { thread }: { thread: StorageThreadType },
   ): Promise<StorageThreadType> {
-    await this.threadCache.delete(thread.id).catch((error) => {
-      console.log("error deleting thread cache 2", error);
+    await this.threadCache.delete(thread.id).catch(() => {
+      // ignore saveThread error
+      // Error untracked: Unable to delete cached response
     });
     return super.saveThread({ thread }).then(async () => {
       await this.threadCache.set(thread.id, thread);
@@ -57,9 +56,7 @@ export class LibSQLStore extends MastraLibSQLStore {
   override async deleteThread(
     { threadId }: { threadId: string },
   ): Promise<void> {
-    await this.threadCache.delete(threadId).catch((error) => {
-      console.log("error deleting thread cache 3", error);
-    });
+    await this.threadCache.delete(threadId);
     return super.deleteThread({ threadId });
   }
 

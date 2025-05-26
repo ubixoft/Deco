@@ -16,7 +16,6 @@ export const hooks: TriggerHooks<TriggerData & { type: "cron" }> = {
     await trigger.state.storage.deleteAlarm();
   },
   run: async (data, trigger) => {
-    console.log("[CRON] run data", JSON.stringify(data, null, 2));
     if (trigger.metadata?.internalCall === false) {
       return {
         success: false,
