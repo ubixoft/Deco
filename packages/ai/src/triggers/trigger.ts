@@ -123,7 +123,7 @@ export class Trigger {
   constructor(public state: ActorState, protected actorEnv: any) {
     this.env = {
       ...process.env,
-      ...this.env,
+      ...actorEnv,
     };
     this.agentId = dirname(dirname(this.state.id)); // strip /triggers/$triggerId
     this.workspace = getTwoFirstSegments(this.state.id);
