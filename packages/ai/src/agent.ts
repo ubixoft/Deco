@@ -771,7 +771,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     const aiMessages = await Promise.all(
       payload.map((msg) => this.convertToAIMessage(msg)),
     );
-    
+
     return agent.generate(aiMessages, {
       ...this.thread,
       maxSteps: this.maxSteps(),
