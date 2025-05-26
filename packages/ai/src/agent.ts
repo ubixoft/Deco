@@ -862,6 +862,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   }
 
   private async convertToAIMessage(message: AIMessage): Promise<Message> {
+    console.log("[AGENT] convertToAIMessage", JSON.stringify(message, null, 2));
     if (isAudioMessage(message)) {
       const transcription = await this.handleAudioTranscription({
         audioBase64: message.audioBase64,
@@ -873,6 +874,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         content: transcription,
       };
     }
+    console.log("[AGENT] convertToAIMessage return message");
     return message;
   }
 
