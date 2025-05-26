@@ -36,20 +36,26 @@ export const hooks: TriggerHooks<TriggerData & { type: "cron" }> = {
       ? crypto.randomUUID()
       : undefined;
     const threadId = data.prompt.threadId ?? defaultThreadId;
+    console.log("[CRON] threadId", threadId);
     const agent = trigger.state.stub(AIAgent).new(trigger.agentId)
       .withMetadata({
         threadId,
         resourceId: data.id,
       });
+    console.log("[CRON] agent", JSON.stringify(agent, null, 2));
     const response = await agent.generate(
       data.prompt.messages.map((message) => ({
         ...message,
         id: crypto.randomUUID(),
       })),
     );
+    console.log("[CRON] response", JSON.stringify(response, null, 2));
     const cron = new Cron(data.cronExp);
+    console.log("[CRON] cron", JSON.stringify(cron, null, 2));
     const dt = cron.nextRun();
+    console.log("[CRON] dt", JSON.stringify(dt, null, 2));
     if (dt) {
+      console.log("[CRON] setAlarm", dt.getTime());
       await trigger.state.storage.setAlarm(dt.getTime());
     }
     return response;
