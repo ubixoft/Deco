@@ -34,7 +34,9 @@ export class LibSQLStore extends MastraLibSQLStore {
       metadata: Record<string, unknown>;
     },
   ): Promise<StorageThreadType> {
-    await this.threadCache.delete(args.id);
+    await this.threadCache.delete(args.id).catch((error) => {
+      console.log("error deleting thread cache 1", error);
+    });
     return super.updateThread(args).then(async (thread) => {
       await this.threadCache.set(thread.id, thread);
       return thread;
@@ -43,7 +45,9 @@ export class LibSQLStore extends MastraLibSQLStore {
   override async saveThread(
     { thread }: { thread: StorageThreadType },
   ): Promise<StorageThreadType> {
-    await this.threadCache.delete(thread.id);
+    await this.threadCache.delete(thread.id).catch((error) => {
+      console.log("error deleting thread cache 2", error);
+    });
     return super.saveThread({ thread }).then(async () => {
       await this.threadCache.set(thread.id, thread);
       return thread;
@@ -53,7 +57,9 @@ export class LibSQLStore extends MastraLibSQLStore {
   override async deleteThread(
     { threadId }: { threadId: string },
   ): Promise<void> {
-    await this.threadCache.delete(threadId);
+    await this.threadCache.delete(threadId).catch((error) => {
+      console.log("error deleting thread cache 3", error);
+    });
     return super.deleteThread({ threadId });
   }
 
