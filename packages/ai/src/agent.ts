@@ -835,7 +835,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         model: options.model,
         bypassOpenRouter: options.bypassOpenRouter,
       });
-      console.log("[AGENT] llm", JSON.stringify(llm, null, 2));
       // TODO(@mcandeia) for now, token limiter is not being used because we are avoiding instantiating a new memory.
       agent = new Agent({
         memory: this.memory,
@@ -845,7 +844,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         model: llm,
         voice: this.createVoiceConfig(),
       });
-
     }
 
     console.log("[AGENT] agent", JSON.stringify(agent, null, 2));
