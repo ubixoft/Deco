@@ -823,17 +823,20 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   private withAgentOverrides(options?: GenerateOptions): Agent {
     let agent = this.agent;
-
+    console.log("[AGENT] withAgentOverrides", JSON.stringify(options, null, 2));
     if (!options) {
       return agent;
     }
 
     if (options.model) {
+      console.log("[AGENT] options.model try create llm");
       const { llm } = this.createLLM({
         model: options.model,
         bypassOpenRouter: options.bypassOpenRouter,
       });
+      console.log("[AGENT] llm created");
       // TODO(@mcandeia) for now, token limiter is not being used because we are avoiding instantiating a new memory.
+      console.log("[AGENT] creating agent");
       agent = new Agent({
         memory: this.memory,
         name: this._configuration?.name ?? ANONYMOUS_NAME,
@@ -842,8 +845,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         model: llm,
         voice: this.createVoiceConfig(),
       });
+      console.log("[AGENT] agent created");
     }
-
+ console.log("return agent")
     return agent;
   }
   private runWithContext<T>(fn: () => Promise<T>) {
