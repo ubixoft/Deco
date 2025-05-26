@@ -1,8 +1,3 @@
-import { Input } from "@deco/ui/components/input.tsx";
-import { Textarea } from "@deco/ui/components/textarea.tsx";
-import { Button } from "@deco/ui/components/button.tsx";
-import Ajv from "ajv";
-import { useMemo, useState } from "react";
 import {
   TriggerOutputSchema,
   useCreateTrigger,
@@ -10,9 +5,8 @@ import {
   useUpdateTrigger,
   WebhookTriggerSchema,
 } from "@deco/sdk";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { WellKnownBindings } from "@deco/sdk/mcp/bindings";
+import { Button } from "@deco/ui/components/button.tsx";
 import {
   Form,
   FormControl,
@@ -21,11 +15,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@deco/ui/components/form.tsx";
-import { SingleToolSelector } from "../toolsets/single-selector.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { BindingSelector } from "../toolsets/binding-selector.tsx";
-import { TRIGGER_INPUT_BINDING_SCHEMA } from "@deco/sdk/mcp/bindings";
+import { Input } from "@deco/ui/components/input.tsx";
+import { Textarea } from "@deco/ui/components/textarea.tsx";
+import { zodResolver } from "@hookform/resolvers/zod";
+import Ajv from "ajv";
+import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { IntegrationIcon } from "../integrations/list/common.tsx";
+import { BindingSelector } from "../toolsets/binding-selector.tsx";
+import { SingleToolSelector } from "../toolsets/single-selector.tsx";
 
 function JsonSchemaInput({ value, onChange }: {
   value: string | undefined;
@@ -321,7 +321,7 @@ export function WebhookTriggerForm({
                           onOpenChange={setOpen}
                           onIntegrationSelected={field.onChange}
                           initialSelectedIntegration={field.value || null}
-                          binder={TRIGGER_INPUT_BINDING_SCHEMA}
+                          binder={WellKnownBindings.Input}
                         />
                       )
                       : (

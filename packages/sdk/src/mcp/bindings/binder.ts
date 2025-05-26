@@ -1,10 +1,7 @@
 import { MCPConnection } from "../../models/mcp.ts";
 import { AppContext, createGlobalForContext, ToolBinder } from "../index.ts";
 import { MCPClientFetchStub } from "../stub.ts";
-import {
-  TRIGGER_INPUT_BINDING_SCHEMA,
-  TRIGGER_OUTPUT_BINDING_SCHEMA,
-} from "./trigger.ts";
+import { WellKnownBindings } from "./index.ts";
 
 // deno-lint-ignore no-explicit-any
 export type Binder<TDefinition extends readonly ToolBinder[] = any> = {
@@ -65,9 +62,10 @@ export type MCPBindingClient<T extends ReturnType<typeof bindingClient>> =
   >;
 
 export const TriggerInputBinding = bindingClient(
-  TRIGGER_INPUT_BINDING_SCHEMA,
+  WellKnownBindings.Input,
 );
 export const TriggerOutputBinding = bindingClient(
-  TRIGGER_OUTPUT_BINDING_SCHEMA,
+  WellKnownBindings.Output,
 );
+
 export * from "./index.ts";
