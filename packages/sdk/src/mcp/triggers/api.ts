@@ -237,17 +237,17 @@ export const createTrigger = createTool({
   name: "TRIGGERS_CREATE",
   description: "Create a trigger",
   inputSchema: z.object({
+    agentId: z.string().describe(
+      "The ID of the agent to create the trigger for, use only UUIDs",
+    ),
     data: TriggerSchema,
   }),
   canAccess: canAccessWorkspaceResource,
   handler: async (
-    { data },
+    { agentId, data },
     _c,
   ) => {
-    const result = await upsertTrigger.handler({
-      agentId: crypto.randomUUID(),
-      data,
-    });
+    const result = await upsertTrigger.handler({ agentId, data });
     if (result.isError) {
       throw result.structuredContent;
     }
@@ -282,17 +282,17 @@ export const createCronTrigger = createTool({
   name: "TRIGGERS_CREATE_CRON",
   description: "Create a cron trigger",
   inputSchema: z.object({
+    agentId: z.string().describe(
+      "The ID of the agent to create the trigger for, use only UUIDs. If not provided, a random UUID will be generated",
+    ),
     data: CreateCronTriggerInputSchema,
   }),
   canAccess: canAccessWorkspaceResource,
   handler: async (
-    { data },
+    { agentId, data },
     _c,
   ): Promise<z.infer<typeof CreateTriggerOutputSchema>> => {
-    const result = await upsertTrigger.handler({
-      agentId: crypto.randomUUID(),
-      data,
-    });
+    const result = await upsertTrigger.handler({ agentId, data });
     if (result.isError) {
       throw result.structuredContent;
     }
@@ -304,17 +304,17 @@ export const createWebhookTrigger = createTool({
   name: "TRIGGERS_CREATE_WEBHOOK",
   description: "Create a webhook trigger",
   inputSchema: z.object({
+    agentId: z.string().describe(
+      "The ID of the agent to create the trigger for, use only UUIDs. If not provided, a random UUID will be generated",
+    ),
     data: CreateWebhookTriggerInputSchema,
   }),
   canAccess: canAccessWorkspaceResource,
   handler: async (
-    { data },
+    { agentId, data },
     _c,
   ): Promise<z.infer<typeof CreateTriggerOutputSchema>> => {
-    const result = await upsertTrigger.handler({
-      agentId: crypto.randomUUID(),
-      data,
-    });
+    const result = await upsertTrigger.handler({ agentId, data });
     if (result.isError) {
       throw result.structuredContent;
     }
