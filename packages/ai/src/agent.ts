@@ -823,14 +823,12 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   private withAgentOverrides(options?: GenerateOptions): Agent {
     let agent = this.agent;
-    console.log("[AGENT] withAgentOverrides", JSON.stringify(options, null, 2));
 
     if (!options) {
       return agent;
     }
-    console.log("[AGENT] options", JSON.stringify(options, null, 2));
+
     if (options.model) {
-      console.log("[AGENT] options.model", options.model);
       const { llm } = this.createLLM({
         model: options.model,
         bypassOpenRouter: options.bypassOpenRouter,
@@ -846,7 +844,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       });
     }
 
-    console.log("[AGENT] agent", JSON.stringify(agent, null, 2));
     return agent;
   }
   private runWithContext<T>(fn: () => Promise<T>) {
