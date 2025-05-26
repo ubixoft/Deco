@@ -758,14 +758,15 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     payload: AIMessage[],
     options?: GenerateOptions,
   ): Promise<GenerateTextResult<any, any>> {
+    console.log("[AGENT] generate", JSON.stringify(payload, null, 2));
     const toolsets = await this.withToolOverrides(options?.tools);
-
+    console.log("[AGENT] toolsets", JSON.stringify(toolsets, null, 2));
     const agent = this.withAgentOverrides(options);
-
+    console.log("[AGENT] agent", JSON.stringify(agent, null, 2));
     const aiMessages = await Promise.all(
       payload.map((msg) => this.convertToAIMessage(msg)),
     );
-
+    console.log("[AGENT] aiMessages", JSON.stringify(aiMessages, null, 2));
     return agent.generate(aiMessages, {
       ...this.thread,
       maxSteps: this.maxSteps(),
