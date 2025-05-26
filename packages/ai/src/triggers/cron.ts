@@ -7,10 +7,10 @@ export const hooks: TriggerHooks<TriggerData & { type: "cron" }> = {
   type: "cron",
   onCreated: async (data, trigger) => {
     const cron = new Cron(data.cronExp);
-    console.log("[CRON] onCreated", data);
-    console.log("[CRON] cron", cron);
+    console.log("[CRON] onCreated", JSON.stringify(data, null, 2));
+    console.log("[CRON] cron", JSON.stringify(cron, null, 2));
     const dt = cron.nextRun();
-    console.log("[CRON] dt", dt);
+    console.log("[CRON] dt", JSON.stringify(dt, null, 2));
     if (dt) {
       console.log("[CRON] setAlarm", dt.getTime());
       await trigger.state.storage.setAlarm(dt.getTime());
@@ -48,7 +48,13 @@ export const hooks: TriggerHooks<TriggerData & { type: "cron" }> = {
         ...message,
         id: crypto.randomUUID(),
       })),
-    );
+    ).catch((error) => {
+      console.log("[CRON] error", JSON.stringify(error, null, 2));
+      return {
+        success: false,
+        message: "Error generating response",
+      };
+    });
     console.log("[CRON] response", JSON.stringify(response, null, 2));
     const cron = new Cron(data.cronExp);
     console.log("[CRON] cron", JSON.stringify(cron, null, 2));
