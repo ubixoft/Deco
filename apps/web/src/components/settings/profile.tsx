@@ -225,7 +225,7 @@ export function ProfileSettings(
                 >
                   <Icon
                     name={userIdCopied ? "check" : "content_copy"}
-                    className="w-3 h-3"
+                    size={12}
                   />
                 </button>
               </div>
