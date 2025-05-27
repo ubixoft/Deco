@@ -1,8 +1,8 @@
 import { useChat } from "@ai-sdk/react";
 import {
   API_SERVER_URL,
+  dispatchMessages,
   getTraceDebugId,
-  useAddOptimisticThread,
   useAgent,
   useAgentRoot,
   useThreadMessages,
@@ -80,9 +80,6 @@ export function ChatProvider({
   children,
 }: PropsWithChildren<Props>) {
   const agentRoot = useAgentRoot(agentId);
-  const {
-    addOptimisticThread,
-  } = useAddOptimisticThread();
   const scrollRef = useRef<HTMLDivElement>(null);
   const options = { ...DEFAULT_UI_OPTIONS, ...uiOptions };
   const { data: initialMessages } = !options.showThreadMessages
@@ -104,9 +101,7 @@ export function ChatProvider({
     },
     api: new URL("/actors/AIAgent/invoke/stream", API_SERVER_URL).href,
     experimental_prepareRequestBody: ({ messages }) => {
-      if (messages.length === 1 && messages[0].role === "user") {
-        addOptimisticThread(threadId, agentId);
-      }
+      dispatchMessages({ messages, threadId, agentId });
 
       const messagesWindow = messages.slice(-LAST_MESSAGES_COUNT);
       const lastMessage = messagesWindow.at(-1);
