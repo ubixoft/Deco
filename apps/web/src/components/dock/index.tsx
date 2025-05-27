@@ -165,6 +165,8 @@ export interface Tab {
   initialOpen?: boolean | initialOpen;
   initialHeight?: number;
   initialWidth?: number;
+  maximumHeight?: number;
+  maximumWidth?: number;
   hideFromViews?: boolean;
 }
 
@@ -196,8 +198,6 @@ const addPanel = (
       floating: false,
     }
     : {
-      minimumWidth: isMobile ? globalThis.innerWidth : 300,
-      maximumWidth: isMobile ? globalThis.innerWidth : undefined,
       position: {
         direction: isMobile ? "within" : (position?.direction || "within"),
         referenceGroup: targetGroup?.id,
@@ -255,7 +255,6 @@ function Docked(
       }
 
       initialPanels.add(key);
-
       addPanel(
         {
           id: key,
@@ -263,6 +262,8 @@ function Docked(
           title: value.title,
           initialHeight: !isMobile ? value.initialHeight : undefined,
           initialWidth: !isMobile ? value.initialWidth : undefined,
+          maximumHeight: !isMobile ? value.maximumHeight : undefined,
+          maximumWidth: !isMobile ? value.maximumWidth : undefined,
           position:
             initialOpenDirections.includes(value.initialOpen as initialOpen)
               ? { direction: value.initialOpen as initialOpen }
