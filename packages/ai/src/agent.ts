@@ -50,7 +50,7 @@ import {
   createServerTimings,
   type ServerTimingsBuilder,
 } from "@deco/sdk/timings";
-import { createWalletClient } from "@deco/sdk/wallet";
+import { createWalletClient } from "../../sdk/src/mcp/wallet/index.ts";
 import type { StorageThreadType } from "@mastra/core";
 import type { ToolsetsInput, ToolsInput } from "@mastra/core/agent";
 import { Agent } from "@mastra/core/agent";
@@ -183,12 +183,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       ...this.env,
     };
     this.workspace = getWorkspace(this.state.id);
-    this.wallet = new AgentWallet({
-      agentId: this.id,
-      agentPath: this.state.id,
-      workspace: this.workspace,
-      wallet: createWalletClient(this.env.WALLET_API_KEY, actorEnv?.WALLET),
-    });
     this.agentMemoryConfig = null as unknown as AgentMemoryConfig;
     this.agentId = this.state.id.split("/").pop() ?? "";
     this.db = createServerClient(
@@ -198,6 +192,13 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     );
 
     this.agentScoppedMcpClient = this._createMCPClient();
+    this.wallet = new AgentWallet({
+      agentId: this.id,
+      agentPath: this.state.id,
+      workspace: this.workspace,
+      wallet: createWalletClient(this.env.WALLET_API_KEY, actorEnv?.WALLET),
+      mcpClient: this.agentScoppedMcpClient,
+    });
     this.state.blockConcurrencyWhile(async () => {
       await this._runWithContext(async () => {
         await this._init();
@@ -395,6 +396,14 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     await this._initAgent(config);
   }
 
+  // todo(@camudo): change this to a nice algorithm someday
+  private _inferBestModel(model: string) {
+    if (model === "auto") {
+      return "openai:gpt-4.1-mini";
+    }
+    return model;
+  }
+
   private _createLLM(
     { model, bypassGateway, bypassOpenRouter }: {
       model: string;
@@ -402,11 +411,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       bypassOpenRouter?: boolean;
     },
   ): { llm: LanguageModelV1; tokenLimit: number } {
-    // todo(@camudo): change this to a nice algorithm someday
-    if (model === "auto") {
-      model = "openai:gpt-4.1-mini";
-    }
-
+    model = this._inferBestModel(model);
     const [provider, ...rest] = model.split(":");
     const providerModel = rest.join(":");
     const accountId = this.env?.ACCOUNT_ID ?? DEFAULT_ACCOUNT_ID;
@@ -608,210 +613,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       // some headers are immutable
     }
     return response;
-  }
-
-  async stream(
-    payload: AIMessage[],
-    options?: StreamOptions,
-  ): Promise<Response> {
-    const tracer = trace.getTracer("stream-tracer");
-    const timings = this.metadata?.timings ?? createServerTimings();
-
-    const thread = {
-      threadId: options?.threadId ?? this._thread.threadId,
-      resourceId: options?.resourceId ?? this._thread.resourceId,
-    };
-
-    /*
-     * Additional context from the payload, through annotations (converting to a CoreMessage-like object)
-     * TODO (@0xHericles) We should find a way to extend the Message Object
-     * See https://github.com/vercel/ai/discussions/3284
-     */
-    const context = payload.flatMap((message) =>
-      Array.isArray(message.annotations)
-        ? message.annotations.map((annotation) => ({
-          role: "user" as const,
-          content: typeof annotation === "string"
-            ? annotation
-            : JSON.stringify(annotation),
-        }))
-        : []
-    );
-
-    const toolsets = await this._withToolOverrides(
-      options?.tools,
-      timings,
-      thread,
-    );
-    const agentOverridesTiming = timings.start("agent-overrides");
-    const agent = this._withAgentOverrides(options);
-    agentOverridesTiming.end();
-
-    // if no wallet was initialized, let the stream proceed.
-    // we can change this later to be more restrictive.
-    const wallet = this.wallet;
-    const userId = this.metadata?.user?.id;
-    if (userId) {
-      const walletTiming = timings.start("init-wallet");
-      const hasBalance = await wallet.canProceed(userId);
-      walletTiming.end();
-      if (!hasBalance) {
-        throw new Error("Insufficient funds");
-      }
-    }
-
-    const ttfbSpan = tracer.startSpan("stream-ttfb", {
-      attributes: {
-        "agent.id": this.state.id,
-        model: options?.model ?? this._configuration?.model ??
-          DEFAULT_MODEL,
-        "thread.id": thread.threadId,
-        "openrouter.bypass": `${options?.bypassOpenRouter ?? false}`,
-      },
-    });
-    let ended = false;
-    const endTtfbSpan = () => {
-      if (ended) {
-        return;
-      }
-      ended = true;
-      ttfbSpan.end();
-    };
-    const streamTiming = timings.start("stream");
-
-    const experimentalTransform = options?.smoothStream
-      ? smoothStream({
-        delayInMs: options.smoothStream.delayInMs,
-        // The default chunking breaks cloudflare due to using too much CPU.
-        // This is a simpler function that does the job.
-        chunking: (buffer) => buffer.slice(0, 5) || null,
-      })
-      : undefined;
-
-    const maxLimit = Math.max(MAX_TOKENS, this._maxTokens());
-    const budgetTokens = Math.min(
-      MAX_THINKING_TOKENS,
-      maxLimit - this._maxTokens(),
-    );
-
-    const aiMessages = await Promise.all(
-      payload.map((msg) => this._convertToAIMessage(msg)),
-    );
-
-    const response = await agent.stream(
-      aiMessages,
-      {
-        ...thread,
-        context,
-        toolsets,
-        instructions: options?.instructions,
-        maxSteps: this._maxSteps(),
-        maxTokens: this._maxTokens(),
-        experimental_transform: experimentalTransform,
-        providerOptions: budgetTokens > MIN_THINKING_TOKENS
-          ? {
-            anthropic: {
-              thinking: {
-                type: "enabled",
-                budgetTokens,
-              },
-            },
-          }
-          : {},
-        ...(typeof options?.lastMessages === "number"
-          ? {
-            memoryOptions: {
-              lastMessages: options.lastMessages,
-              semanticRecall: false,
-            },
-          }
-          : {}),
-        onChunk: () => {
-          endTtfbSpan();
-        },
-        onError: () => {
-          // TODO(@mcandeia): add error tracking with posthog
-        },
-        onFinish: (result) => {
-          if (userId) {
-            wallet.computeLLMUsage({
-              userId,
-              usage: result.usage,
-              threadId: thread.threadId,
-              model: this._configuration?.model ?? DEFAULT_MODEL,
-              agentName: this._configuration?.name ?? ANONYMOUS_NAME,
-            });
-          }
-        },
-      },
-    );
-    streamTiming.end();
-
-    const dataStreamResponseTiming = timings.start("data-stream-response");
-    const dataStreamResponse = response.toDataStreamResponse({
-      sendReasoning: options?.sendReasoning,
-      getErrorMessage: (error) => {
-        if (error == null) {
-          return "unknown error";
-        }
-
-        if (typeof error === "string") {
-          return error;
-        }
-
-        if (error instanceof Error) {
-          return error.message;
-        }
-
-        return JSON.stringify(error);
-      },
-    });
-    dataStreamResponseTiming.end();
-
-    return dataStreamResponse;
-  }
-
-  async generate(
-    payload: AIMessage[],
-    options?: GenerateOptions,
-  ): Promise<GenerateTextResult<any, any>> {
-    const toolsets = await this._withToolOverrides(options?.tools);
-
-    const agent = this._withAgentOverrides(options);
-
-    const aiMessages = await Promise.all(
-      payload.map((msg) => this._convertToAIMessage(msg)),
-    );
-
-    return agent.generate(aiMessages, {
-      ...this._thread,
-      maxSteps: this._maxSteps(),
-      maxTokens: this._maxTokens(),
-      instructions: options?.instructions,
-      toolsets,
-    }) as Promise<GenerateTextResult<any, any>>;
-  }
-
-  async generateObject<TObject = any>(
-    payload: AIMessage[],
-    jsonSchema: JSONSchema7,
-  ): Promise<GenerateObjectResult<TObject>> {
-    const aiMessages = await Promise.all(
-      payload.map((msg) => this._convertToAIMessage(msg)),
-    );
-    const result = await this._agent.generate(aiMessages, {
-      ...this._thread,
-      output: jsonSchema,
-      maxSteps: this._maxSteps(),
-      maxTokens: this._maxTokens(),
-    }) as any as Promise<GenerateObjectResult<TObject>>;
-    await this._memory.addMessage({
-      ...this._thread,
-      type: "text",
-      role: "assistant",
-      content: `\`\`\`json\n${JSON.stringify(result)}\`\`\``,
-    });
-    return result;
   }
 
   override async enrichMetadata(
@@ -1038,6 +839,256 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       messages: [],
     });
     return result;
+  }
+
+  public get memory(): AgentMemory {
+    return new AgentMemory(this.agentMemoryConfig);
+  }
+
+  public get thread(): { threadId: string; resourceId: string } {
+    const threadId = this.metadata?.threadId ?? this.memory.generateId(); // private thread with the given resource
+    return {
+      threadId,
+      resourceId: this.metadata?.resourceId ?? this.metadata?.user?.id ??
+        threadId,
+    };
+  }
+
+  async generateObject<TObject = any>(
+    payload: AIMessage[],
+    jsonSchema: JSONSchema7,
+  ): Promise<GenerateObjectResult<TObject>> {
+    const hasBalance = await this.wallet.canProceed();
+    if (!hasBalance) {
+      throw new Error("Insufficient funds");
+    }
+
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this._convertToAIMessage(msg)),
+    );
+    const result = await this._agent.generate(aiMessages, {
+      ...this.thread,
+      output: jsonSchema,
+      maxSteps: this._maxSteps(),
+      maxTokens: this._maxTokens(),
+    }) as GenerateObjectResult<TObject>;
+
+    await this.memory.addMessage({
+      ...this.thread,
+      type: "text",
+      role: "assistant",
+      content: `\`\`\`json\n${JSON.stringify(result)}\`\`\``,
+    });
+
+    const model = this._inferBestModel(
+      this._configuration?.model ?? DEFAULT_MODEL,
+    );
+
+    this.wallet.computeLLMUsage({
+      userId: this.metadata?.user?.id,
+      usage: result.usage,
+      threadId: this.thread.threadId,
+      model,
+      agentName: this._configuration?.name ?? ANONYMOUS_NAME,
+    });
+
+    return result;
+  }
+
+  async generate(
+    payload: AIMessage[],
+    options?: GenerateOptions,
+  ): Promise<GenerateTextResult<any, any>> {
+    const hasBalance = await this.wallet.canProceed();
+    if (!hasBalance) {
+      throw new Error("Insufficient funds");
+    }
+
+    const toolsets = await this._withToolOverrides(options?.tools);
+
+    const agent = this._withAgentOverrides(options);
+
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this._convertToAIMessage(msg)),
+    );
+
+    const result = await agent.generate(aiMessages, {
+      ...this.thread,
+      maxSteps: this._maxSteps(),
+      maxTokens: this._maxTokens(),
+      instructions: options?.instructions,
+      toolsets,
+    }) as GenerateTextResult<any, any>;
+
+    const model = this._inferBestModel(
+      this._configuration?.model ?? DEFAULT_MODEL,
+    );
+
+    this.wallet.computeLLMUsage({
+      userId: this.metadata?.user?.id,
+      usage: result.usage,
+      threadId: this.thread.threadId,
+      model,
+      agentName: this._configuration?.name ?? ANONYMOUS_NAME,
+    });
+
+    return result;
+  }
+
+  async stream(
+    payload: AIMessage[],
+    options?: StreamOptions,
+  ): Promise<Response> {
+    const tracer = trace.getTracer("stream-tracer");
+    const timings = this.metadata?.timings ?? createServerTimings();
+
+    const thread = {
+      threadId: options?.threadId ?? this._thread.threadId,
+      resourceId: options?.resourceId ?? this._thread.resourceId,
+    };
+
+    /*
+     * Additional context from the payload, through annotations (converting to a CoreMessage-like object)
+     * TODO (@0xHericles) We should find a way to extend the Message Object
+     * See https://github.com/vercel/ai/discussions/3284
+     */
+    const context = payload.flatMap((message) =>
+      Array.isArray(message.annotations)
+        ? message.annotations.map((annotation) => ({
+          role: "user" as const,
+          content: typeof annotation === "string"
+            ? annotation
+            : JSON.stringify(annotation),
+        }))
+        : []
+    );
+
+    const toolsets = await this._withToolOverrides(
+      options?.tools,
+      timings,
+      thread,
+    );
+    const agentOverridesTiming = timings.start("agent-overrides");
+    const agent = this._withAgentOverrides(options);
+    agentOverridesTiming.end();
+
+    const wallet = this.wallet;
+    const walletTiming = timings.start("init-wallet");
+    const hasBalance = await wallet.canProceed();
+    walletTiming.end();
+
+    if (!hasBalance) {
+      throw new Error("Insufficient funds");
+    }
+
+    const ttfbSpan = tracer.startSpan("stream-ttfb", {
+      attributes: {
+        "agent.id": this.state.id,
+        model: options?.model ?? this._configuration?.model ??
+          DEFAULT_MODEL,
+        "thread.id": thread.threadId,
+        "openrouter.bypass": `${options?.bypassOpenRouter ?? false}`,
+      },
+    });
+    let ended = false;
+    const endTtfbSpan = () => {
+      if (ended) {
+        return;
+      }
+      ended = true;
+      ttfbSpan.end();
+    };
+    const streamTiming = timings.start("stream");
+
+    const experimentalTransform = options?.smoothStream
+      ? smoothStream({
+        delayInMs: options.smoothStream.delayInMs,
+        chunking: options.smoothStream.chunking,
+      })
+      : undefined;
+
+    const maxLimit = Math.max(MAX_TOKENS, this._maxTokens());
+    const budgetTokens = Math.min(
+      MAX_THINKING_TOKENS,
+      maxLimit - this._maxTokens(),
+    );
+
+    const aiMessages = await Promise.all(
+      payload.map((msg) => this._convertToAIMessage(msg)),
+    );
+
+    const response = await agent.stream(
+      aiMessages,
+      {
+        ...thread,
+        context,
+        toolsets,
+        instructions: options?.instructions,
+        maxSteps: this._maxSteps(),
+        maxTokens: this._maxTokens(),
+        experimental_transform: experimentalTransform,
+        providerOptions: budgetTokens > MIN_THINKING_TOKENS
+          ? {
+            anthropic: {
+              thinking: {
+                type: "enabled",
+                budgetTokens,
+              },
+            },
+          }
+          : {},
+        ...(typeof options?.lastMessages === "number"
+          ? {
+            memoryOptions: {
+              lastMessages: options.lastMessages,
+              semanticRecall: false,
+            },
+          }
+          : {}),
+        onChunk: () => {
+          endTtfbSpan();
+        },
+        onError: () => {
+          // TODO(@mcandeia): add error tracking with posthog
+        },
+        onFinish: (result) => {
+          const model = this._inferBestModel(
+            this._configuration?.model ?? DEFAULT_MODEL,
+          );
+          wallet.computeLLMUsage({
+            userId: this.metadata?.user?.id,
+            usage: result.usage,
+            threadId: this.thread.threadId,
+            model,
+            agentName: this._configuration?.name ?? ANONYMOUS_NAME,
+          });
+        },
+      },
+    );
+    streamTiming.end();
+
+    const dataStreamResponseTiming = timings.start("data-stream-response");
+    const dataStreamResponse = response.toDataStreamResponse({
+      sendReasoning: options?.sendReasoning,
+      getErrorMessage: (error) => {
+        if (error == null) {
+          return "unknown error";
+        }
+
+        if (typeof error === "string") {
+          return error;
+        }
+
+        if (error instanceof Error) {
+          return error.message;
+        }
+
+        return JSON.stringify(error);
+      },
+    });
+    dataStreamResponseTiming.end();
+
+    return dataStreamResponse;
   }
 
   public getAgentName() {
