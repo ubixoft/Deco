@@ -11,7 +11,6 @@ import { useCallback } from "react";
 import {
   getThread,
   getThreadMessages,
-  getThreadTools,
   listThreads,
   updateThreadMetadata,
   updateThreadTitle,
@@ -37,15 +36,6 @@ export const useThreadMessages = (threadId: string) => {
     queryFn: ({ signal }) => getThreadMessages(workspace, threadId, { signal }),
     staleTime: 0,
     gcTime: 0,
-  });
-};
-
-/** Hook for fetching tools_set from a thread */
-export const useThreadTools = (threadId: string) => {
-  const { workspace } = useSDK();
-  return useSuspenseQuery({
-    queryKey: KEYS.THREAD_TOOLS(workspace, threadId),
-    queryFn: ({ signal }) => getThreadTools(workspace, threadId, { signal }),
   });
 };
 
