@@ -71,6 +71,7 @@ const hooks: Record<TriggerData["type"], TriggerHooks<TriggerData>> = {
 export interface TriggerMetadata {
   passphrase?: string | null;
   reqUrl?: string | null;
+  reqHeaders?: Record<string, string>;
   internalCall?: boolean;
 }
 
@@ -266,6 +267,7 @@ export class Trigger {
       internalCall: req.headers.get("host") === null ||
         getRuntimeKey() === "deno",
       reqUrl: req.url,
+      reqHeaders: Object.fromEntries(req.headers.entries()),
       ...metadata,
     };
   }

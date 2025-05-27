@@ -48,6 +48,7 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
       return await inputBinding.ON_AGENT_INPUT({
         callbacks: trigger._callbacks(),
         payload: args,
+        headers: trigger.metadata?.reqHeaders,
       });
     }
 
