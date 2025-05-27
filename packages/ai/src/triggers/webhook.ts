@@ -51,16 +51,21 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
         url: trigger.metadata?.reqUrl ?? undefined,
         headers: trigger.metadata?.reqHeaders,
       });
-      const structuredContent = result?.structuredContent;
+      // deno-lint-ignore no-explicit-any
+      const structuredContent: any = result?.structuredContent;
       if (
         typeof structuredContent === "object" && structuredContent !== null &&
         "status" in structuredContent &&
         typeof structuredContent.status === "number"
       ) {
-        return new Response(JSON.stringify(structuredContent), {
+        const [payload, contentType] = "message" in structuredContent
+          ? [structuredContent.message, "text/plain"]
+          : [JSON.stringify(structuredContent), "application/json"];
+
+        return new Response(payload, {
           status: structuredContent.status,
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": contentType,
           },
         });
       }
