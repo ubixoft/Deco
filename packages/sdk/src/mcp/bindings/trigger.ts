@@ -11,6 +11,7 @@ const inputBindingSchema = z.object({
   payload: z.any(),
   callbacks: callbacksSchema,
   headers: z.record(z.string(), z.string()).optional(),
+  url: z.string().optional(),
 });
 
 const outputBindingSchema = z.object({
