@@ -37,6 +37,7 @@ import { Label, Pie, PieChart } from "recharts";
 import { useUser } from "../../hooks/data/useUser.ts";
 import { useWorkspaceLink } from "../../hooks/useNavigateWorkspace.ts";
 import { SettingsMobileHeader } from "./SettingsMobileHeader.tsx";
+import { AgentAvatar } from "../common/Avatar.tsx";
 
 interface UserAvatarProps {
   member?: Member;
@@ -70,61 +71,6 @@ function UserAvatar({ member, size = "md" }: UserAvatarProps) {
         name="person"
         size={size === "sm" ? 12 : size === "md" ? 16 : 24}
         className="text-gray-500"
-      />
-    </div>
-  );
-}
-
-interface AgentAvatarProps {
-  agent?: Agent;
-  size?: "sm" | "md" | "lg";
-}
-
-function AgentAvatar({ agent, size = "md" }: AgentAvatarProps) {
-  const sizeClasses = {
-    sm: "w-10 h-10",
-    md: "w-12 h-12",
-    lg: "w-16 h-16",
-  };
-
-  if (agent?.id === WELL_KNOWN_AGENTS.teamAgent.id) {
-    return (
-      <div
-        className={`${
-          sizeClasses[size]
-        } rounded-sm flex items-center justify-center border border-muted bg-primary-light`}
-      >
-        <Icon
-          name="robot_2"
-          size={size === "sm" ? 24 : size === "md" ? 28 : 32}
-          className="text-primary-dark"
-        />
-      </div>
-    );
-  }
-
-  if (agent?.avatar) {
-    return (
-      <img
-        src={agent.avatar}
-        alt={agent.name || "Agent"}
-        className={`${
-          sizeClasses[size]
-        } rounded-sm object-cover border border-muted`}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={`${
-        sizeClasses[size]
-      } rounded-sm flex items-center justify-center bg-gray-50 border border-muted`}
-    >
-      <Icon
-        name="robot_2"
-        size={size === "sm" ? 24 : size === "md" ? 28 : 32}
-        className="text-gray-400"
       />
     </div>
   );
@@ -428,7 +374,11 @@ function CreditsUsedPerThread({
                 <DialogTrigger asChild>
                   <div className="flex items-center justify-between p-4 mb-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer">
                     <div className="flex items-center gap-4">
-                      <AgentAvatar agent={thread.agent} size="sm" />
+                      <AgentAvatar
+                        name={thread.agent?.name}
+                        avatar={thread.agent?.avatar}
+                        className="w-10 h-10 rounded-sm"
+                      />
                       <div className="flex flex-col gap-1">
                         <span className="text-sm font-medium text-slate-900">
                           {thread.agent?.name || "Unknown Agent"}
@@ -497,7 +447,11 @@ function ThreadDetails({ thread, withWorkpaceLink }: ThreadDetailsProps) {
       </DialogHeader>
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4">
-          <AgentAvatar agent={thread.agent} size="md" />
+          <AgentAvatar
+            name={thread.agent?.name}
+            avatar={thread.agent?.avatar}
+            className="w-12 h-12 rounded-sm"
+          />
           <div className="flex flex-col justify-center">
             <span className="text-base font-semibold text-gray-900">
               {thread.agent?.name || "Unknown Agent"}
