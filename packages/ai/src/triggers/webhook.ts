@@ -45,12 +45,26 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
       : undefined;
     const inputBinding = trigger.inputBinding;
     if (inputBinding) {
-      return await inputBinding.ON_AGENT_INPUT({
+      const result = await inputBinding.ON_AGENT_INPUT({
         callbacks: trigger._callbacks(),
         payload: args,
         url: trigger.metadata?.reqUrl ?? undefined,
         headers: trigger.metadata?.reqHeaders,
       });
+      const structuredContent = result?.structuredContent;
+      if (
+        typeof structuredContent === "object" && structuredContent !== null &&
+        "status" in structuredContent &&
+        typeof structuredContent.status === "number"
+      ) {
+        return new Response(JSON.stringify(structuredContent), {
+          status: structuredContent.status,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+      }
+      return result;
     }
 
     const useStream = url?.searchParams.get("stream") === "true";
