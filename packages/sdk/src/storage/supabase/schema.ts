@@ -309,6 +309,7 @@ export type Database = {
       };
       deco_chat_agents: {
         Row: {
+          access: string | null;
           avatar: string;
           created_at: string;
           description: string | null;
@@ -325,6 +326,7 @@ export type Database = {
           workspace: string;
         };
         Insert: {
+          access?: string | null;
           avatar: string;
           created_at?: string;
           description?: string | null;
@@ -341,6 +343,7 @@ export type Database = {
           workspace: string;
         };
         Update: {
+          access?: string | null;
           avatar?: string;
           created_at?: string;
           description?: string | null;

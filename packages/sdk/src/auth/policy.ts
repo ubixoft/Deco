@@ -39,6 +39,7 @@ export interface RoleWithPolicies extends Role {
 export interface MemberRole {
   member_id: number;
   role_id: number;
+  name: string;
   role?: Role;
 }
 
@@ -54,12 +55,14 @@ export class PolicyClient {
   private static instance: PolicyClient | null = null;
   private db: Client | null = null;
   private userPolicyCache: WebCache<Pick<Policy, "statements">[]>;
+  private userRolesCache: WebCache<MemberRole[]>;
   private teamRolesCache: WebCache<Role[]>;
   private teamSlugCache: WebCache<number>;
 
   private constructor() {
     // Initialize caches
     this.userPolicyCache = new WebCache<Policy[]>("user-policies", TWO_MIN_TTL);
+    this.userRolesCache = new WebCache<MemberRole[]>("user-roles", TWO_MIN_TTL);
     this.teamRolesCache = new WebCache<Role[]>("team-role", TWO_MIN_TTL);
     this.teamSlugCache = new WebCache<number>("team-slug", TWO_MIN_TTL);
   }
@@ -73,6 +76,62 @@ export class PolicyClient {
     }
     PolicyClient.instance.db = db;
     return PolicyClient.instance;
+  }
+
+  public async getUserRoles(
+    userId: string,
+    teamIdOrSlug: number | string,
+  ): Promise<MemberRole[]> {
+    if (!this.db) {
+      throw new Error("PolicyClient not initialized with database client");
+    }
+
+    const teamId = typeof teamIdOrSlug === "number"
+      ? teamIdOrSlug
+      : await this.getTeamIdBySlug(teamIdOrSlug);
+
+    const cacheKey = this.getUserRolesCacheKey(userId, teamId);
+
+    const cachedRoles = await this.userRolesCache.get(cacheKey);
+    if (cachedRoles) {
+      return cachedRoles;
+    }
+
+    const { data } = await this.db.from("members")
+      .select(`
+        id,
+        member_roles(
+          role_id,
+          roles(
+            id,
+            name
+          )
+        )
+      `)
+      .eq("user_id", userId)
+      .eq("team_id", teamId)
+      .single();
+
+    if (!data?.member_roles) {
+      return [];
+    }
+
+    const roles: MemberRole[] = data.member_roles.map((
+      mr: { role_id: number; roles: { id: number; name: string } },
+    ) => ({
+      member_id: data.id,
+      role_id: mr.role_id,
+      name: mr.roles.name,
+      role: {
+        ...mr.roles,
+        team_id: teamId,
+      },
+    }));
+
+    // Cache the result
+    await this.userRolesCache.set(cacheKey, roles);
+
+    return roles;
   }
 
   /**
@@ -310,6 +369,10 @@ export class PolicyClient {
   }
 
   private getUserPoliceCacheKey(userId: string, teamId: number) {
+    return `${userId}:${teamId}`;
+  }
+
+  private getUserRolesCacheKey(userId: string, teamId: number) {
     return `${userId}:${teamId}`;
   }
 
