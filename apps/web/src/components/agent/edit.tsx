@@ -258,7 +258,7 @@ function FormProvider(props: Props & { agentId: string; threadId: string }) {
     return () => clearTimeout(timeout);
   }, [values, updateAgentCache]);
 
-  const blocked = useBlocker(hasChanges);
+  const blocked = useBlocker(hasChanges && !isWellKnownAgent);
 
   const handleSubmit = form.handleSubmit(
     async (data: Agent) => {
