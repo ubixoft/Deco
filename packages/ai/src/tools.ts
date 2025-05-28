@@ -71,7 +71,7 @@ const PollForContentInputSchema = z.object({
     "Maximum number of retry attempts (default: 20). Recommended to be 20 or more.",
   ),
   maxDelay: z.number().optional().describe(
-    "Maximum delay between retries in milliseconds (default: 10000).",
+    "Maximum delay between retries in milliseconds (default: 5000).",
   ),
 });
 
