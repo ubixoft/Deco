@@ -129,7 +129,7 @@ export function ProfileSettings(
   function validatePhone() {
     if (!country) {
       setError(
-        "Please enter a valid international phone number (e.g. +5511975854882)",
+        "Please enter a valid international phone number (e.g. +5511910000000)",
       );
       return false;
     }
@@ -257,7 +257,7 @@ export function ProfileSettings(
                     placeholder={country?.placeholder?.replace(
                       country.dial_code,
                       "",
-                    ) ?? "11975854882"}
+                    ) ?? "11910000000"}
                     value={localValue}
                     onChange={handleLocalChange}
                     onBlur={validatePhone}
