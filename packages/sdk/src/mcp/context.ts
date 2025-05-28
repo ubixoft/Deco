@@ -95,6 +95,7 @@ const envSchema = z.object({
   OPENROUTER_API_KEY: z.string().readonly(),
   TURSO_ADMIN_TOKEN: z.any().optional().readonly(),
   OPENAI_API_KEY: z.any().optional().readonly(),
+  LLMS_ENCRYPTION_KEY: z.any().optional().readonly(),
 
   /**
    * Only needed for locally testing wallet features.

@@ -417,6 +417,7 @@ export type Database = {
       };
       deco_chat_integrations: {
         Row: {
+          access: string | null;
           connection: Json;
           created_at: string;
           description: string | null;
@@ -426,6 +427,7 @@ export type Database = {
           workspace: string;
         };
         Insert: {
+          access?: string | null;
           connection: Json;
           created_at?: string;
           description?: string | null;
@@ -435,6 +437,7 @@ export type Database = {
           workspace: string;
         };
         Update: {
+          access?: string | null;
           connection?: Json;
           created_at?: string;
           description?: string | null;
@@ -1515,31 +1518,37 @@ export type Database = {
       models: {
         Row: {
           api_key_hash: string | null;
+          by_deco: boolean;
           created_at: string;
+          description: string | null;
           id: string;
           is_enabled: boolean;
-          label: string;
           model: string;
+          name: string;
           updated_at: string;
           workspace: string;
         };
         Insert: {
           api_key_hash?: string | null;
+          by_deco?: boolean;
           created_at?: string;
+          description?: string | null;
           id?: string;
           is_enabled?: boolean;
-          label: string;
           model: string;
+          name: string;
           updated_at?: string;
           workspace: string;
         };
         Update: {
           api_key_hash?: string | null;
+          by_deco?: boolean;
           created_at?: string;
+          description?: string | null;
           id?: string;
           is_enabled?: boolean;
-          label?: string;
           model?: string;
+          name?: string;
           updated_at?: string;
           workspace?: string;
         };
