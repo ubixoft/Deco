@@ -202,20 +202,20 @@ export class Trigger {
     }
 
     const trigger = mapTriggerToTriggerData(triggerData);
-    if (trigger.binding) {
-      const context = this._createContext();
-      if (trigger.type === "webhook") {
-        this.inputBinding = TriggerInputBinding.forConnection(
-          trigger.binding.connection,
-          context,
-        );
-      }
-    }
     return trigger;
   }
 
   private _setData(data: TriggerData) {
     this.data = data;
+    if (data.binding) {
+      const context = this._createContext();
+      if (data.type === "webhook") {
+        this.inputBinding = TriggerInputBinding.forConnection(
+          data.binding.connection,
+          context,
+        );
+      }
+    }
     this.hooks = this.data ? hooks[this.data?.type ?? "cron"] : cron;
   }
 
@@ -324,13 +324,6 @@ export class Trigger {
       return {
         success: false,
         message: "Trigger is not allowed to be created from external sources",
-      };
-    }
-
-    if (this.data) {
-      return {
-        success: true,
-        message: "Trigger already exists",
       };
     }
 
