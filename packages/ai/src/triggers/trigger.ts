@@ -108,6 +108,7 @@ const buildInvokeUrl = (
   payload?: InvokePayload,
 ) => {
   const invoke = new URL(url);
+  invoke.protocol = "https:";
   invoke.hostname = Hosts.API;
   invoke.port = "443";
   invoke.pathname = `/actors/${Trigger.name}/invoke/${method}`;
