@@ -38,6 +38,7 @@ import { AIAgent } from "../agent.ts";
 import { hooks as cron } from "./cron.ts";
 import type { TriggerData, TriggerRun } from "./services.ts";
 import { hooks as webhook } from "./webhook.ts";
+import { Hosts } from "@deco/sdk/hosts";
 
 export const threadOf = (
   data: TriggerData,
@@ -107,6 +108,8 @@ const buildInvokeUrl = (
   payload?: InvokePayload,
 ) => {
   const invoke = new URL(url);
+  invoke.hostname = Hosts.API;
+  invoke.port = "443";
   invoke.pathname = `/actors/${Trigger.name}/invoke/${method}`;
   if (payload) {
     invoke.searchParams.set(
