@@ -13,6 +13,7 @@
 import type { ActorState } from "@deco/actors";
 import { Actor } from "@deco/actors";
 import { SUPABASE_URL } from "@deco/sdk/auth";
+import { Hosts } from "@deco/sdk/hosts";
 import {
   AppContext,
   AuthorizationClient,
@@ -38,7 +39,6 @@ import { AIAgent } from "../agent.ts";
 import { hooks as cron } from "./cron.ts";
 import type { TriggerData, TriggerRun } from "./services.ts";
 import { hooks as webhook } from "./webhook.ts";
-import { Hosts } from "@deco/sdk/hosts";
 
 export const threadOf = (
   data: TriggerData,
@@ -103,15 +103,19 @@ export interface InvokePayload {
   metadata?: Record<string, unknown>;
 }
 const buildInvokeUrl = (
-  url: URL,
+  triggerId: string,
   method: keyof Trigger,
+  passphrase?: string | null,
   payload?: InvokePayload,
 ) => {
-  const invoke = new URL(url);
-  invoke.protocol = "https:";
-  invoke.hostname = Hosts.API;
-  invoke.port = "443";
-  invoke.pathname = `/actors/${Trigger.name}/invoke/${method}`;
+  const invoke = new URL(
+    `https://${Hosts.API}/actors/${Trigger.name}/invoke/${method}`,
+  );
+  invoke.searchParams.set("deno_isolate_instance_id", triggerId);
+
+  if (passphrase) {
+    invoke.searchParams.set("passphrase", passphrase);
+  }
   if (payload) {
     invoke.searchParams.set(
       "args",
@@ -186,14 +190,14 @@ export class Trigger {
   public _callbacks(
     payload?: InvokePayload,
   ): Callbacks {
-    if (!this.metadata?.reqUrl) {
-      throw new Error("Trigger does not have a reqUrl");
-    }
-    const url = new URL(this.metadata.reqUrl);
+    const urlFor = (method: keyof Trigger) =>
+      buildInvokeUrl(this.state.id, method, this.metadata?.passphrase, payload)
+        .href;
+
     return {
-      stream: buildInvokeUrl(url, "stream", payload).href,
-      generate: buildInvokeUrl(url, "generate", payload).href,
-      generateObject: buildInvokeUrl(url, "generateObject", payload).href,
+      stream: urlFor("stream"),
+      generate: urlFor("generate"),
+      generateObject: urlFor("generateObject"),
     };
   }
   private async _loadData(): Promise<TriggerData | null> {
