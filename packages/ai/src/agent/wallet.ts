@@ -18,12 +18,6 @@ export interface AgentWalletConfig {
   agentPath: string;
 }
 
-interface KV<T> {
-  get: (key: string) => Promise<T | null>;
-  set: (key: string, value: T) => Promise<void>;
-  delete: (key: string) => Promise<void>;
-}
-
 export interface ComputeAgentUsageOpts {
   userId?: string;
   usage: LanguageModelUsage;
