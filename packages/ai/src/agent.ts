@@ -417,7 +417,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     if (data.byDeco) {
       return {
-        model: modelId,
+        model: data.model,
         modelId,
       };
     }
@@ -569,20 +569,19 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       return modelId;
     }
 
-    const possibleModels = Object.keys(this.workspaceModels);
-
     const autoModelFallbacks = [
       "openai:gpt-4.1-mini",
       "anthropic:claude-sonnet-4",
     ];
 
-    for (const model of autoModelFallbacks) {
-      if (possibleModels.includes(model)) {
-        return model;
+    for (const [modelId, model] of Object.entries(this.workspaceModels)) {
+      if (autoModelFallbacks.includes(model.model)) {
+        return modelId;
       }
     }
 
-    return possibleModels[0];
+    const firstModel = Object.values(this.workspaceModels)[0];
+    return firstModel.id;
   }
 
   private async _withToolOverrides(
