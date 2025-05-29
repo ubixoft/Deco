@@ -47,8 +47,8 @@ const CAPABILITY_CONFIGS = {
   },
   mixed: {
     icon: "cyclone",
-    bg: "bg-slate-100",
-    text: "text-slate-700",
+    bg: "bg-muted",
+    text: "text-foreground",
     label: "Mixed capabilities",
   },
 } as const;
