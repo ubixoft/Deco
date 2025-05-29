@@ -36,7 +36,7 @@ export const useTeamMembers = (
         return { members: [], invites: [] };
       }
       return getTeamMembers({ teamId, withActivity }, signal);
-    }
+    },
   });
 };
 
