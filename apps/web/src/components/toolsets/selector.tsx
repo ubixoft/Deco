@@ -56,7 +56,7 @@ function IntegrationListItem({
         htmlFor={`select-all-${integration.id}`}
         className={cn(
           "flex gap-4 px-4 py-4 rounded-t-xl",
-          !isEmpty && "hover:bg-slate-50 cursor-pointer",
+          !isEmpty && "hover:bg-muted cursor-pointer",
         )}
       >
         {!isEmpty && (
