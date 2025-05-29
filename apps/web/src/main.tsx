@@ -48,7 +48,6 @@ const PageviewTrackerLayout = lazy(
 );
 
 const Login = lazy(() => import("./components/login/index.tsx"));
-const About = lazy(() => import("./components/about/index.tsx"));
 
 /**
  * Route component with Suspense + Spinner. Remove the wrapWithUILoadingFallback if
@@ -118,6 +117,8 @@ function NotFound(): null {
   throw new NotFoundError("The path was not found");
 }
 
+const DEFAULT_PATH = "/agents";
+
 function ErrorFallback() {
   const { pathname } = useLocation();
   const error = useRouteError();
@@ -132,7 +133,7 @@ function ErrorFallback() {
       return;
     }
 
-    if (pathname === "/") {
+    if (pathname === DEFAULT_PATH) {
       globalThis.location.href = "/about";
 
       return;
@@ -235,10 +236,6 @@ const router = createBrowserRouter([
         Component: MagicLink,
       },
       {
-        path: "/about",
-        Component: About,
-      },
-      {
         path: "/invites",
         Component: RouteLayout,
         children: [
@@ -262,8 +259,8 @@ const router = createBrowserRouter([
             loader: ({ params }) => {
               const teamSlug = params.teamSlug;
               globalThis.location.href = teamSlug
-                ? `/${teamSlug}/agents`
-                : "/agents";
+                ? `/${teamSlug}${DEFAULT_PATH}`
+                : DEFAULT_PATH;
               return null;
             },
           },
