@@ -56,7 +56,7 @@ export function Table<T>({
 
   function getHeaderClass(idx: number, total: number) {
     let base =
-      "px-4 text-left bg-[#F8FAFC] font-semibold text-[#374151] text-sm h-10";
+      "px-4 text-left bg-muted font-semibold text-foreground text-sm h-10";
     if (idx === 0) base += " rounded-l-md";
     if (idx === total - 1) base += " rounded-r-md w-8";
     return base;
@@ -65,13 +65,13 @@ export function Table<T>({
   return (
     <div className="flex flex-1 min-h-0 overflow-y-auto overflow-x-auto w-full">
       <UITable className="w-full min-w-max">
-        <TableHeader className="sticky top-0 z-10 bg-[#F8FAFC] border-b-0 [&>*:first-child]:border-b-0">
-          <TableRow className="hover:bg-transparent h-14">
+        <TableHeader className="sticky top-0 z-10 border-b-0 [&>*:first-child]:border-b-0">
+          <TableRow className="h-14">
             {columns.map((col, idx) => (
               <TableHead
                 key={col.id}
                 className={getHeaderClass(idx, columns.length) +
-                  " sticky top-0 z-10 bg-[#F8FAFC]"}
+                  " sticky top-0 z-10 bg-muted"}
                 style={{ cursor: col.sortable ? "pointer" : undefined }}
                 onClick={col.sortable && onSort
                   ? () => onSort(col.id)
@@ -89,7 +89,7 @@ export function Table<T>({
           {data.map((row, i) => (
             <TableRow
               key={i}
-              className={onRowClick ? "cursor-pointer hover:bg-slate-50" : ""}
+              className={onRowClick ? "cursor-pointer hover:bg-muted" : ""}
               onClick={onRowClick
                 ? () => onRowClick(row)
                 : undefined}

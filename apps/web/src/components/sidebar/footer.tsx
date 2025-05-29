@@ -250,31 +250,31 @@ function LoggedUser() {
         align="start"
         className="md:w-[240px]"
       >
-        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+        <ResponsiveDropdownItem asChild>
           <button
             type="button"
-            className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
+            className="flex items-center gap-2 text-sm w-full cursor-pointer"
             onClick={() => setProfileOpen(true)}
           >
             <Icon name="account_circle" className="text-muted-foreground" />
             Profile
           </button>
         </ResponsiveDropdownItem>
-        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+        <ResponsiveDropdownItem asChild>
           <button
             type="button"
-            className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
+            className="flex items-center gap-2 text-sm w-full cursor-pointer"
             onClick={() => setPreferencesOpen(true)}
           >
             <Icon name="tune" className="text-muted-foreground" />
             Preferences
           </button>
         </ResponsiveDropdownItem>
-        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+        <ResponsiveDropdownItem asChild>
           <Link
             to={href}
             onClick={handleClickInvite}
-            className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
+            className="flex items-center gap-2 text-sm w-full cursor-pointer"
           >
             <Icon
               name="mail"
@@ -291,12 +291,12 @@ function LoggedUser() {
 
         <ResponsiveDropdownSeparator />
 
-        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+        <ResponsiveDropdownItem asChild>
           <a
             href="https://github.com/deco-cx/chat"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full items-center gap-2 leading-relaxed text-sm sm:text-xs"
+            className="flex w-full items-center gap-2 text-sm cursor-pointer"
           >
             <img
               src="/img/github.svg"
@@ -305,7 +305,7 @@ function LoggedUser() {
             />
             deco-cx/chat
             {formattedStars && (
-              <span className="ml-auto text-muted-foreground">
+              <span className="text-xs ml-auto text-muted-foreground">
                 {formattedStars} stars
               </span>
             )}
@@ -316,12 +316,12 @@ function LoggedUser() {
             />
           </a>
         </ResponsiveDropdownItem>
-        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+        <ResponsiveDropdownItem asChild>
           <a
             href="/about"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full items-center gap-2 leading-relaxed text-sm sm:text-xs"
+            className="flex w-full items-center gap-2 text-sm cursor-pointer"
           >
             <Icon name="language" className="text-muted-foreground" />
             Homepage
@@ -338,7 +338,7 @@ function LoggedUser() {
         <ResponsiveDropdownItem asChild>
           <a
             href={logoutUrl}
-            className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs"
+            className="flex items-center gap-2 text-sm cursor-pointer"
           >
             <Icon name="logout" size={16} className="text-muted-foreground" />
             Log out

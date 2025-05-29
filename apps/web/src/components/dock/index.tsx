@@ -382,7 +382,7 @@ Docked.Views = () => {
                 "flex items-center justify-between gap-3",
                 "p-2 rounded-xl",
                 "cursor-pointer disabled:cursor-not-allowed",
-                "hover:bg-muted text-muted-foreground",
+                "hover:bg-muted text-foreground",
                 isActive && "bg-muted",
               )}
             >
