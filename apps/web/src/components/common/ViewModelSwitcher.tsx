@@ -22,7 +22,7 @@ export function ViewModeSwitcher({
         <Icon
           name="grid_view"
           size={16}
-          className={viewMode === "cards" ? "text-primary" : "text-slate-500"}
+          className={viewMode === "cards" ? "text-primary" : "text-muted-foreground"}
         />
       </Button>
       <Button
@@ -35,7 +35,7 @@ export function ViewModeSwitcher({
         <Icon
           name="menu"
           size={16}
-          className={viewMode === "table" ? "text-primary" : "text-slate-500"}
+          className={viewMode === "table" ? "text-primary" : "text-muted-foreground"}
         />
       </Button>
     </div>
