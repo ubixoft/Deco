@@ -29,16 +29,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@deco/ui/components/form.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@deco/ui/components/select.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Protect } from "../wallet/plan.tsx";
 import { useContactUsUrl } from "../../hooks/useContactUs.ts";
+import { Badge } from "@deco/ui/components/badge.tsx";
+import { RolesDropdown } from "./RolesDropdown.tsx";
 
 // Form validation schema
 const inviteMemberSchema = z.object({
@@ -47,7 +42,7 @@ const inviteMemberSchema = z.object({
       email: z.string().email({
         message: "Please enter a valid email address",
       }),
-      roleId: z.string().min(1, { message: "Please select a role" }),
+      roleId: z.array(z.string()).min(1, { message: "Please select a role" }),
     }),
   ).min(1),
 });
@@ -130,13 +125,13 @@ export function InviteTeamMembersDialog({
   const form = useForm<InviteMemberFormData>({
     resolver: zodResolver(inviteMemberSchema),
     defaultValues: {
-      invitees: [{ email: "", roleId: ownerRoleId || "" }],
+      invitees: [{ email: "", roleId: ownerRoleId ? [ownerRoleId] : [] }],
     },
   });
 
   useEffect(() => {
     if (ownerRoleId) {
-      form.setValue("invitees.0.roleId", ownerRoleId);
+      form.setValue("invitees.0.roleId", [ownerRoleId]);
     }
   }, [ownerRoleId, form]);
 
@@ -147,7 +142,7 @@ export function InviteTeamMembersDialog({
 
   // Add new invitee
   const handleAddInvitee = () => {
-    append({ email: "", roleId: ownerRoleId });
+    append({ email: "", roleId: ownerRoleId ? [ownerRoleId] : [] });
   };
 
   // Remove invitee
@@ -164,10 +159,12 @@ export function InviteTeamMembersDialog({
       // Transform data for API call
       const invitees = data.invitees.map(({ email, roleId }) => ({
         email,
-        roles: [{
-          id: Number(roleId),
-          name: roles.find((r) => r.id === Number(roleId))?.name || "",
-        }],
+        roles: roleId.map((id) => (
+          {
+            id: Number(id),
+            name: roles.find((r) => r.id === Number(id))?.name || "",
+          }
+        )),
       }));
 
       // Call API to invite members
@@ -231,7 +228,7 @@ export function InviteTeamMembersDialog({
                           name={`invitees.${index}.email`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <FormLabel className="shrink-0">Email</FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder="Enter email address"
@@ -250,29 +247,51 @@ export function InviteTeamMembersDialog({
                           name={`invitees.${index}.roleId`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Role</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                                disabled={inviteMemberMutation.isPending}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a role" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {roles.map((role) => (
-                                    <SelectItem
-                                      key={role.id}
-                                      value={role.id.toString()}
-                                    >
-                                      {role.name.charAt(0).toUpperCase() +
-                                        role.name.slice(1)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormLabel className="shrink-0">Role</FormLabel>
+                              <FormControl>
+                                <div className="flex items-center gap-2 h-10">
+                                  <span className="inline-flex gap-2 items-center">
+                                    {field.value.slice(0, 3).map((roleId) => {
+                                      const role = roles.find((r) =>
+                                        r.id.toString() === roleId
+                                      );
+                                      return role
+                                        ? (
+                                          <Badge variant="outline" key={roleId}>
+                                            {role.name}
+                                          </Badge>
+                                        )
+                                        : null;
+                                    })}
+                                  </span>
+                                  <RolesDropdown
+                                    roles={roles}
+                                    selectedRoles={field.value}
+                                    onRoleClick={(role, checked) => {
+                                      const currentRoles = field.value || [];
+                                      const roleIdStr = role.id.toString();
+
+                                      if (checked) {
+                                        // Add role if not already present
+                                        if (!currentRoles.includes(roleIdStr)) {
+                                          field.onChange([
+                                            ...currentRoles,
+                                            roleIdStr,
+                                          ]);
+                                        }
+                                      } else {
+                                        // Remove role
+                                        field.onChange(
+                                          currentRoles.filter((id) =>
+                                            id !== roleIdStr
+                                          ),
+                                        );
+                                      }
+                                    }}
+                                    disabled={inviteMemberMutation.isPending}
+                                  />
+                                </div>
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
