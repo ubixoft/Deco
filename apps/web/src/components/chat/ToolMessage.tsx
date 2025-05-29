@@ -187,7 +187,7 @@ function ToolStatus({
             {isExpanded && (
               <div
                 ref={contentRef}
-                className="text-left mt-2 rounded-lg bg-accent border border-border overflow-hidden w-full relative"
+                className="text-left mt-2 rounded-lg bg-primary border border-border overflow-hidden w-full relative"
                 onClick={(e) => e.stopPropagation()}
               >
                 {showCopyButton && (
@@ -198,7 +198,7 @@ function ToolStatus({
                       e.stopPropagation();
                       handleCopy();
                     }}
-                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-accent transition-colors"
+                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted transition-colors"
                     title="Copy tool details"
                   >
                     <Icon
