@@ -54,8 +54,8 @@ function NotificationDot({ className }: { className?: string }) {
 
   return (
     <span className={cn("relative flex size-2", className)}>
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-      <span className="relative inline-flex size-2 rounded-full bg-red-500" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+      <span className="relative inline-flex size-2 rounded-full bg-destructive" />
     </span>
   );
 }
@@ -67,7 +67,7 @@ function InvitesCount() {
   if (!invites.length) return null;
 
   return (
-    <span className="absolute right-2 top-1/2 -mt-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white">
+    <span className="absolute right-2 top-1/2 -mt-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-medium text-white">
       {invites.length}
     </span>
   );
@@ -248,34 +248,26 @@ function LoggedUser() {
       <ResponsiveDropdownContent
         side="top"
         align="start"
-        className="md:w-[200px] text-slate-700"
+        className="md:w-[240px]"
       >
-        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
-          <a
-            href="https://github.com/deco-cx/chat"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex w-full items-center gap-2 leading-relaxed text-sm sm:text-xs"
-          >
-            <img src="/img/github.svg" alt="GitHub" className="w-4 h-4" />
-            deco-cx/chat
-            {formattedStars && (
-              <span className="ml-auto text-slate-400">
-                {formattedStars} stars
-              </span>
-            )}
-          </a>
-        </ResponsiveDropdownItem>
-
-        <ResponsiveDropdownSeparator />
         <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
           <button
             type="button"
             className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
             onClick={() => setProfileOpen(true)}
           >
-            <Icon name="person" />
+            <Icon name="account_circle" className="text-muted-foreground" />
             Profile
+          </button>
+        </ResponsiveDropdownItem>
+        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
+            onClick={() => setPreferencesOpen(true)}
+          >
+            <Icon name="tune" className="text-muted-foreground" />
+            Preferences
           </button>
         </ResponsiveDropdownItem>
         <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
@@ -284,7 +276,11 @@ function LoggedUser() {
             onClick={handleClickInvite}
             className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
           >
-            <Icon name="mail" filled={!!match} />
+            <Icon
+              name="mail"
+              filled={!!match}
+              className="text-muted-foreground"
+            />
             <span className="truncate">Invites</span>
 
             <Suspense fallback={null}>
@@ -292,16 +288,49 @@ function LoggedUser() {
             </Suspense>
           </Link>
         </ResponsiveDropdownItem>
+
         <ResponsiveDropdownSeparator />
+
         <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
-          <button
-            type="button"
-            className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs w-full"
-            onClick={() => setPreferencesOpen(true)}
+          <a
+            href="https://github.com/deco-cx/chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center gap-2 leading-relaxed text-sm sm:text-xs"
           >
-            <Icon name="settings" />
-            Preferences
-          </button>
+            <img
+              src="/img/github.svg"
+              alt="GitHub"
+              className="w-4 h-4 text-muted-foreground"
+            />
+            deco-cx/chat
+            {formattedStars && (
+              <span className="ml-auto text-muted-foreground">
+                {formattedStars} stars
+              </span>
+            )}
+            <Icon
+              name="arrow_outward"
+              size={16}
+              className="text-muted-foreground"
+            />
+          </a>
+        </ResponsiveDropdownItem>
+        <ResponsiveDropdownItem className="p-0 md:px-2 md:py-1.5" asChild>
+          <a
+            href="/about"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center gap-2 leading-relaxed text-sm sm:text-xs"
+          >
+            <Icon name="language" className="text-muted-foreground" />
+            Homepage
+            <Icon
+              name="arrow_outward"
+              size={16}
+              className="ml-auto text-muted-foreground"
+            />
+          </a>
         </ResponsiveDropdownItem>
 
         <ResponsiveDropdownSeparator />
@@ -311,7 +340,7 @@ function LoggedUser() {
             href={logoutUrl}
             className="flex items-center gap-2 leading-relaxed text-sm sm:text-xs"
           >
-            <Icon name="logout" size={16} />
+            <Icon name="logout" size={16} className="text-muted-foreground" />
             Log out
           </a>
         </ResponsiveDropdownItem>
@@ -345,7 +374,7 @@ function AnonymouseUser() {
 function Skeleton() {
   return (
     <SidebarMenuButton>
-      <div className="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-slate-100 hover:text-slate-900 h-8 px-4 py-2 gap-2">
+      <div className="inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-muted hover:text-foreground h-8 px-4 py-2 gap-2">
         <span className="w-24 h-8"></span>
       </div>
     </SidebarMenuButton>
