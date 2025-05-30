@@ -15,7 +15,7 @@ import {
   useLocation,
   useRouteError,
 } from "react-router";
-import { EmptyState } from "./components/common/EmptyState.tsx";
+import { EmptyState } from "./components/common/empty-state.tsx";
 
 type LazyComp<P> = Promise<{
   default: React.ComponentType<P>;
@@ -44,7 +44,7 @@ const RouteLayout = lazy(() =>
 );
 
 const PageviewTrackerLayout = lazy(
-  () => import("./components/analytics/PageviewTracker.tsx"),
+  () => import("./components/analytics/pageview-tracker.tsx"),
 );
 
 const Login = lazy(() => import("./components/login/index.tsx"));
@@ -90,7 +90,7 @@ const AuditDetail = lazy(
 );
 
 const MagicLink = lazy(() =>
-  wrapWithUILoadingFallback(import("./components/login/magicLink.tsx"))
+  wrapWithUILoadingFallback(import("./components/login/magic-link.tsx"))
 );
 
 const Settings = lazy(() =>
@@ -102,7 +102,7 @@ const TriggerList = lazy(() =>
 );
 
 const TriggerDetails = lazy(() =>
-  wrapWithUILoadingFallback(import("./components/triggers/triggerDetails.tsx"))
+  wrapWithUILoadingFallback(import("./components/triggers/trigger-details.tsx"))
 );
 
 const InvitesList = lazy(() =>
