@@ -133,7 +133,7 @@ function FileAvatar(
         url={typeof fileUrl === "string" ? fileUrl : undefined}
         fallback={name.substring(0, 2)}
         className={cn(
-          "w-full h-full",
+          "w-full h-full rounded-lg",
           className,
         )}
       />
