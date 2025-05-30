@@ -7,7 +7,7 @@ import { TriggerActions } from "./trigger-actions.tsx";
 import { TriggerType } from "./trigger-type.tsx";
 import { TriggerToggle } from "./trigger-toggle.tsx";
 
-type Trigger = z.infer<typeof TriggerOutputSchema>;
+export type Trigger = z.infer<typeof TriggerOutputSchema>;
 
 export function TriggerCard({ trigger, onClick }: {
   trigger: Trigger;
