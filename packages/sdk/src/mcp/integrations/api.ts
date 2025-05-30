@@ -21,6 +21,7 @@ import {
 import { CallToolResultSchema } from "../../models/tool-call.ts";
 import type { Workspace } from "../../path.ts";
 import { QueryResult } from "../../storage/supabase/client.ts";
+import { IMPORTANT_ROLES } from "../agents/api.ts";
 import {
   assertHasWorkspace,
   bypass,
@@ -29,7 +30,6 @@ import {
 import { createTool } from "../context.ts";
 import { Binding, NotFoundError, WellKnownBindings } from "../index.ts";
 import { KNOWLEDGE_BASE_GROUP, listKnowledgeBases } from "../knowledge/api.ts";
-import { IMPORTANT_ROLES } from "../agents/api.ts";
 
 const ensureStartingSlash = (path: string) =>
   path.startsWith("/") ? path : `/${path}`;
@@ -260,9 +260,17 @@ export const listIntegrations = createTool({
     if (binder) {
       const filtered: typeof result = [];
       await Promise.all(result.map(async (integration) => {
-        const integrationTools = await listTools.handler({
-          connection: integration.connection,
-        });
+        const integrationTools = await Promise.race([
+          listTools.handler({
+            connection: integration.connection,
+          }),
+          new Promise<{ isError: true }>((resolve) =>
+            setTimeout(() =>
+              resolve({
+                isError: true,
+              }), 7_000)
+          ),
+        ]);
         if (integrationTools.isError) {
           return;
         }
