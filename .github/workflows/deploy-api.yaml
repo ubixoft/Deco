@@ -53,6 +53,9 @@ jobs:
             CURRENCY_API_KEY
             ISSUER_JWT_SECRET
             LLMS_ENCRYPTION_KEY
+            WHATSAPP_ACCESS_TOKEN
+            WHATSAPP_PHONE_NUMBER_ID
+            WHATSAPP_API_VERSION
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVER_TOKEN: ${{ secrets.SUPABASE_SERVER_TOKEN }}
