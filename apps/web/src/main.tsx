@@ -11,6 +11,7 @@ import { JSX, lazy, StrictMode, Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createBrowserRouter,
+  Navigate,
   RouterProvider,
   useLocation,
   useRouteError,
@@ -133,7 +134,7 @@ function ErrorFallback() {
       return;
     }
 
-    if (pathname === DEFAULT_PATH) {
+    if (pathname === "/") {
       globalThis.location.href = "/about";
 
       return;
@@ -222,6 +223,10 @@ function ErrorFallback() {
   );
 }
 
+function Home() {
+  return <Navigate to={DEFAULT_PATH} replace />;
+}
+
 const router = createBrowserRouter([
   {
     errorElement: <ErrorFallback />,
@@ -256,13 +261,7 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            loader: ({ params }) => {
-              const teamSlug = params.teamSlug;
-              globalThis.location.href = teamSlug
-                ? `/${teamSlug}${DEFAULT_PATH}`
-                : DEFAULT_PATH;
-              return null;
-            },
+            Component: Home,
           },
           { path: "agents", Component: AgentList },
           { path: "agent/:id/:threadId", Component: AgentDetail },
