@@ -64,12 +64,14 @@ export function usePlan() {
   return plan;
 }
 
-export function usePlanHasFeature(feature: Feature) {
+export function usePlanHasFeature(_feature: Feature) {
   const { workspace } = useSDK();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: plan } = useSuspenseQuery({
     queryKey: KEYS.WORKSPACE_PLAN(workspace),
     queryFn: () => getWorkspacePlan(workspace),
   });
 
-  return plan.features.includes(feature);
+  // TODO: (quickfix for the bering demo)
+  return true; // return plan.features.includes(feature);
 }
