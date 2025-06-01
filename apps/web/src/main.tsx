@@ -11,11 +11,13 @@ import { JSX, lazy, StrictMode, Suspense, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createBrowserRouter,
+  Navigate,
   RouterProvider,
   useLocation,
   useRouteError,
 } from "react-router";
 import { EmptyState } from "./components/common/empty-state.tsx";
+import { useWorkspaceLink } from "./hooks/use-navigate-workspace.ts";
 
 type LazyComp<P> = Promise<{
   default: React.ComponentType<P>;
@@ -118,6 +120,16 @@ function NotFound(): null {
 }
 
 const DEFAULT_PATH = "/agents";
+
+/**
+ * Home component that redirects to the default path while preserving team workspace context.
+ * This replaces the previous loader-based approach to avoid double redirects while maintaining
+ * proper team slug handling.
+ */
+function Home() {
+  const workspaceLink = useWorkspaceLink();
+  return <Navigate to={workspaceLink(DEFAULT_PATH)} replace />;
+}
 
 function ErrorFallback() {
   const { pathname } = useLocation();
@@ -256,13 +268,7 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,
-            loader: ({ params }) => {
-              const teamSlug = params.teamSlug;
-              globalThis.location.href = teamSlug
-                ? `/${teamSlug}${DEFAULT_PATH}`
-                : DEFAULT_PATH;
-              return null;
-            },
+            Component: Home,
           },
           { path: "agents", Component: AgentList },
           { path: "agent/:id/:threadId", Component: AgentDetail },
