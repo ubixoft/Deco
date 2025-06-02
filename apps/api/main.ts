@@ -13,7 +13,7 @@ const instrumentedApp = getRuntimeKey() === "deno" ? app : instrument(app);
 // Domains we consider "self"
 const SELF_DOMAINS: string[] = [
   Hosts.API,
-  `localhost:${process.env.PORT || 3001}`,
+  `localhost:${process.env.PORT || 8000}`,
 ];
 
 // Patch fetch globally
