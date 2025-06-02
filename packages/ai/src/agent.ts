@@ -690,6 +690,26 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     });
   }
 
+  async speak(text: string, options?: { voice?: string; speed?: number }) {
+    if (!this._maybeAgent) {
+      throw new Error("Agent not initialized");
+    }
+
+    try {
+      const readableStream = await this._maybeAgent.voice.speak(text, {
+        speaker: options?.voice || "echo",
+        properties: {
+          speed: options?.speed || 1.0,
+          pitch: "default",
+        },
+      });
+
+      return readableStream;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   public async updateThreadTools(tool_set: Configuration["tools_set"]) {
     const thread = await this._memory.getThreadById(this._thread);
     if (!thread) {
