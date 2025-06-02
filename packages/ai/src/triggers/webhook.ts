@@ -30,6 +30,7 @@ const parseOptions: {
   bypassOpenRouter: (val) => val === "true",
   lastMessages: (val) => val ? parseInt(val) : undefined,
   sendReasoning: (val) => val === "true",
+  enableSemanticRecall: (val) => val === "true",
 };
 
 export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
@@ -75,6 +76,7 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
         options[key] = parser(val) as any;
       }
     }
+
     const { threadId, resourceId } = threadOf(data, url);
 
     const agent = trigger.state

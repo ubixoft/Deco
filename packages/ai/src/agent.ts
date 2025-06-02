@@ -1026,7 +1026,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           ? {
             memoryOptions: {
               lastMessages: options.lastMessages,
-              semanticRecall: false,
+              semanticRecall: options.enableSemanticRecall,
             },
           }
           : {}),

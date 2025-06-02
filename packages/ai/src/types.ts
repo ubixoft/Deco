@@ -53,6 +53,7 @@ export interface GenerateOptions {
   bypassOpenRouter?: boolean;
   threadId?: string;
   resourceId?: string;
+  enableSemanticRecall?: boolean;
 }
 
 export interface StreamOptions extends GenerateOptions {
