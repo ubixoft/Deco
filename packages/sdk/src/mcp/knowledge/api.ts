@@ -160,8 +160,6 @@ export const remember = createKnowledgeBaseTool({
       throw new InternalServerError("Missing OPENAI_API_KEY");
     }
 
-    console.log("Embed K", c.envVars.OPENAI_API_KEY);
-
     const vector = await getVector(c);
     const docId = _id ?? crypto.randomUUID();
     const embedder = openAIEmbedder(c.envVars.OPENAI_API_KEY);
