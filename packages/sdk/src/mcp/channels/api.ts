@@ -1,5 +1,6 @@
 import type { TriggerData } from "@deco/ai";
 import { Trigger } from "@deco/ai/actors";
+import { Hosts } from "@deco/sdk/hosts";
 import { join } from "node:path/posix";
 import { z } from "zod";
 import { InternalServerError, NotFoundError } from "../../errors.ts";
@@ -19,7 +20,8 @@ const SELECT_CHANNEL_QUERY = `
     *
   ),
   agents:deco_chat_channel_agents(
-    agent_id
+    agent_id,
+    agent:deco_chat_agents(id, name)
   )
 ` as const;
 
@@ -79,14 +81,14 @@ export const createChannel = createTool({
       "The channel discriminator",
     ),
     integrationId: z.string().describe("The ID of the integration to use"),
-    agentIds: z.array(z.string()).optional().describe(
-      "The IDs of the agents to link the channel to.",
+    agentId: z.string().optional().describe(
+      "The ID of the agent to join the channel.",
     ),
     name: z.string().optional().describe(
       "The name of the channel",
     ),
   }),
-  handler: async ({ discriminator, integrationId, agentIds, name }, c) => {
+  handler: async ({ discriminator, integrationId, agentId, name }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
@@ -109,34 +111,24 @@ export const createChannel = createTool({
     }
 
     // Link agents if provided
-    const allAgentIds = agentIds ?? [];
-    if (allAgentIds.length > 0) {
-      await Promise.all(
-        allAgentIds.map((aid) =>
-          db.from("deco_chat_channel_agents").insert({
-            channel_id: channel.id,
-            agent_id: aid,
-          })
-        ),
-      );
-    }
-
-    // If the channel has agents and integration, call LINK_CHANNEL for each
-    if (allAgentIds.length > 0 && channel.integration) {
+    if (agentId) {
+      await db.from("deco_chat_channel_agents").insert({
+        channel_id: channel.id,
+        agent_id: agentId,
+      });
       const binding = ChannelBinding.forConnection(
         convertFromDatabase(channel.integration).connection,
       );
-      await Promise.all(
-        allAgentIds.map(async (aid) => {
-          const trigger = await createWebhookTrigger(discriminator, aid, c);
-          await binding.DECO_CHAT_CHANNELS_JOIN({
-            discriminator,
-            workspace,
-            agentId: aid,
-            callbacks: trigger.callbacks,
-          });
-        }),
-      );
+      const trigger = await createWebhookTrigger(discriminator, agentId, c);
+      const agentName = getAgentName(channel, agentId);
+      await binding.DECO_CHAT_CHANNELS_JOIN({
+        agentLink: generateAgentLink(c.workspace, agentId),
+        discriminator,
+        workspace,
+        agentName,
+        agentId,
+        callbacks: trigger.callbacks,
+      });
     }
 
     // Re-fetch with agents
@@ -150,6 +142,23 @@ export const createChannel = createTool({
     return mapChannel(fullChannel);
   },
 });
+
+const generateAgentLink = (
+  workspace: { root: string; value: string },
+  agentId: string,
+) => {
+  return `https://${Hosts.Chat}/${
+    workspace.root === "users" ? "" : `${workspace.value}/`
+  }agent/${agentId}/${crypto.randomUUID()}`;
+};
+
+const getAgentName = (
+  channel: QueryResult<"deco_chat_channels", typeof SELECT_CHANNEL_QUERY>,
+  agentId: string,
+) => {
+  return channel.agents.find((agent) => agent.agent_id === agentId)?.agent
+    ?.name ?? "Deco Agent";
+};
 
 export const channelJoin = createTool({
   name: "CHANNELS_JOIN",
@@ -196,7 +205,10 @@ export const channelJoin = createTool({
         agentId,
         c,
       );
+      const agentName = getAgentName(channel, agentId);
       await binding.DECO_CHAT_CHANNELS_JOIN({
+        agentName,
+        agentLink: generateAgentLink(c.workspace, agentId),
         discriminator: channel.discriminator,
         workspace,
         agentId,

@@ -14,6 +14,8 @@ const channelIdSchema = z.object({
 
 const channelBindingSchema = channelIdSchema.extend({
   agentId: z.string(),
+  agentName: z.string(),
+  agentLink: z.string(),
 });
 
 const joinChannelSchema = channelBindingSchema.extend({
