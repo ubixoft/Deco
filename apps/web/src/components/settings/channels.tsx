@@ -52,18 +52,18 @@ export function Channels({ className }: ChannelsProps) {
     () => allChannels.filter((channel) => channel.agentIds.includes(agent.id)),
     [allChannels, agent.id],
   );
-  const unlinkedChannels = useMemo(
+  const availableChannels = useMemo(
     () => allChannels.filter((channel) => !channel.agentIds.includes(agent.id)),
     [allChannels, agent.id],
   );
 
   // Helper functions to check if specific channel is being processed
-  const isChannelUnlinking = (channelId: string) => {
+  const isLeavingChannel = (channelId: string) => {
     return leaveChannelMutation.isPending &&
       leaveChannelMutation.variables?.channelId === channelId;
   };
 
-  const isChannelLinking = (channelId: string) => {
+  const isJoiningChannel = (channelId: string) => {
     return joinChannelMutation.isPending &&
       joinChannelMutation.variables?.channelId === channelId;
   };
@@ -73,7 +73,7 @@ export function Channels({ className }: ChannelsProps) {
       removeChannelMutation.variables === channelId;
   };
 
-  const handleLinkChannel = (channelId: string) => {
+  const handleJoinChannel = (channelId: string) => {
     joinChannelMutation.mutate({
       channelId,
       agentId: agent.id,
@@ -89,7 +89,7 @@ export function Channels({ className }: ChannelsProps) {
     });
   };
 
-  const handleUnlinkChannel = (channelId: string) => {
+  const handleLeaveChannel = (channelId: string) => {
     const channel = agentChannels.find((c) => c.id === channelId);
     if (!channel) return;
 
@@ -98,11 +98,11 @@ export function Channels({ className }: ChannelsProps) {
       agentId: agent.id,
     }, {
       onSuccess: () => {
-        toast.success("Channel unlinked successfully");
+        toast.success("Channel left successfully");
       },
       onError: (error) => {
         toast.error(
-          error instanceof Error ? error.message : "Failed to unlink channel",
+          error instanceof Error ? error.message : "Failed to leave channel",
         );
       },
     });
@@ -111,7 +111,7 @@ export function Channels({ className }: ChannelsProps) {
   const handleCreateChannel = (bindingId: string) => {
     const selectedBinding = bindings?.find((b) => b.id === bindingId);
     if (!selectedBinding) {
-      toast.error("Please select a binding first");
+      toast.error("Please select a integration first");
       return;
     }
 
@@ -196,10 +196,10 @@ export function Channels({ className }: ChannelsProps) {
             <button
               className="ml-auto cursor-pointer"
               type="button"
-              onClick={() => handleUnlinkChannel(channel.id)}
-              disabled={isChannelUnlinking(channel.id)}
+              onClick={() => handleLeaveChannel(channel.id)}
+              disabled={isLeavingChannel(channel.id)}
             >
-              {isChannelUnlinking(channel.id)
+              {isLeavingChannel(channel.id)
                 ? <Spinner size="sm" />
                 : <Icon name="close" size={16} />}
             </button>
@@ -207,12 +207,12 @@ export function Channels({ className }: ChannelsProps) {
         );
       })}
 
-      {unlinkedChannels.length > 0 && (
+      {availableChannels.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">
             Available Channels
           </p>
-          {unlinkedChannels.map((channel) => {
+          {availableChannels.map((channel) => {
             const integration = channel.integration;
             return (
               <div
@@ -236,19 +236,19 @@ export function Channels({ className }: ChannelsProps) {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleLinkChannel(channel.id)}
-                    disabled={isChannelLinking(channel.id)}
+                    onClick={() => handleJoinChannel(channel.id)}
+                    disabled={isJoiningChannel(channel.id)}
                     className="h-6 px-2 text-xs"
                   >
-                    {isChannelLinking(channel.id)
+                    {isJoiningChannel(channel.id)
                       ? (
                         <div className="flex items-center gap-1">
                           <Spinner size="xs" />
-                          <span>Linking...</span>
+                          <span>Joining...</span>
                         </div>
                       )
                       : (
-                        "Link"
+                        "Join"
                       )}
                   </Button>
                   <button
