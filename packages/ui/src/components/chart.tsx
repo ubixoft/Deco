@@ -133,8 +133,6 @@ function ChartTooltipContent({
     labelKey?: string;
   }) {
   const { config } = useChart();
-
-  console.log({ payload });
   // Ensure payload is always an array
   const safePayload = Array.isArray(payload) ? payload : [];
 
