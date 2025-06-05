@@ -77,12 +77,10 @@ export const useLinkChannel = () => {
     mutationFn: ({
       channelId,
       agentId,
-      discriminator,
     }: {
       channelId: string;
       agentId: string;
-      discriminator: string;
-    }) => linkChannel(workspace, channelId, agentId, discriminator),
+    }) => linkChannel(workspace, channelId, agentId),
     onSuccess: (result) => updateChannelCache(result),
   });
 
@@ -97,12 +95,10 @@ export const useUnlinkChannel = () => {
     mutationFn: ({
       channelId,
       agentId,
-      discriminator,
     }: {
       channelId: string;
       agentId: string;
-      discriminator: string;
-    }) => unlinkChannel(workspace, channelId, agentId, discriminator),
+    }) => unlinkChannel(workspace, channelId, agentId),
     onSuccess: (result) => updateChannelCache(result),
   });
 

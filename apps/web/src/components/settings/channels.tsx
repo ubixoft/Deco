@@ -1,19 +1,3 @@
-import { Button } from "@deco/ui/components/button.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
-import { Input } from "@deco/ui/components/input.tsx";
-import { Label } from "@deco/ui/components/label.tsx";
-import { Badge } from "@deco/ui/components/badge.tsx";
-import { Alert, AlertDescription } from "@deco/ui/components/alert.tsx";
-import { Spinner } from "@deco/ui/components/spinner.tsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@deco/ui/components/select.tsx";
-import { FormControl, FormItem, FormLabel } from "@deco/ui/components/form.tsx";
-import { cn } from "@deco/ui/lib/utils.ts";
 import {
   useBindings,
   useChannels,
@@ -22,11 +6,27 @@ import {
   useRemoveChannel,
   useUnlinkChannel,
 } from "@deco/sdk/hooks";
-import { useMemo, useState } from "react";
-import { useAgentSettingsForm } from "../agent/edit.tsx";
+import { Alert, AlertDescription } from "@deco/ui/components/alert.tsx";
+import { Badge } from "@deco/ui/components/badge.tsx";
+import { Button } from "@deco/ui/components/button.tsx";
+import { FormControl, FormItem, FormLabel } from "@deco/ui/components/form.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
+import { Input } from "@deco/ui/components/input.tsx";
+import { Label } from "@deco/ui/components/label.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@deco/ui/components/select.tsx";
 import { toast } from "@deco/ui/components/sonner.tsx";
+import { Spinner } from "@deco/ui/components/spinner.tsx";
+import { cn } from "@deco/ui/lib/utils.ts";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useWorkspaceLink } from "../../hooks/use-navigate-workspace.ts";
+import { useAgentSettingsForm } from "../agent/edit.tsx";
 import { IntegrationIcon } from "../integrations/list/common.tsx";
 
 interface ChannelsProps {
@@ -60,7 +60,6 @@ export function Channels({ className }: ChannelsProps) {
   const handleLinkChannel = (channelId: string) => {
     linkChannel({
       channelId,
-      discriminator: discriminator.trim(),
       agentId: agent.id,
     }, {
       onSuccess: () => {
@@ -81,7 +80,6 @@ export function Channels({ className }: ChannelsProps) {
     unlinkChannel({
       channelId: channel.id,
       agentId: agent.id,
-      discriminator: channel.discriminator,
     }, {
       onSuccess: () => {
         toast.success("Channel unlinked successfully");

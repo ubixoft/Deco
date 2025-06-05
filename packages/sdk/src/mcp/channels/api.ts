@@ -150,9 +150,6 @@ export const channelLink = createTool({
   name: "CHANNELS_LINK",
   description: "Link a channel to an agent",
   inputSchema: z.object({
-    discriminator: z.string().describe(
-      "The channel discriminator",
-    ),
     id: z.string().describe(
       "The ID of the channel to link, use only UUIDs.",
     ),
@@ -160,7 +157,7 @@ export const channelLink = createTool({
       "The ID of the agent to link the channel to, use only UUIDs.",
     ),
   }),
-  handler: async ({ id, agentId, discriminator }, c) => {
+  handler: async ({ id, agentId }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
@@ -195,7 +192,7 @@ export const channelLink = createTool({
         c,
       );
       await binding.LINK_CHANNEL({
-        discriminator,
+        discriminator: channel.discriminator,
         workspace,
         agentId,
         callbacks: trigger.callbacks,
@@ -213,14 +210,11 @@ export const channelUnlink = createTool({
     id: z.string().describe(
       "The ID of the channel to unlink, use only UUIDs.",
     ),
-    discriminator: z.string().describe(
-      "The channel discriminator",
-    ),
     agentId: z.string().describe(
       "The ID of the agent to unlink, use only UUIDs.",
     ),
   }),
-  handler: async ({ id, discriminator, agentId }, c) => {
+  handler: async ({ id, agentId }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
@@ -250,7 +244,7 @@ export const channelUnlink = createTool({
         convertFromDatabase(channel.integration).connection,
       );
       await binding.UNLINK_CHANNEL({
-        discriminator,
+        discriminator: channel.discriminator,
         workspace,
       });
     }

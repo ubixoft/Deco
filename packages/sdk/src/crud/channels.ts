@@ -61,12 +61,10 @@ export const linkChannel = (
   workspace: string,
   channelId: string,
   agentId: string,
-  discriminator: string,
 ) =>
   MCPClient.forWorkspace(workspace).CHANNELS_LINK({
     id: channelId,
     agentId,
-    discriminator,
   });
 
 /**
@@ -80,12 +78,10 @@ export const unlinkChannel = (
   workspace: string,
   channelId: string,
   agentId: string,
-  discriminator: string,
 ) =>
   MCPClient.forWorkspace(workspace).CHANNELS_UNLINK({
     id: channelId,
     agentId: agentId,
-    discriminator,
   });
 
 /**
