@@ -2,9 +2,9 @@ import {
   useBindings,
   useChannels,
   useCreateChannel,
-  useLinkChannel,
+  useJoinChannel,
+  useLeaveChannel,
   useRemoveChannel,
-  useUnlinkChannel,
 } from "@deco/sdk/hooks";
 import { Alert, AlertDescription } from "@deco/ui/components/alert.tsx";
 import { Badge } from "@deco/ui/components/badge.tsx";
@@ -41,8 +41,8 @@ export function Channels({ className }: ChannelsProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { agent } = useAgentSettingsForm();
   const { mutate: createChannel, isPending: isCreating } = useCreateChannel();
-  const linkChannelMutation = useLinkChannel();
-  const unlinkChannelMutation = useUnlinkChannel();
+  const joinChannelMutation = useJoinChannel();
+  const leaveChannelMutation = useLeaveChannel();
   const removeChannelMutation = useRemoveChannel();
   const { data: channels } = useChannels();
   const workspaceLink = useWorkspaceLink();
@@ -59,13 +59,13 @@ export function Channels({ className }: ChannelsProps) {
 
   // Helper functions to check if specific channel is being processed
   const isChannelUnlinking = (channelId: string) => {
-    return unlinkChannelMutation.isPending &&
-      unlinkChannelMutation.variables?.channelId === channelId;
+    return leaveChannelMutation.isPending &&
+      leaveChannelMutation.variables?.channelId === channelId;
   };
 
   const isChannelLinking = (channelId: string) => {
-    return linkChannelMutation.isPending &&
-      linkChannelMutation.variables?.channelId === channelId;
+    return joinChannelMutation.isPending &&
+      joinChannelMutation.variables?.channelId === channelId;
   };
 
   const isChannelRemoving = (channelId: string) => {
@@ -74,7 +74,7 @@ export function Channels({ className }: ChannelsProps) {
   };
 
   const handleLinkChannel = (channelId: string) => {
-    linkChannelMutation.mutate({
+    joinChannelMutation.mutate({
       channelId,
       agentId: agent.id,
     }, {
@@ -93,7 +93,7 @@ export function Channels({ className }: ChannelsProps) {
     const channel = agentChannels.find((c) => c.id === channelId);
     if (!channel) return;
 
-    unlinkChannelMutation.mutate({
+    leaveChannelMutation.mutate({
       channelId: channel.id,
       agentId: agent.id,
     }, {

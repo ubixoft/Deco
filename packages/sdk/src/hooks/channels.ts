@@ -8,9 +8,9 @@ import {
   createChannel,
   deleteChannel,
   getChannel,
-  linkChannel,
+  joinChannel,
+  leaveChannel,
   listChannels,
-  unlinkChannel,
 } from "../crud/channels.ts";
 import { InternalServerError } from "../errors.ts";
 import { KEYS } from "./api.ts";
@@ -69,40 +69,40 @@ export const useUpdateChannelCache = () => {
   return update;
 };
 
-export const useLinkChannel = () => {
+export const useJoinChannel = () => {
   const { workspace } = useSDK();
   const updateChannelCache = useUpdateChannelCache();
 
-  const link = useMutation({
+  const res = useMutation({
     mutationFn: ({
       channelId,
       agentId,
     }: {
       channelId: string;
       agentId: string;
-    }) => linkChannel(workspace, channelId, agentId),
+    }) => joinChannel(workspace, channelId, agentId),
     onSuccess: (result) => updateChannelCache(result),
   });
 
-  return link;
+  return res;
 };
 
-export const useUnlinkChannel = () => {
+export const useLeaveChannel = () => {
   const { workspace } = useSDK();
   const updateChannelCache = useUpdateChannelCache();
 
-  const unlink = useMutation({
+  const res = useMutation({
     mutationFn: ({
       channelId,
       agentId,
     }: {
       channelId: string;
       agentId: string;
-    }) => unlinkChannel(workspace, channelId, agentId),
+    }) => leaveChannel(workspace, channelId, agentId),
     onSuccess: (result) => updateChannelCache(result),
   });
 
-  return unlink;
+  return res;
 };
 
 export const useRemoveChannel = () => {
