@@ -156,11 +156,11 @@ export function Channels({ className }: ChannelsProps) {
       agentId: agent.id,
     }, {
       onSuccess: () => {
-        toast.success("Channel linked successfully");
+        toast.success("Channel joined successfully");
       },
       onError: (error) => {
         toast.error(
-          error instanceof Error ? error.message : "Failed to link channel",
+          error instanceof Error ? error.message : "Failed to join channel",
         );
       },
     });
