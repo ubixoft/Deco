@@ -124,7 +124,7 @@ export const createChannel = createTool({
       await Promise.all(
         allAgentIds.map(async (aid) => {
           const trigger = await createWebhookTrigger(discriminator, aid, c);
-          await binding.JOIN_CHANNEL({
+          await binding.DECO_CHAT_CHANNELS_JOIN({
             discriminator,
             workspace,
             agentId: aid,
@@ -191,7 +191,7 @@ export const channelJoin = createTool({
         agentId,
         c,
       );
-      await binding.JOIN_CHANNEL({
+      await binding.DECO_CHAT_CHANNELS_JOIN({
         discriminator: channel.discriminator,
         workspace,
         agentId,
@@ -243,7 +243,7 @@ export const channelLeave = createTool({
       const binding = ChannelBinding.forConnection(
         convertFromDatabase(channel.integration).connection,
       );
-      await binding.LEAVE_CHANNEL({
+      await binding.DECO_CHAT_CHANNELS_LEAVE({
         discriminator: channel.discriminator,
         workspace,
       });
@@ -336,7 +336,7 @@ export const deleteChannel = createTool({
     const binding = ChannelBinding.forConnection(
       convertFromDatabase(channel.integration).connection,
     );
-    await binding.LEAVE_CHANNEL({
+    await binding.DECO_CHAT_CHANNELS_LEAVE({
       discriminator: channel.discriminator,
       workspace,
     });

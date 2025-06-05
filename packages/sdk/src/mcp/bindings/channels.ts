@@ -24,11 +24,11 @@ export type Callbacks = z.infer<typeof callbacksSchema>;
 export type JoinedChannelPayload = z.infer<typeof joinChannelSchema>;
 
 export const CHANNEL_BINDING_SCHEMA = [{
-  name: "JOIN_CHANNEL" as const,
+  name: "DECO_CHAT_CHANNELS_JOIN" as const,
   inputSchema: joinChannelSchema,
   outputSchema: z.any(),
 }, {
-  name: "LEAVE_CHANNEL" as const,
+  name: "DECO_CHAT_CHANNELS_LEAVE" as const,
   inputSchema: channelIdSchema,
   outputSchema: z.any(),
 }] as const satisfies Binder;
