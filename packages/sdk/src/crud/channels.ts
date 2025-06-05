@@ -56,8 +56,8 @@ export const getChannel = (
 /**
  * Make a agent join the channel
  * @param workspace - The workspace of the channel
- * @param channelId - The ID of the channel to link
- * @param agentId - The ID of the agent to link to
+ * @param channelId - The ID of the channel to join
+ * @param agentId - The ID of the agent to join the channel
  * @returns The updated channel
  */
 export const joinChannel = (
@@ -86,7 +86,7 @@ export const listAvailableChannelsForConnection = (
 /**
  * Remove an agent from a channel
  * @param workspace - The workspace of the channel
- * @param channelId - The ID of the channel to unlink
+ * @param channelId - The ID of the channel to leave
  * @returns The updated channel
  */
 export const leaveChannel = (
