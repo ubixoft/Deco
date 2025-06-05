@@ -41,9 +41,9 @@ export function Channels({ className }: ChannelsProps) {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { agent } = useAgentSettingsForm();
   const { mutate: createChannel, isPending: isCreating } = useCreateChannel();
-  const { mutate: linkChannel, isPending: isLinking } = useLinkChannel();
-  const { mutate: unlinkChannel, isPending: isUnlinking } = useUnlinkChannel();
-  const { mutate: removeChannel, isPending: isRemoving } = useRemoveChannel();
+  const linkChannelMutation = useLinkChannel();
+  const unlinkChannelMutation = useUnlinkChannel();
+  const removeChannelMutation = useRemoveChannel();
   const { data: channels } = useChannels();
   const workspaceLink = useWorkspaceLink();
   const [selectedBinding, setSelectedBinding] = useState<string | null>(null);
@@ -57,8 +57,24 @@ export function Channels({ className }: ChannelsProps) {
     [allChannels, agent.id],
   );
 
+  // Helper functions to check if specific channel is being processed
+  const isChannelUnlinking = (channelId: string) => {
+    return unlinkChannelMutation.isPending &&
+      unlinkChannelMutation.variables?.channelId === channelId;
+  };
+
+  const isChannelLinking = (channelId: string) => {
+    return linkChannelMutation.isPending &&
+      linkChannelMutation.variables?.channelId === channelId;
+  };
+
+  const isChannelRemoving = (channelId: string) => {
+    return removeChannelMutation.isPending &&
+      removeChannelMutation.variables === channelId;
+  };
+
   const handleLinkChannel = (channelId: string) => {
-    linkChannel({
+    linkChannelMutation.mutate({
       channelId,
       agentId: agent.id,
     }, {
@@ -77,7 +93,7 @@ export function Channels({ className }: ChannelsProps) {
     const channel = agentChannels.find((c) => c.id === channelId);
     if (!channel) return;
 
-    unlinkChannel({
+    unlinkChannelMutation.mutate({
       channelId: channel.id,
       agentId: agent.id,
     }, {
@@ -123,7 +139,7 @@ export function Channels({ className }: ChannelsProps) {
   };
 
   const handleRemoveChannel = (channelId: string) => {
-    removeChannel(channelId, {
+    removeChannelMutation.mutate(channelId, {
       onSuccess: () => {
         toast.success("Channel removed successfully");
       },
@@ -181,9 +197,9 @@ export function Channels({ className }: ChannelsProps) {
               className="ml-auto cursor-pointer"
               type="button"
               onClick={() => handleUnlinkChannel(channel.id)}
-              disabled={isUnlinking}
+              disabled={isChannelUnlinking(channel.id)}
             >
-              {isUnlinking
+              {isChannelUnlinking(channel.id)
                 ? <Spinner size="sm" />
                 : <Icon name="close" size={16} />}
             </button>
@@ -221,13 +237,13 @@ export function Channels({ className }: ChannelsProps) {
                     size="sm"
                     variant="outline"
                     onClick={() => handleLinkChannel(channel.id)}
-                    disabled={isLinking}
+                    disabled={isChannelLinking(channel.id)}
                     className="h-6 px-2 text-xs"
                   >
-                    {isLinking
+                    {isChannelLinking(channel.id)
                       ? (
                         <div className="flex items-center gap-1">
-                          <Spinner size="sm" />
+                          <Spinner size="xs" />
                           <span>Linking...</span>
                         </div>
                       )
@@ -239,10 +255,10 @@ export function Channels({ className }: ChannelsProps) {
                     className="cursor-pointer hover:text-destructive"
                     type="button"
                     onClick={() => handleRemoveChannel(channel.id)}
-                    disabled={isRemoving}
+                    disabled={isChannelRemoving(channel.id)}
                   >
-                    {isRemoving
-                      ? <Spinner size="sm" />
+                    {isChannelRemoving(channel.id)
+                      ? <Spinner size="xs" />
                       : <Icon name="delete" size={16} />}
                   </button>
                 </div>
