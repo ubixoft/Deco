@@ -252,114 +252,109 @@ export function Channels({ className }: ChannelsProps) {
         </div>
       )}
 
-      <div className="space-y-4">
-        {showCreateForm && (
-          <div className="space-y-4 p-4 border rounded-lg">
-            {!bindings || bindings.length === 0
-              ? (
-                <Alert>
-                  <Icon name="info" size={16} />
-                  <AlertDescription>
-                    No channel integrations available. You need to install
-                    integrations first.
-                    <Link
-                      to={workspaceLink("/integrations")}
-                      className="ml-2 text-primary hover:underline"
-                    >
-                      Go to Integrations →
-                    </Link>
-                  </AlertDescription>
-                </Alert>
-              )
-              : (
-                <>
-                  <FormItem>
-                    <FormLabel>Integration</FormLabel>
-                    <FormControl>
-                      <Select
-                        value={selectedBinding ?? ""}
-                        onValueChange={(bindingId) => {
-                          setSelectedBinding(bindingId);
-                          if (discriminator.trim()) {
-                            handleCreateChannel(bindingId);
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select an integration" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {bindings.map((binding) => (
-                            <SelectItem key={binding.id} value={binding.id}>
-                              <div className="flex items-center gap-2">
-                                {binding.icon
-                                  ? (
-                                    <IntegrationIcon
-                                      className="before:hidden w-10 h-10"
-                                      name={binding.name}
-                                      icon={binding.icon}
-                                    />
-                                  )
-                                  : <Icon name="chat" size={16} />}
-                                <span>{binding.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                  </FormItem>
+      {!showCreateForm ? null : (!bindings || bindings.length === 0)
+        ? (
+          <Alert>
+            <AlertDescription>
+              No channel integrations available. You need to install
+              integrations first.
+              <Link
+                to={workspaceLink("/integrations")}
+                className="ml-2 text-primary hover:underline"
+              >
+                Go to Integrations →
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )
+        : (
+          <>
+            <FormItem>
+              <FormLabel>Integration</FormLabel>
+              <FormControl>
+                <Select
+                  value={selectedBinding ?? ""}
+                  onValueChange={(bindingId) => {
+                    setSelectedBinding(bindingId);
+                    if (discriminator.trim()) {
+                      handleCreateChannel(bindingId);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an integration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bindings?.map((binding) => (
+                      <SelectItem key={binding.id} value={binding.id}>
+                        <div className="flex items-center gap-2">
+                          {binding.icon
+                            ? (
+                              <IntegrationIcon
+                                className="before:hidden w-10 h-10"
+                                name={binding.name}
+                                icon={binding.icon}
+                              />
+                            )
+                            : <Icon name="chat" size={16} />}
+                          <span>{binding.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+            </FormItem>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="discriminator">
-                      Discriminator (unique identifier)
-                    </Label>
-                    <Input
-                      id="discriminator"
-                      placeholder="Enter unique identifier (e.g., phone number for WhatsApp)"
-                      value={discriminator}
-                      onChange={(e) => setDiscriminator(e.target.value)}
-                    />
-                  </div>
+            <div className="space-y-2">
+              <Label htmlFor="discriminator">
+                Discriminator (unique identifier)
+              </Label>
+              <Input
+                id="discriminator"
+                placeholder="Enter unique identifier (e.g., phone number for WhatsApp)"
+                value={discriminator}
+                onChange={(e) => setDiscriminator(e.target.value)}
+              />
+            </div>
 
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowCreateForm(false);
-                        setDiscriminator("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="default"
-                      disabled={!discriminator.trim() || isCreating}
-                      onClick={() => {
-                        handleCreateChannel(bindings[0].id);
-                      }}
-                      className="gap-2"
-                    >
-                      {isCreating
-                        ? (
-                          <>
-                            <Spinner size="sm" />
-                            Creating...
-                          </>
-                        )
-                        : (
-                          <>
-                            <Icon name="add" size={16} />
-                            Create Channel
-                          </>
-                        )}
-                    </Button>
-                  </div>
-                </>
-              )}
-          </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreateForm(false);
+                  setDiscriminator("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                disabled={!discriminator.trim() || isCreating}
+                onClick={() => {
+                  if (bindings) {
+                    handleCreateChannel(bindings[0].id);
+                  }
+                }}
+                className="gap-2"
+              >
+                {isCreating
+                  ? (
+                    <>
+                      <Spinner size="sm" />
+                      Creating...
+                    </>
+                  )
+                  : (
+                    <>
+                      <Icon name="add" size={16} />
+                      Create Channel
+                    </>
+                  )}
+              </Button>
+            </div>
+          </>
         )}
-      </div>
     </div>
   );
 }
