@@ -196,8 +196,6 @@ function CreditsUsedPerAgentCard({
     fill: agent.color,
   }));
 
-  console.log({ agentsChartData, usage, chartConfig, range });
-
   return (
     <Card className="w-full md:max-w-xl p-4 flex flex-col items-center rounded-md min-h-[340px] border-none">
       <div className="w-full text-sm mb-8 flex justify-between items-center">
