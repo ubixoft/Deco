@@ -35,6 +35,12 @@ const parseOptions: {
 
 export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
   type: "webhook",
+  onCreated: (data, trigger) => {
+    const metadata = trigger.metadata ?? {};
+    trigger.metadata = metadata;
+    metadata.passphrase ??= data.passphrase;
+    return Promise.resolve();
+  },
   run: async (data, trigger, args) => {
     if (data.passphrase && data.passphrase !== trigger.metadata?.passphrase) {
       return {

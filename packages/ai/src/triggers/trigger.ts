@@ -187,7 +187,12 @@ export class Trigger {
     payload?: InvokePayload,
   ): Callbacks {
     const urlFor = (method: keyof Trigger) =>
-      buildInvokeUrl(this.state.id, method, this.metadata?.passphrase, payload)
+      buildInvokeUrl(
+        this.state.id,
+        method,
+        this.metadata?.passphrase,
+        payload,
+      )
         .href;
 
     return {
