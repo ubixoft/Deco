@@ -119,13 +119,23 @@ export const createChannel = createTool({
       const binding = ChannelBinding.forConnection(
         convertFromDatabase(channel.integration).connection,
       );
-      const trigger = await createWebhookTrigger(discriminator, agentId, c);
-      const agentName = getAgentName(channel, agentId);
+
+      const [trigger, { data, error }] = await Promise.all([
+        createWebhookTrigger(discriminator, agentId, c),
+        c.db.from("deco_chat_agents").select("name")
+          .eq("id", agentId).single(),
+      ]);
+      if (error) {
+        throw new InternalServerError(error.message);
+      }
+      if (!data) {
+        throw new NotFoundError(`agent ${agentId} not found`);
+      }
       await binding.DECO_CHAT_CHANNELS_JOIN({
         agentLink: generateAgentLink(c.workspace, agentId),
         discriminator,
         workspace,
-        agentName,
+        agentName: data.name,
         agentId,
         callbacks: trigger.callbacks,
       });
