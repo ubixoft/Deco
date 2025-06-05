@@ -8,6 +8,16 @@ import {
   useRemoveChannel,
 } from "@deco/sdk/hooks";
 import { Alert, AlertDescription } from "@deco/ui/components/alert.tsx";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@deco/ui/components/alert-dialog.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import { FormControl, FormItem, FormLabel } from "@deco/ui/components/form.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
@@ -81,6 +91,12 @@ export function Channels({ className }: ChannelsProps) {
   const [discriminator, setDiscriminator] = useState("");
   const [name, setName] = useState<string | undefined>(undefined);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [confirmChannelSwitch, setConfirmChannelSwitch] = useState<
+    {
+      channelId: string;
+      channelName: string;
+    } | null
+  >(null);
   const { agent } = useAgentSettingsForm();
   const { mutate: createChannel, isPending: isCreating } = useCreateChannel();
   const joinChannelMutation = useJoinChannel();
@@ -122,6 +138,19 @@ export function Channels({ className }: ChannelsProps) {
   };
 
   const handleJoinChannel = (channelId: string) => {
+    const channel = availableChannels.find((c) => c.id === channelId);
+    if (!channel) return;
+
+    const isUsedByOtherAgent = channel.agentIds.length > 0 &&
+      channel.agentIds[0] !== agent.id;
+    if (isUsedByOtherAgent) {
+      setConfirmChannelSwitch({
+        channelId,
+        channelName: channel.name ?? channel.discriminator,
+      });
+      return;
+    }
+
     joinChannelMutation.mutate({
       channelId,
       agentId: agent.id,
@@ -133,6 +162,26 @@ export function Channels({ className }: ChannelsProps) {
         toast.error(
           error instanceof Error ? error.message : "Failed to link channel",
         );
+      },
+    });
+  };
+
+  const handleConfirmChannelSwitch = () => {
+    if (!confirmChannelSwitch) return;
+
+    joinChannelMutation.mutate({
+      channelId: confirmChannelSwitch.channelId,
+      agentId: agent.id,
+    }, {
+      onSuccess: () => {
+        toast.success("Channel switched successfully");
+        setConfirmChannelSwitch(null);
+      },
+      onError: (error) => {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to switch channel",
+        );
+        setConfirmChannelSwitch(null);
       },
     });
   };
@@ -247,6 +296,9 @@ export function Channels({ className }: ChannelsProps) {
             Available Channels
           </p>
           {availableChannels.map((channel) => {
+            const isInAgentChannels = agentChannels.some((c) =>
+              c.id === channel.id
+            );
             if (!channel) return null;
             return (
               <ChannelCard
@@ -270,7 +322,7 @@ export function Channels({ className }: ChannelsProps) {
                         </div>
                       )
                       : (
-                        "Join"
+                        isInAgentChannels ? "Joined" : "Join"
                       )}
                   </Button>
                   <button
@@ -403,6 +455,27 @@ export function Channels({ className }: ChannelsProps) {
             </div>
           </>
         )}
+
+      <AlertDialog open={!!confirmChannelSwitch}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch channel to this agent?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The channel "{confirmChannelSwitch?.channelName}" is currently
+              used by another agent. Do you want to switch it to this agent?
+              This will remove it from the other agent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmChannelSwitch(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmChannelSwitch}>
+              Switch Channel
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
