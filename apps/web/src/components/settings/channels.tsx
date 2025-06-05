@@ -206,7 +206,7 @@ export function Channels({ className }: ChannelsProps) {
         <div className="flex w-full justify-between gap-2 items-center">
           <div>
             <h3 className="text-sm font-medium text-foreground leading-">
-              Channels
+              Communication Channels
             </h3>
             <p className="text-xs font-normal text-muted-foreground">
               These are the channels your agent can find users on and
