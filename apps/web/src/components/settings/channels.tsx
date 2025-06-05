@@ -34,7 +34,7 @@ interface ChannelsProps {
 }
 
 export function Channels({ className }: ChannelsProps) {
-  const { data: bindings } = useBindings("Channel");
+  const { data: bindings, isPending: isLoadingBindings } = useBindings("Channel");
   const [discriminator, setDiscriminator] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const { agent } = useAgentSettingsForm();
@@ -253,7 +253,12 @@ export function Channels({ className }: ChannelsProps) {
       )}
 
       {!showCreateForm ? null : (!bindings || bindings.length === 0)
-        ? (
+        ? isLoadingBindings
+          ? <div className="w-full flex items-center gap-2">
+            <Spinner size="sm" />
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          </div>
+          : (
           <Alert>
             <AlertDescription>
               No channel integrations available. You need to install
