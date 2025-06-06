@@ -4,8 +4,8 @@ import { contextStorage } from "@deco/sdk/fetch";
 import { Hosts } from "@deco/sdk/hosts";
 import { instrument } from "@deco/sdk/observability";
 import { getRuntimeKey } from "hono/adapter";
-import { default as app } from "./src/app.ts";
 import process from "node:process";
+import { default as app } from "./src/app.ts";
 
 // Choose instrumented app depending on runtime
 const instrumentedApp = getRuntimeKey() === "deno" ? app : instrument(app);
@@ -59,7 +59,12 @@ globalThis.fetch = async function patchedFetch(
     );
   }
 
-  return await originalFetch(req);
+  return await originalFetch(req).then((r) => {
+    if (r.status === 508) {
+      console.error("508 error", req.url);
+    }
+    return r;
+  });
 };
 
 // Default export that wraps app with per-request context initializer
