@@ -304,7 +304,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
               mcpId,
               timeout.signal,
             )
-              .catch(() => {
+              .catch((err) => {
+                console.error("list tools error", err);
                 return null;
               }),
             new Promise((resolve) =>
