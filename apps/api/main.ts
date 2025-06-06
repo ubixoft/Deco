@@ -46,6 +46,9 @@ globalThis.fetch = async function patchedFetch(
   const url = new URL(req.url);
 
   const context = contextStorage.getStore();
+  if (url.host.includes("localhost")) {
+    console.log("req url", url.href);
+  }
 
   if (SELF_DOMAINS.includes(url.host)) {
     if (!context) {
