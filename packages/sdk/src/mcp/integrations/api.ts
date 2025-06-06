@@ -347,6 +347,7 @@ export const getIntegration = createTool({
     const { data, error } = await selectPromise;
 
     if (!data) {
+      console.error("integration not found data", error, data);
       throw new NotFoundError("Integration not found");
     }
 

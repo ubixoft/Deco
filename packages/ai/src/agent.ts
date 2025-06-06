@@ -268,6 +268,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     });
 
     if (!integration) {
+      console.log("integration not found", mcpId);
       return null;
     }
 
