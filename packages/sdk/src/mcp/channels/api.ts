@@ -157,8 +157,8 @@ const generateAgentLink = (
   workspace: { root: string; value: string },
   agentId: string,
 ) => {
-  return `https://${Hosts.Chat}/${
-    workspace.root === "users" ? "" : `${workspace.value}/`
+  return `https://${Hosts.Chat}${
+    workspace.root === "users" ? "/" : `${workspace.value}/`
   }agent/${agentId}/${crypto.randomUUID()}`;
 };
 
