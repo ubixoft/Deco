@@ -59,12 +59,7 @@ globalThis.fetch = async function patchedFetch(
     );
   }
 
-  return await originalFetch(req).then((r) => {
-    if (r.status === 508) {
-      console.error("508 error", req.url);
-    }
-    return r;
-  });
+  return await originalFetch(req);
 };
 
 // Default export that wraps app with per-request context initializer
