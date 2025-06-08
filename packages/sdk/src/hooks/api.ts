@@ -27,16 +27,21 @@ export const KEYS = {
   THREADS: (
     workspace: Workspace,
     options?: ThreadFilterOptions,
-  ) => [
-    "threads",
-    workspace,
-    options?.agentId,
-    options?.resourceId,
-    options?.orderBy,
-    options?.cursor,
-    options?.limit,
-    options?.uniqueByAgentId,
-  ],
+  ) => {
+    if (!options) {
+      return ["threads", workspace];
+    }
+    return [
+      "threads",
+      workspace,
+      options.agentId,
+      options.resourceId,
+      options.orderBy,
+      options.cursor,
+      options.limit,
+      options.uniqueByAgentId,
+    ];
+  },
   TOOLS: (
     workspace: Workspace,
     agentId: string,
