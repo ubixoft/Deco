@@ -53,9 +53,10 @@ import { EmptyState } from "../common/empty-state.tsx";
 import { ListPageHeader } from "../common/list-page-header.tsx";
 import { Table } from "../common/table/index.tsx";
 import { Tab } from "../dock/index.tsx";
-import { IntegrationIcon } from "../integrations/list/common.tsx";
+import { IntegrationIcon } from "../integrations/common.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
 import { useFocusChat } from "./hooks.ts";
+import { AppKeys, getConnectionAppKey } from "../integrations/apps.ts";
 
 export const useDuplicateAgent = (agent: Agent | null) => {
   const [duplicating, setDuplicating] = useState(false);
@@ -108,7 +109,8 @@ function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
         <TooltipTrigger
           onClick={(e) => {
             e.stopPropagation();
-            navigateWorkspace(`/integration/${integration.id}`);
+            const appKey = AppKeys.build(getConnectionAppKey(integration));
+            navigateWorkspace(`/connection/${appKey}?edit=${integration.id}`);
           }}
           asChild
         >
@@ -367,7 +369,7 @@ function TableView({ agents }: {
     },
     {
       id: "integrations",
-      header: "Integrations",
+      header: "Connections",
       render: (agent: Agent) => <IntegrationBadges agent={agent} max={5} />,
     },
     {
