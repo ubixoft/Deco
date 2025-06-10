@@ -311,7 +311,11 @@ Important Notes:
       "An optional object of environment variables to be set on the worker",
     ),
   }),
-  outputSchema: AppSchema,
+  outputSchema: z.object({
+    entrypoint: z.string(),
+    id: z.string(),
+    workspace: z.string(),
+  }),
   handler: async ({ appSlug, files, envVars }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
@@ -348,7 +352,18 @@ Important Notes:
       fileObjects,
       envVars,
     );
-    return await updateDatabase(c, workspace, scriptSlug, result, filesRecord);
+    const data = await updateDatabase(
+      c,
+      workspace,
+      scriptSlug,
+      result,
+      filesRecord,
+    );
+    return {
+      entrypoint: data.entrypoint,
+      id: data.id,
+      workspace: data.workspace,
+    };
   },
 });
 

@@ -70,7 +70,6 @@ export const withAppsJWTToken = async (c: Context<AppEnv>, next: Next) => {
     await next();
     return c.res;
   }
-  console.log("invoking with dispatcher", dispatchScript);
 
   const { data, error } = await c.var.db
     .from("deco_chat_hosting_apps")
