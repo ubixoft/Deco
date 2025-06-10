@@ -9,10 +9,12 @@ export type AppEnv = {
   Bindings: EnvVars & {
     DECO_CHAT_APP_ORIGIN?: string;
     PROD_DISPATCHER: {
-      get: (
+      get: <
+        TOutbound extends Record<string, unknown> = Record<string, unknown>,
+      >(
         script: string,
         ctx?: Record<string, unknown>,
-        metadata?: { outbound?: { params_object?: Record<string, unknown> } },
+        metadata?: { outbound?: TOutbound },
       ) => { fetch: typeof fetch };
     };
   };

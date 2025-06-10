@@ -22,9 +22,6 @@ const normalizeHost = (req: Request, env?: AppEnv["Bindings"]) => {
   if (appsHost) {
     return Hosts.APPS;
   }
-  if (typeof env === "object" && "params_object" in env) {
-    console.log("params object", env.params_object);
-  }
   const catchall = env?.DECO_CHAT_APP_ORIGIN ? Hosts.APPS_OUTBOUND : Hosts.APPS;
   return {
     [Hosts.API]: Hosts.API,

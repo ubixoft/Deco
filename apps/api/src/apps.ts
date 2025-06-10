@@ -31,11 +31,11 @@ app.all("/*", async (c) => {
     url.port = `443`;
     url.searchParams.delete(APPS_DOMAIN_QS);
   }
-  const scriptFetcher = dispatcher.get(script, {}, {
+  const scriptFetcher = dispatcher.get<{
+    DECO_CHAT_APP_ORIGIN: string;
+  }>(script, {}, {
     outbound: {
-      params_object: {
-        DECO_CHAT_APP_ORIGIN: script,
-      },
+      DECO_CHAT_APP_ORIGIN: script,
     },
   });
   const req = new Request(url, c.req.raw);
