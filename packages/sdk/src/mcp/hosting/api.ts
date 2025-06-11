@@ -13,8 +13,11 @@ const SCRIPT_FILE_NAME = "script.mjs";
 const HOSTING_APPS_DOMAIN = ".deco.page";
 const METADATA_FILE_NAME = "metadata.json";
 export const Entrypoint = {
+  host: (appSlug: string) => {
+    return `${appSlug}${HOSTING_APPS_DOMAIN}`;
+  },
   build: (appSlug: string) => {
-    return `https://${appSlug}${HOSTING_APPS_DOMAIN}`;
+    return `https://${Entrypoint.host(appSlug)}`;
   },
   script: (domain: string) => {
     return domain.split(HOSTING_APPS_DOMAIN)[0];

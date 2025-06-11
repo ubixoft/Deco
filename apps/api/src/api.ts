@@ -237,11 +237,15 @@ app.post("/webhooks/stripe", handleStripeWebhook);
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
 
 const SENSITIVE_HEADERS = ["Cookie", "Authorization"];
-app.all("/views/:script/:*path?", (c: Context) => {
+app.all("/views/:script/:path{.+}?", (c: Context) => {
   const script = c.req.param("script");
   const path = c.req.param("path");
+  const url = new URL(c.req.raw.url);
+  url.protocol = "https:";
+  url.port = "443";
+  url.host = Entrypoint.host(script);
+  url.pathname = `/${path || ""}`;
 
-  const url = `${Entrypoint.build(script)}/${path}`;
   const headers = new Headers(c.req.header());
   SENSITIVE_HEADERS.forEach((header) => {
     headers.delete(header);
