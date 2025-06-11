@@ -44,7 +44,9 @@ export function WhatsAppButton({ isMobile = false }: { isMobile?: boolean }) {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const { agentId } = useChatContext();
   const { data: agent } = useAgent(agentId);
-  const { data: triggers } = useListTriggersByAgentId(agentId);
+  const { data: triggers, refetch: refetchTriggers } = useListTriggersByAgentId(
+    agentId,
+  );
   const { mutate: createTrigger } = useCreateTrigger(agentId);
   const { data: profile } = useProfile();
   const { data: whatsappUser } = useWhatsAppUser(profile?.phone ?? "");
@@ -88,32 +90,60 @@ export function WhatsAppButton({ isMobile = false }: { isMobile?: boolean }) {
           passphrase: crypto.randomUUID(),
         },
         {
+          onSuccess: async () => {
+            // Refetch triggers to get the newly created trigger
+            const { data: updatedTriggers } = await refetchTriggers();
+            const updatedWebhookTriggers = updatedTriggers?.triggers?.filter(
+              (trigger) => trigger.type === "webhook",
+            ) ?? [];
+            const newTrigger = updatedWebhookTriggers[0];
+
+            if (newTrigger) {
+              upsertWhatsAppUser(
+                {
+                  triggerUrl: newTrigger.data.url ?? "",
+                  triggerId: newTrigger.id,
+                  triggers: [...(whatsappUser?.triggers ?? [])],
+                },
+                {
+                  onSuccess: () => {
+                    toast.success("This agent is now available on WhatsApp.");
+                  },
+                  onError: (error) => {
+                    toast.error(
+                      `Failed to create temporary agent: ${error.message}`,
+                    );
+                  },
+                },
+              );
+            }
+          },
           onError: (error) => {
             toast.error(`Failed to create trigger: ${error.message}`);
           },
         },
       );
+    } else {
+      upsertWhatsAppUser(
+        {
+          triggerUrl: currentWhatsAppRouterTrigger?.data.url ??
+            anyTrigger?.data.url ?? "",
+          triggerId: currentWhatsAppRouterTrigger?.id ?? anyTrigger?.id,
+          triggers: [...(whatsappUser?.triggers ?? [])],
+        },
+        {
+          onSuccess: () => {
+            toast.success("This agent is now available on WhatsApp.");
+            focusChat(agentId, crypto.randomUUID(), {
+              history: false,
+            });
+          },
+          onError: (error) => {
+            toast.error(`Failed to create temporary agent: ${error.message}`);
+          },
+        },
+      );
     }
-
-    upsertWhatsAppUser(
-      {
-        triggerUrl: currentWhatsAppRouterTrigger?.data.url ??
-          anyTrigger?.data.url ?? "",
-        triggerId: currentWhatsAppRouterTrigger?.id ?? anyTrigger?.id,
-        triggers: [...(whatsappUser?.triggers ?? [])],
-      },
-      {
-        onSuccess: () => {
-          toast.success("This agent is now available on WhatsApp.");
-          focusChat(agentId, crypto.randomUUID(), {
-            history: false,
-          });
-        },
-        onError: (error) => {
-          toast.error(`Failed to create temporary agent: ${error.message}`);
-        },
-      },
-    );
   }
 
   function handleWhatsAppClick() {
@@ -146,25 +176,49 @@ export function WhatsAppButton({ isMobile = false }: { isMobile?: boolean }) {
           passphrase: crypto.randomUUID(),
         },
         {
+          onSuccess: async () => {
+            // Refetch triggers to get the newly created trigger
+            const { data: updatedTriggers } = await refetchTriggers();
+            const updatedWebhookTriggers = updatedTriggers?.triggers?.filter(
+              (trigger) => trigger.type === "webhook",
+            ) ?? [];
+            const newTrigger = updatedWebhookTriggers[0];
+
+            if (newTrigger) {
+              sendAgentWhatsAppInvite(
+                { to: phoneNumber },
+                {
+                  onSuccess: () => {
+                    toast.success("WhatsApp invite sent successfully!");
+                    setIsInviteDialogOpen(false);
+                  },
+                  onError: (error) => {
+                    toast.error(`Failed to send invite: ${error.message}`);
+                  },
+                },
+              );
+            }
+          },
           onError: (error) => {
             toast.error(`Failed to create trigger: ${error.message}`);
           },
         },
       );
+    } else {
+      // If trigger already exists, proceed with sending invite
+      sendAgentWhatsAppInvite(
+        { to: phoneNumber },
+        {
+          onSuccess: () => {
+            toast.success("WhatsApp invite sent successfully!");
+            setIsInviteDialogOpen(false);
+          },
+          onError: (error) => {
+            toast.error(`Failed to send invite: ${error.message}`);
+          },
+        },
+      );
     }
-
-    sendAgentWhatsAppInvite(
-      { to: phoneNumber },
-      {
-        onSuccess: () => {
-          toast.success("WhatsApp invite sent successfully!");
-          setIsInviteDialogOpen(false);
-        },
-        onError: (error) => {
-          toast.error(`Failed to send invite: ${error.message}`);
-        },
-      },
-    );
   }
 
   function handleTalkInWhatsApp() {
@@ -173,8 +227,8 @@ export function WhatsAppButton({ isMobile = false }: { isMobile?: boolean }) {
     }
   }
 
-  const isWhatsAppEnabled =
-    whatsappUser?.trigger_id === currentWhatsAppRouterTrigger?.id;
+  const isWhatsAppEnabled = whatsappUser &&
+    (whatsappUser?.trigger_id === currentWhatsAppRouterTrigger?.id);
 
   if (isWellKnownAgent) {
     return;
