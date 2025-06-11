@@ -8,6 +8,7 @@ import {
 import {
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
+  WithTool,
 } from "../assertions.ts";
 import { AppContext, createTool } from "../context.ts";
 import {
@@ -62,11 +63,14 @@ export const listAgents = createTool({
   name: "AGENTS_LIST",
   description: "List all agents",
   inputSchema: z.object({}),
-  handler: async (_, c) => {
+  handler: async (_, c: WithTool<AppContext>) => {
     assertHasWorkspace(c);
 
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
+    if (c.db === undefined) {
+      console.error("no_db", c.workspace, c.user, typeof c.envVars);
+    }
     const { data, error } = await c.db
       .from("deco_chat_agents")
       .select("*")
