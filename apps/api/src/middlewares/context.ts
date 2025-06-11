@@ -14,6 +14,8 @@ export const withContextMiddleware: MiddlewareHandler<AppEnv> = async (
     CF_API_TOKEN,
   } = getEnv(honoCtxToAppCtx(ctx));
 
+  console.log("withContextMiddleware", SUPABASE_URL);
+
   ctx.set(
     "db",
     getServerClient(SUPABASE_URL, SUPABASE_SERVER_TOKEN),

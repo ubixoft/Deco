@@ -64,13 +64,11 @@ export const listAgents = createTool({
   description: "List all agents",
   inputSchema: z.object({}),
   handler: async (_, c: WithTool<AppContext>) => {
+    console.log("listing agents", c.workspace, c.user, typeof c.db, typeof c);
     assertHasWorkspace(c);
 
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
-    if (c.db === undefined) {
-      console.error("no_db", c.workspace, c.user, typeof c.envVars);
-    }
     const { data, error } = await c.db
       .from("deco_chat_agents")
       .select("*")
