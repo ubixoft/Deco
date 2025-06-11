@@ -2,6 +2,7 @@ import { JwtIssuer } from "@deco/sdk/auth";
 import { Hosts } from "@deco/sdk/hosts";
 import { Context, Hono } from "hono";
 import { getRuntimeKey } from "hono/adapter";
+import { withContextMiddleware } from "./middlewares/context.ts";
 import { AppEnv } from "./utils/context.ts";
 
 export const shouldRouteToOutbound = (
@@ -83,5 +84,7 @@ app.all("/*", async (c) => {
   }
   return response;
 });
+
+app.use(withContextMiddleware);
 
 export default app;
