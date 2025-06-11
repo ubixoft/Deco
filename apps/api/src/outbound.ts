@@ -59,6 +59,8 @@ async function handleApiHostRequest(
 
 export const app = new Hono<AppEnv>();
 
+app.use(withContextMiddleware);
+
 app.all("/*", async (c) => {
   let req = c.req.raw;
   const url = new URL(c.req.url);
@@ -84,7 +86,5 @@ app.all("/*", async (c) => {
   }
   return response;
 });
-
-app.use(withContextMiddleware);
 
 export default app;
