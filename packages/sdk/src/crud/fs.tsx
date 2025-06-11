@@ -40,6 +40,11 @@ export const writeFile = async ({
     },
   });
 
+  if (!response.ok) {
+    console.error(response);
+    throw new Error("Failed to upload file");
+  }
+
   return response;
 };
 
