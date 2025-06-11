@@ -130,58 +130,95 @@ export const useBindings = (binder: Binder) => {
     queryKey: KEYS.BINDINGS(workspace, binder),
     queryFn: async ({ signal }) => {
       const items = await listIntegrations(workspace, {}, signal);
-
       const filtered: typeof items = [];
+      const BATCH_SIZE = 10;
+      const batchPromises: Promise<Integration | null>[] = [];
 
-      // Process items sequentially to provide incremental updates
       for (const item of items) {
         if (signal?.aborted) {
           throw new Error("Query was cancelled");
         }
 
-        try {
-          const integrationTools = await Promise.race([
-            listTools(item.connection).then((tools) => ({
-              ...item,
-              tools: tools.tools,
-            })).catch((error) => {
-              console.error("error", error);
-              return {
+        const promise = (async () => {
+          try {
+            const integrationTools = await Promise.race([
+              listTools(item.connection).then((tools) => ({
                 ...item,
-                tools: [],
-              };
-            }),
-            new Promise<{
-              tools: MCPTool[];
-            }>((resolve) =>
-              setTimeout(() =>
-                resolve({
+                tools: tools.tools,
+              })).catch((error) => {
+                console.error("error", error);
+                return {
+                  ...item,
                   tools: [],
-                }), 7_000)
-            ),
-          ]);
+                };
+              }),
+              new Promise<{
+                tools: MCPTool[];
+              }>((resolve) =>
+                setTimeout(() =>
+                  resolve({
+                    tools: [],
+                  }), 7_000)
+              ),
+            ]);
 
-          if (
-            Binding(WellKnownBindings[binder]).isImplementedBy(
-              integrationTools?.tools,
-            )
-          ) {
-            filtered.push(item);
+            if (
+              Binding(WellKnownBindings[binder]).isImplementedBy(
+                integrationTools?.tools,
+              )
+            ) {
+              const itemKey = KEYS.INTEGRATION(workspace, item.id);
+              client.cancelQueries({ queryKey: itemKey });
+              client.setQueryData<Integration>(itemKey, item);
 
-            // Update query data incrementally
-            client.setQueryData<Integration[]>(
-              KEYS.BINDINGS(workspace, binder),
-              [...filtered],
-            );
+              return item;
+            }
+
+            return null;
+          } catch (error) {
+            console.error("Error processing integration:", item.id, error);
+            return null;
           }
+        })();
 
-          // Cache individual integration
-          const itemKey = KEYS.INTEGRATION(workspace, item.id);
-          client.cancelQueries({ queryKey: itemKey });
-          client.setQueryData<Integration>(itemKey, item);
-        } catch (error) {
-          console.error("Error processing integration:", item.id, error);
+        batchPromises.push(promise);
+
+        if (batchPromises.length >= BATCH_SIZE) {
+          // Wait for the current batch to complete
+          const batchResults = await Promise.all(batchPromises);
+
+          // Add valid results to filtered array
+          const validResults = batchResults.filter((
+            result,
+          ): result is Integration => result !== null);
+          filtered.push(...validResults);
+
+          // Update query data incrementally after each batch
+          client.setQueryData<Integration[]>(
+            KEYS.BINDINGS(workspace, binder),
+            [...filtered],
+          );
+
+          // Reset batch
+          batchPromises.length = 0;
         }
+      }
+
+      // Process remaining items in the final batch
+      if (batchPromises.length > 0) {
+        const batchResults = await Promise.all(batchPromises);
+
+        // Add valid results to filtered array
+        const validResults = batchResults.filter((
+          result,
+        ): result is Integration => result !== null);
+        filtered.push(...validResults);
+
+        // Update query data with final complete results
+        client.setQueryData<Integration[]>(
+          KEYS.BINDINGS(workspace, binder),
+          [...filtered],
+        );
       }
 
       return filtered;
