@@ -11,10 +11,10 @@ export const shouldRouteToOutbound = (
   const originIsScript = typeof env?.DECO_CHAT_APP_ORIGIN === "string";
   const isApiHost = req.headers.get("host") === Hosts.API;
   const isUnauthorized = !req.headers.has("authorization");
+  console.log("should route", { originIsScript, isApiHost, isUnauthorized });
   return (
     originIsScript &&
-    isApiHost &&
-    isUnauthorized
+    (!isApiHost || isUnauthorized)
   );
 };
 
