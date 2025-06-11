@@ -225,7 +225,10 @@ export const useBindings = (binder: Binder) => {
     },
   });
 
-  return data;
+  return {
+    ...data,
+    data: data.data || null,
+  };
 };
 
 /** Hook for listing all MCPs */
