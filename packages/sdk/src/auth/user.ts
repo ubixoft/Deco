@@ -1,13 +1,13 @@
 import type { AuthUser, SupabaseClient } from "@supabase/supabase-js";
 import { jwtDecode } from "jwt-decode";
 import { LRUCache } from "lru-cache";
+import { Principal } from "../mcp/context.ts";
+import { JwtIssuer } from "./jwt.ts";
 import {
   createSupabaseSessionClient,
   getSessionToken,
   parseAuthorizationHeader,
 } from "./supabase.ts";
-import { JwtIssuer } from "./jwt.ts";
-import { Principal } from "../mcp/context.ts";
 
 export type { AuthUser };
 const ONE_MINUTE_MS = 60e3;
@@ -45,7 +45,12 @@ export async function getUserBySupabaseCookie(
     supabase.auth.getUser(
       accessToken,
     ),
-    jwtIssuer.verify(sessionToken),
+    jwtIssuer.verify(sessionToken).then((jwt) => {
+      if (!jwt && accessToken) {
+        return jwtIssuer.verify(accessToken);
+      }
+      return jwt;
+    }),
   ]);
   const user = _user?.user;
   if (!user) {
