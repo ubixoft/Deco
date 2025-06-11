@@ -26,7 +26,7 @@ import { Separator } from "@deco/ui/components/separator.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { Textarea } from "@deco/ui/components/textarea.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Avatar } from "../common/avatar/index.tsx";
@@ -50,7 +50,7 @@ interface GeneralSettingsFormValues {
   teamSystemPrompt: string;
   personalSystemPrompt: string;
   avatar: string;
-  themeVariables: string;
+  themeVariables: Record<string, string | undefined>;
 }
 
 const generalSettingsSchema = z.object({
@@ -65,7 +65,7 @@ const generalSettingsSchema = z.object({
   teamSystemPrompt: z.string(),
   personalSystemPrompt: z.string(),
   avatar: z.string(),
-  themeVariables: z.string(),
+  themeVariables: z.record(z.string(), z.string().optional()),
 });
 
 interface ThemeVariableState {
@@ -75,113 +75,134 @@ interface ThemeVariableState {
   defaultValue: string;
 }
 
-function ThemeEditor(
-  { value, onChange }: { value: string; onChange: (value: string) => void },
-) {
-  const [variables, setVariables] = useState<ThemeVariableState[]>([]);
+function ThemeVariableInput({
+  variable,
+  onChange,
+}: {
+  variable: ThemeVariableState;
+  onChange: (value: string) => void;
+}) {
+  // Convert any color format to hex for the color input
+  const getHexColor = (color: string) => {
+    if (!color) return "#000000";
+    if (color.startsWith("#")) return color;
+    // For non-hex colors, return a default color
+    return "#000000";
+  };
 
-  useEffect(() => {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <div className="text-sm font-medium">
+          {variable.key.replace("--", "")}
+        </div>
+        {variable.isDefault && (
+          <div className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+            Default
+          </div>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input
+            value={variable.value}
+            onChange={(e) => onChange(e.target.value)}
+            className="flex-1"
+            placeholder="Using default theme"
+          />
+          {!variable.isDefault && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onChange("")}
+                    className="absolute right-2 top-0 bottom-0 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Icon name="close" size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Reset to default</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        <div className="relative">
+          <Input
+            type="color"
+            value={getHexColor(variable.value || variable.defaultValue)}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-10 h-10 p-1 cursor-pointer rounded-md border-0 bg-transparent"
+            style={{
+              WebkitAppearance: "none",
+              MozAppearance: "none",
+              appearance: "none",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none rounded-md border border-border"
+            style={{
+              backgroundColor: variable.value || variable.defaultValue ||
+                "#000000",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThemeEditor(
+  { value, onChange }: {
+    value: Record<string, string | undefined>;
+    onChange: (value: Record<string, string | undefined>) => void;
+  },
+) {
+  const variables = useMemo(() => {
     try {
-      const parsed = JSON.parse(value || "{}");
-      const vars = THEME_VARIABLES.map((key) => ({
+      return THEME_VARIABLES.map((key) => ({
         key,
-        value: String(parsed[key] || ""),
-        isDefault: !parsed[key],
+        value: String(value[key] || ""),
+        isDefault: !value[key],
         defaultValue: DEFAULT_THEME.variables?.[key] || "",
       }));
-      setVariables(vars);
     } catch {
-      setVariables(THEME_VARIABLES.map((key) => ({
+      return THEME_VARIABLES.map((key) => ({
         key,
         value: "",
         isDefault: true,
         defaultValue: DEFAULT_THEME.variables?.[key] || "",
-      })));
+      }));
     }
   }, [value]);
 
   const handleVariableChange = (key: ThemeVariable, newValue: string) => {
-    const newVariables = variables.map((v) =>
-      v.key === key ? { ...v, value: newValue, isDefault: false } : v
-    );
-    setVariables(newVariables);
-
-    // Convert back to JSON
-    const jsonObject = newVariables.reduce(
+    const currentValues = variables.reduce(
       (acc, { key, value, isDefault }) => ({
         ...acc,
         [key]: isDefault ? undefined : value,
       }),
       {},
     );
-    onChange(JSON.stringify(jsonObject, null, 2));
+
+    const updatedValues = {
+      ...currentValues,
+      [key]: newValue,
+    };
+
+    onChange(updatedValues);
   };
 
   return (
     <div className="grid grid-cols-2 gap-4">
-      {variables.map((variable, index) => (
-        <div key={index} className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-medium">
-              {variable.key.replace("--", "")}
-            </div>
-            {variable.isDefault && (
-              <div className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                Default
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Input
-                value={variable.value}
-                onChange={(e) =>
-                  handleVariableChange(variable.key, e.target.value)}
-                className="flex-1"
-                placeholder="Using default theme"
-              />
-              {!variable.isDefault && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => handleVariableChange(variable.key, "")}
-                        className="absolute right-2 top-0 bottom-0 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <Icon name="close" size={16} />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Reset to default</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-            <div className="relative">
-              <Input
-                type="color"
-                value={variable.value || variable.defaultValue || "#000000"}
-                onChange={(e) =>
-                  handleVariableChange(variable.key, e.target.value)}
-                className="w-10 h-10 p-1 cursor-pointer rounded-md border-0 bg-transparent"
-                style={{
-                  WebkitAppearance: "none",
-                  MozAppearance: "none",
-                  appearance: "none",
-                }}
-              />
-              <div
-                className="absolute inset-0 pointer-events-none rounded-md border border-border"
-                style={{
-                  backgroundColor: variable.value || variable.defaultValue ||
-                    "#000000",
-                }}
-              />
-            </div>
-          </div>
-        </div>
+      {variables.map((variable) => (
+        <ThemeVariableInput
+          key={variable.key}
+          variable={variable}
+          onChange={(value) => handleVariableChange(variable.key, value)}
+        />
       ))}
     </div>
   );
@@ -302,27 +323,21 @@ export function GeneralSettings() {
       teamSystemPrompt: "",
       personalSystemPrompt: "",
       avatar: currentTeamTheme?.picture || "",
-      themeVariables: currentTeamTheme?.variables
-        ? JSON.stringify(currentTeamTheme.variables, null, 2)
-        : "",
+      themeVariables: currentTeamTheme?.variables ?? {},
     },
-    mode: "onChange",
   });
 
   async function onSubmit(data: GeneralSettingsFormValues) {
     if (isPersonalTeam) return;
 
-    // Parse theme variables if present
-    let themeVariables = undefined;
-    try {
-      if (data.themeVariables) {
-        themeVariables = JSON.parse(data.themeVariables);
+    // fixes batch removal of variables
+    const currentVariables = currentTeamTheme?.variables ?? {};
+    const themeVariables = data.themeVariables;
+    Object.keys(currentVariables).forEach((key) => {
+      if (!themeVariables[key]) {
+        themeVariables[key] = "";
       }
-    } catch (e) {
-      console.error("Failed to parse theme variables:", e);
-      toast.error("Failed to update theme variables");
-      return;
-    }
+    });
 
     // Upload file if one was selected
     let avatarUrl = data.avatar || "";
@@ -376,7 +391,7 @@ export function GeneralSettings() {
     form.reset(data);
 
     // Show toast with refresh button if theme variables were changed
-    if (themeVariables) {
+    if (Object.keys(data.themeVariables).length > 0) {
       toast(
         <div className="flex items-center gap-2">
           <span>Refresh the page to see theme changes</span>

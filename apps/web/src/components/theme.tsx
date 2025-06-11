@@ -61,6 +61,9 @@ export function WithWorkspaceTheme({
   const loadedBackgroundPromise = useRef<PromiseWithResolvers<void>>(
     Promise.withResolvers(),
   );
+  const forceCloseSplashPromise = useRef<PromiseWithResolvers<void>>(
+    Promise.withResolvers(),
+  );
   const { workspace } = useSDK();
   const [showSplash, setShowSplash] = useState(() => {
     return !localStorage.getItem(THEME_CACHE_KEY(workspace));
@@ -126,6 +129,20 @@ export function WithWorkspaceTheme({
     }
   }, [loadedLogo, showSplash]);
 
+  const animateCloseSplash = () => {
+    if (splashScreenRef.current) {
+      gsap.to(splashScreenRef.current, {
+        scale: 0,
+        opacity: 1,
+        duration: 1,
+        ease: "power2.inOut",
+        onComplete: () => {
+          setShowSplash(false);
+        },
+      });
+    }
+  };
+
   useEffect(() => {
     if (!showSplash) return;
 
@@ -143,22 +160,23 @@ export function WithWorkspaceTheme({
               delay: 0.2,
             },
           ).then(() => {
-            if (splashScreenRef.current) {
-              gsap.to(splashScreenRef.current, {
-                scale: 0,
-                opacity: 1,
-                duration: 1,
-                ease: "power2.inOut",
-                onComplete: () => {
-                  setShowSplash(false);
-                },
-              });
-            }
+            animateCloseSplash();
           });
         }
       });
     }
   }, [loadedBackground, showSplash]);
+
+  // No matter what, we want to close the splash screen after max 4.5 seconds
+  useEffect(() => {
+    setTimeout(() => {
+      forceCloseSplashPromise.current.resolve();
+    }, 4_500);
+
+    forceCloseSplashPromise.current.promise.then(() => {
+      animateCloseSplash();
+    });
+  }, [showSplash]);
 
   const variables = {
     ...theme?.variables,
