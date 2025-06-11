@@ -237,7 +237,7 @@ app.post("/webhooks/stripe", handleStripeWebhook);
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
 
 const SENSITIVE_HEADERS = ["Cookie", "Authorization"];
-app.all("/views/:script/*path", (c: Context) => {
+app.all("/views/:script/:*path?", (c: Context) => {
   const script = c.req.param("script");
   const path = c.req.param("path");
 
