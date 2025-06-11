@@ -8,10 +8,11 @@ export const shouldRouteToOutbound = (
   req: Request,
   env?: AppEnv["Bindings"],
 ) => {
+  const url = new URL(req.url);
+  const host = req.headers.get("host") ?? url.host;
   const originIsScript = typeof env?.DECO_CHAT_APP_ORIGIN === "string";
-  const isApiHost = req.headers.get("host") === Hosts.API;
+  const isApiHost = host === Hosts.API;
   const isUnauthorized = !req.headers.has("authorization");
-  console.log("should route", { originIsScript, isApiHost, isUnauthorized });
   return (
     originIsScript &&
     (!isApiHost || isUnauthorized)
@@ -59,13 +60,9 @@ export const app = new Hono<AppEnv>();
 
 app.all("/*", async (c) => {
   let req = c.req.raw;
-  console.log(
-    "routing to outbound",
-    c.req.header("host"),
-    c.env.DECO_CHAT_APP_ORIGIN,
-    c.env.ISSUER_JWT_SECRET,
-  );
-  if (c.req.header("host") === Hosts.API) {
+  const url = new URL(c.req.url);
+  const host = c.req.header("host") ?? url.host;
+  if (host === Hosts.API) {
     const dispatchScript = c.env.DECO_CHAT_APP_ORIGIN;
     const jwtSecret = c.env.ISSUER_JWT_SECRET;
     if (dispatchScript && typeof jwtSecret === "string") {
