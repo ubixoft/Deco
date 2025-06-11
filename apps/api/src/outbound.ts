@@ -59,6 +59,12 @@ export const app = new Hono<AppEnv>();
 
 app.all("/*", async (c) => {
   let req = c.req.raw;
+  console.log(
+    "routing to outbound",
+    c.req.header("host"),
+    c.env.DECO_CHAT_APP_ORIGIN,
+    c.env.ISSUER_JWT_SECRET,
+  );
   if (c.req.header("host") === Hosts.API) {
     const dispatchScript = c.env.DECO_CHAT_APP_ORIGIN;
     const jwtSecret = c.env.ISSUER_JWT_SECRET;
