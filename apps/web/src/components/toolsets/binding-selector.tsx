@@ -92,7 +92,9 @@ export function BindingSelector({
       setTimeout(() => {
         selectedItemRef.current?.scrollIntoView({ block: "center" });
       }, 100);
-    } else if (!isMobile && installedIntegrations.length > 0) {
+    } else if (
+      !isMobile && installedIntegrations && installedIntegrations.length > 0
+    ) {
       setSelectedIntegration(installedIntegrations[0].id);
     } else {
       setSelectedIntegration(null);
@@ -107,7 +109,7 @@ export function BindingSelector({
     }
   }
 
-  const filtered = installedIntegrations.filter((i) =>
+  const filtered = installedIntegrations?.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -148,7 +150,7 @@ export function BindingSelector({
                   <ScrollArea className="h-[calc(100vh-10rem)]">
                     <div className="p-4">
                       <div className="space-y-2">
-                        {filtered.map((integration) => (
+                        {filtered?.map((integration) => (
                           <ErrorBoundary key={integration.id} fallback={null}>
                             <IntegrationListItem
                               key={integration.id}
@@ -193,7 +195,7 @@ export function BindingSelector({
                   <div className="w-[365px] flex-shrink-0 truncate h-full">
                     <ScrollArea className="h-full">
                       <div className="space-y-2">
-                        {filtered.map((integration) => (
+                        {filtered?.map((integration) => (
                           <IntegrationListItem
                             key={integration.id}
                             integration={integration}
