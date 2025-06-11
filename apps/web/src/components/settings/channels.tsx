@@ -379,9 +379,6 @@ export function Channels({ className }: ChannelsProps) {
                   value={selectedBindingId ?? ""}
                   onValueChange={(bindingId) => {
                     setSelectedBindingId(bindingId);
-                    if (discriminator.trim()) {
-                      handleCreateChannel(bindingId);
-                    }
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -436,9 +433,11 @@ export function Channels({ className }: ChannelsProps) {
                 variant="default"
                 disabled={!discriminator.trim() || isCreating}
                 onClick={() => {
-                  if (bindings) {
-                    handleCreateChannel(bindings[0].id);
+                  if (!selectedBindingId) {
+                    toast.error("Please select an integration first");
+                    return;
                   }
+                  handleCreateChannel(selectedBindingId);
                 }}
                 className="gap-2"
               >
