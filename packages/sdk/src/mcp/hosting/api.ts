@@ -1,4 +1,3 @@
-import { JwtIssuer } from "@deco/sdk/auth";
 import { z } from "zod";
 import { NotFoundError, UserInputError } from "../../errors.ts";
 import { Database } from "../../storage/index.ts";
@@ -300,7 +299,6 @@ Example of files deployment:
 Important Notes:
 - You can access the app workspace by accessing env.DECO_CHAT_WORKSPACE
 - You can access the app script slug by accessing env.DECO_CHAT_SCRIPT_SLUG
-- You can access the app auth token by accessing env.DECO_CHAT_API_KEY
 - Token and workspace can be used to make authenticated requests to the Deco API under https://api.deco.chat
 - Always use Cloudflare Workers syntax with export default and proper fetch handler signature
 - When using template literals inside content strings, escape backticks with a backslash (\\) or use string concatenation (+)
@@ -351,14 +349,9 @@ Important Notes:
       ),
     };
 
-    const jwt = JwtIssuer.forSecret(c.envVars.ISSUER_JWT_SECRET);
     const appEnvVars = {
       DECO_CHAT_WORKSPACE: workspace,
       DECO_CHAT_SCRIPT_SLUG: scriptSlug,
-      DECO_CHAT_API_KEY: await jwt.create({
-        sub: `app:${scriptSlug}`,
-        aud: workspace,
-      }),
     };
 
     const result = await deployToCloudflare(
