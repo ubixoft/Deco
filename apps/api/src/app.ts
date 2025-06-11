@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { timing } from "hono/timing";
 import api from "./api.ts";
 import apps from "./apps.ts";
-import outbound from "./outbound.ts";
+import outbound, { shouldRouteToOutbound } from "./outbound.ts";
 import { AppEnv } from "./utils/context.ts";
 
 export const APPS_DOMAIN_QS = "app_host";
@@ -17,7 +17,7 @@ export const appsDomainOf = (req: Request, url?: URL) => {
 };
 
 const normalizeHost = (req: Request, env?: AppEnv["Bindings"]) => {
-  if (env?.DECO_CHAT_APP_ORIGIN) {
+  if (shouldRouteToOutbound(req, env)) {
     return Hosts.APPS_OUTBOUND;
   }
   const host = req.headers.get("host") ?? "localhost";
