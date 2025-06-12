@@ -44,12 +44,13 @@ export const fetchScript = async (
   return response;
 };
 app.all("/*", (c) => {
-  const host = appsDomainOf(c.req.raw) ?? c.req.header("host");
+  const url = new URL(c.req.url);
+  const host = appsDomainOf(c.req.raw) ?? c.req.header("host") ??
+    url.host;
   if (!host) {
     return new Response("No host", { status: 400 });
   }
   const script = Entrypoint.script(host);
-  const url = new URL(c.req.url);
   if (url.host !== host) {
     url.host = host;
     url.protocol = "https";
