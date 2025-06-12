@@ -237,9 +237,12 @@ app.post("/webhooks/stripe", handleStripeWebhook);
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
 
 const SENSITIVE_HEADERS = ["Cookie", "Authorization"];
-app.all("/views/:script/:path{.+}?", (c: Context) => {
+app.all("/:root/:slug/views/:script/:path{.+}?", (c: Context) => {
   const script = c.req.param("script");
   const path = c.req.param("path");
+  const root = c.req.param("root");
+  const slug = c.req.param("slug");
+  const workspace = `/${root}/${slug}`;
   const url = new URL(c.req.raw.url);
   url.protocol = "https:";
   url.port = "443";
@@ -251,6 +254,7 @@ app.all("/views/:script/:path{.+}?", (c: Context) => {
     headers.delete(header);
   });
 
+  headers.set("x-deco-workspace", workspace);
   return fetchScript(
     c,
     script,
