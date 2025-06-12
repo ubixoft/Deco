@@ -139,40 +139,44 @@ export const useBindings = (binder: Binder) => {
     return (items || []).map((item) => ({
       queryKey: KEYS.INTEGRATION_TOOLS(workspace, item.id, binder),
       queryFn: async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 7_000); // 7 second timeout
+
         try {
-          const result = await Promise.race([
-            listTools(item.connection).then((tools) => ({
-              integration: item,
-              tools: tools.tools,
-              success: true,
-            })),
-            new Promise<
-              { integration: Integration; tools: MCPTool[]; success: boolean }
-            >((resolve) =>
-              setTimeout(() =>
-                resolve({
-                  integration: item,
-                  tools: [],
-                  success: false,
-                }), 7_000)
-            ),
-          ]);
+          const tools = await listTools(item.connection, {
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
 
           const itemKey = KEYS.INTEGRATION(workspace, item.id);
           client.setQueryData<Integration>(itemKey, item);
 
-          return result;
+          return {
+            integration: item,
+            tools: tools.tools,
+            success: true,
+          };
         } catch (error) {
+          clearTimeout(timeoutId);
+          if (error instanceof Error && error.name === "AbortError") {
+            console.warn(
+              `Timeout fetching tools for integration: ${item.id}`,
+            );
+            return {
+              integration: item,
+              tools: [] as MCPTool[],
+              success: false,
+            };
+          }
+
           console.error(
             "Error fetching tools for integration:",
             item.id,
             error,
           );
-          return {
-            integration: item,
-            tools: [] as MCPTool[],
-            success: false,
-          };
+          throw error;
         }
       },
       enabled: !!items && items.length > 0,
