@@ -21,6 +21,15 @@ interface RichTextAreaProps {
   className?: string;
 }
 
+function unescapeHTML(text: string) {
+  return text
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'");
+}
+
 export default function RichTextArea({
   value,
   onChange,
@@ -60,7 +69,7 @@ export default function RichTextArea({
         suggestion: suggestion(prompts ?? []),
         renderText({ node }) {
           const promptName = promptMap.get(node.attrs.id) || node.attrs.id;
-          return `@${promptName}`;
+          return `${promptName}`;
         },
         renderHTML({ node, options: { HTMLAttributes } }) {
           return [
@@ -86,7 +95,11 @@ export default function RichTextArea({
                   {
                     class: "line-clamp-3",
                   },
-                  `${promptMap.get(node.attrs.id)?.content || node.attrs.id}`,
+                  `${
+                    unescapeHTML(
+                      promptMap.get(node.attrs.id)?.content || node.attrs.id,
+                    )
+                  }`,
                 ],
                 [
                   "div",
@@ -127,6 +140,29 @@ export default function RichTextArea({
       onChange(markdown);
     },
     editorProps: {
+      handlePaste(view, event) {
+        const text = event.clipboardData?.getData("text/plain");
+        if (text) {
+          const normalizedText = normalizeMentions(text);
+
+          if (normalizedText.includes("&lt;")) {
+            view.dispatch(
+              view.state.tr.insertText(unescapeHTML(normalizedText)),
+            );
+            return true;
+          }
+
+          view.dispatch(view.state.tr.insertText(normalizedText));
+          return true;
+        }
+        return false;
+      },
+      handleTextInput(view, from, to, text) {
+        view.dispatch(
+          view.state.tr.insertText(normalizeMentions(text), from, to),
+        );
+        return true;
+      },
       attributes: {
         class: cn(
           "min-h-[83lvh] h-full border-border border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 field-sizing-content w-full rounded-xl border bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm prose leading-7",
