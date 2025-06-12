@@ -5,22 +5,6 @@ import { getRuntimeKey } from "hono/adapter";
 import { withContextMiddleware } from "./middlewares/context.ts";
 import { AppEnv } from "./utils/context.ts";
 
-export const shouldRouteToOutbound = (
-  req: Request,
-  wellKnownHost?: string,
-  env?: AppEnv["Bindings"],
-) => {
-  const originIsScript = typeof env?.DECO_CHAT_APP_ORIGIN === "string";
-  if (!originIsScript) {
-    return false;
-  }
-  const isUnauthorized = !req.headers.has("authorization");
-  if (wellKnownHost === Hosts.API && isUnauthorized) {
-    return true;
-  }
-  return !wellKnownHost;
-};
-
 async function handleApiHostRequest(
   c: Context<AppEnv>,
   dispatchScript: string,
