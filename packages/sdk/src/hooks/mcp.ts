@@ -135,9 +135,9 @@ export const useBindings = (binder: Binder) => {
       staleTime: 2 * 60 * 1000, // 2 minutes
     });
 
-  const integrationQueries = useQueries({
-    queries: (items || []).map((item) => ({
-      queryKey: KEYS.INTEGRATION_TOOLS(workspace, item.id),
+  const queriesConfig = useMemo(() => {
+    return (items || []).map((item) => ({
+      queryKey: KEYS.INTEGRATION_TOOLS(workspace, item.id, binder),
       queryFn: async () => {
         try {
           const result = await Promise.race([
@@ -180,7 +180,11 @@ export const useBindings = (binder: Binder) => {
       retry: (failureCount: number) => failureCount < 2,
       // Use a shorter timeout to prevent hanging queries
       gcTime: 10 * 60 * 1000, // 10 minutes
-    })),
+    }));
+  }, [items, workspace, binder, client]);
+
+  const integrationQueries = useQueries({
+    queries: queriesConfig,
   });
 
   // Derive filtered results from individual queries
@@ -194,7 +198,13 @@ export const useBindings = (binder: Binder) => {
         Binding(WellKnownBindings[binder]).isImplementedBy(tools)
       )
       .map(({ integration }) => integration);
-  }, [integrationQueries, items, binder]);
+  }, [
+    integrationQueries.length,
+    integrationQueries.map((q) => q.isSuccess),
+    integrationQueries.map((q) => !!q.data),
+    items,
+    binder,
+  ]);
 
   // Aggregate loading and error states
   const isLoading = isLoadingItems ||

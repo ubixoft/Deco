@@ -19,7 +19,13 @@ export const KEYS = {
   INTEGRATION_TOOLS: (
     workspace: Workspace,
     integrationId: string,
-  ) => ["integration-tools", workspace, integrationId],
+    binder?: Binder,
+  ) => [
+    "integration-tools",
+    workspace,
+    integrationId,
+    ...(binder ? [binder] : []),
+  ],
   CHANNELS: (
     workspace: Workspace,
     channelId?: string,
