@@ -11,10 +11,18 @@ export interface Env {
 
 export default {
   fetch: async (req: Request, env: Env) => {
-    console.log("outbound", req.url);
     const host = req.headers.get("host") ?? new URL(req.url).hostname;
+    const reqHeaders = new Headers(req.headers);
     if (host !== Hosts.API) { // just forward the request to the target url
-      return fetch(req);
+      reqHeaders.set("x-deco-chat-app-origin", env.DECO_CHAT_APP_ORIGIN);
+      return fetch(
+        new Request(req.url, {
+          method: req.method,
+          headers: reqHeaders,
+          body: req.body,
+          redirect: req.redirect,
+        }),
+      );
     }
 
     // otherwise, we need to authenticate the request
@@ -53,7 +61,6 @@ export default {
       aud: data?.workspace,
     });
 
-    const reqHeaders = new Headers(req.headers);
     reqHeaders.set("Authorization", `Bearer ${token}`);
 
     return fetch(
