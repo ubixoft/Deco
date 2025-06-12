@@ -57,30 +57,20 @@ const isErrorLike = (error: unknown): error is Error =>
 const isHttpError = (error: unknown): error is HttpError =>
   Boolean((error as HttpError)?.code) && Boolean((error as HttpError)?.message);
 
-export const serializeError = (error: unknown): Record<string, unknown> => {
+export const serializeError = (error: unknown): string => {
   if (typeof error === "string") {
-    return { message: error };
+    return error;
   }
 
-  if (isHttpError(error)) {
-    return {
-      message: error.message,
-      code: error.code,
-    };
-  }
-
-  if (isErrorLike(error)) {
-    return {
-      message: error.message,
-      stack: error.stack,
-    };
+  if (isHttpError(error) || isErrorLike(error)) {
+    return error.toString();
   }
 
   try {
-    return Object.fromEntries(Object.entries(error as Record<string, unknown>));
+    return JSON.stringify(error, null, 2);
   } catch (e) {
     console.error(e);
-    return { message: "Unknown error" };
+    return "Unknown error";
   }
 };
 
@@ -123,10 +113,21 @@ export const AUTH_URL = (ctx: AppContext) =>
     ? "http://localhost:3001"
     : "https://api.deco.chat";
 
-type ToolCallResult<T> = {
+type ToolCallResultSuccess<T> = {
+  isError: false;
   structuredContent: T;
-  isError: boolean;
 };
+
+type ToolCallResultError = {
+  isError: true;
+  content: { type: "text"; text: string }[];
+};
+
+type ToolCallResult<T> = ToolCallResultSuccess<T> | ToolCallResultError;
+
+export const isToolCallResultError = <T>(
+  result: ToolCallResult<T>,
+): result is ToolCallResultError => result.isError;
 
 export interface ToolDefinition<
   TAppContext extends AppContext = AppContext,
@@ -196,7 +197,7 @@ export const createToolFactory = <
     } catch (error) {
       return {
         isError: true,
-        structuredContent: serializeError(error) as unknown as TReturn,
+        content: [{ type: "text", text: serializeError(error) }],
       };
     }
   },
