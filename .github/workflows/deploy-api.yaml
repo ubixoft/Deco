@@ -14,6 +14,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
+        working-directory: ./apps/outbound
+        run: |
+          npm install --legacy-peer-deps
+
+      - name: Publish Outbound
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          workingDirectory: "./apps/outbound"
+
+      - name: Install dependencies
         working-directory: ./apps/api
         run: |
           npm install --legacy-peer-deps
@@ -89,9 +101,3 @@ jobs:
           ISSUER_JWT_SECRET: ${{ secrets.ISSUER_JWT_SECRET }}
           LLMS_ENCRYPTION_KEY: ${{ secrets.LLMS_ENCRYPTION_KEY }}
 
-      - name: Publish Outbound
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          workingDirectory: "./apps/outbound"
