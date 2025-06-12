@@ -20,7 +20,12 @@ const normalizeHost = (req: Request, env?: AppEnv["Bindings"]) => {
   if (shouldRouteToOutbound(req, env)) {
     return Hosts.APPS_OUTBOUND;
   }
-  const host = req.headers.get("host") ?? "localhost";
+
+  if (req.url.includes("vtex.deco.page")) {
+    console.log("vtex.deco.page", req.headers.get("host"), req.url);
+  }
+  const host = req.headers.get("host") ?? new URL(req.url).hostname ??
+    "localhost";
   const appsHost = appsDomainOf(req);
   if (appsHost) {
     return Hosts.APPS;
