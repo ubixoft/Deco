@@ -44,6 +44,7 @@ export const fetchScript = async (
   return response;
 };
 app.all("/*", (c) => {
+  console.log("deco.page request", c.req.url);
   const host = appsDomainOf(c.req.raw) ?? c.req.header("host");
   if (!host) {
     return new Response("No host", { status: 400 });
