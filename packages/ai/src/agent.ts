@@ -337,8 +337,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
             toolsInput[slug] = allToolsFor[slug];
             continue;
           }
-
-          console.warn(`Tool ${item} not found in callableToolSet[${mcpId}]`);
+          console.warn(
+            `Tool ${item} not found in callableToolSet[${mcpId}], ${
+              Object.keys(allToolsFor)
+            }`,
+          );
         }
 
         tools[mcpId] = toolsInput;
