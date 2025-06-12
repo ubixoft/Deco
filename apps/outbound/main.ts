@@ -11,6 +11,7 @@ export interface Env {
 
 export default {
   fetch: async (req: Request, env: Env) => {
+    console.log("outbound", req.url);
     const host = req.headers.get("host") ?? new URL(req.url).hostname;
     if (host !== Hosts.API) { // just forward the request to the target url
       return fetch(req);
