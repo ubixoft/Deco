@@ -107,7 +107,7 @@ export function Channels({ className }: ChannelsProps) {
   const joinChannelMutation = useJoinChannel();
   const leaveChannelMutation = useLeaveChannel();
   const removeChannelMutation = useRemoveChannel();
-  const { data: channels } = useChannels();
+  const { data: channels, isLoading: isLoadingChannels } = useChannels();
   const workspaceLink = useWorkspaceLink();
 
   const [selectedBindingId, setSelectedBindingId] = useState<string | null>(
@@ -299,6 +299,13 @@ export function Channels({ className }: ChannelsProps) {
           </ChannelCard>
         );
       })}
+
+      {isLoadingChannels && agentChannels.length === 0 && (
+        <div className="flex items-center gap-2 py-4">
+          <Spinner size="sm" />
+          <p className="text-sm text-muted-foreground">Loading channels...</p>
+        </div>
+      )}
 
       {availableChannels.length > 0 && (
         <div className="space-y-2">
