@@ -17,25 +17,25 @@ export const appsDomainOf = (req: Request, url?: URL) => {
 };
 
 const normalizeHost = (req: Request, env?: AppEnv["Bindings"]) => {
-  if (shouldRouteToOutbound(req, env)) {
-    return Hosts.APPS_OUTBOUND;
-  }
-
-  if (req.url.includes("vtex.deco.page")) {
-    console.log("vtex.deco.page", req.headers.get("host"), req.url);
-  }
   const host = req.headers.get("host") ?? new URL(req.url).hostname ??
     "localhost";
-  const appsHost = appsDomainOf(req);
-  if (appsHost) {
-    return Hosts.APPS;
-  }
-  return {
+
+  const wellKnownHost = {
     [Hosts.API]: Hosts.API,
     localhost: Hosts.API,
     "localhost:3001": Hosts.API,
     "localhost:8000": Hosts.API,
-  }[host] ?? Hosts.APPS;
+  }[host];
+
+  if (shouldRouteToOutbound(req, wellKnownHost, env)) {
+    return Hosts.APPS_OUTBOUND;
+  }
+
+  const appsHost = appsDomainOf(req);
+  if (appsHost) {
+    return Hosts.APPS;
+  }
+  return wellKnownHost ?? Hosts.APPS;
 };
 
 export const app = new Hono<AppEnv>({

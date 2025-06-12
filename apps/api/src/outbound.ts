@@ -7,17 +7,18 @@ import { AppEnv } from "./utils/context.ts";
 
 export const shouldRouteToOutbound = (
   req: Request,
+  wellKnownHost?: string,
   env?: AppEnv["Bindings"],
 ) => {
-  const url = new URL(req.url);
-  const host = req.headers.get("host") ?? url.host;
   const originIsScript = typeof env?.DECO_CHAT_APP_ORIGIN === "string";
-  const isApiHost = host === Hosts.API;
+  if (!originIsScript) {
+    return false;
+  }
   const isUnauthorized = !req.headers.has("authorization");
-  return (
-    originIsScript &&
-    (!isApiHost || isUnauthorized)
-  );
+  if (wellKnownHost === Hosts.API && isUnauthorized) {
+    return true;
+  }
+  return !wellKnownHost;
 };
 
 async function handleApiHostRequest(
