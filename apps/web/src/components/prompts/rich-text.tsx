@@ -147,9 +147,6 @@ export default function RichTextArea({
     const normalizedValue = normalizeMentions(value);
 
     if (markdown !== normalizedValue) {
-      console.log("markdown\n\n", markdown);
-      console.log("normalizedValue\n\n", normalizedValue);
-
       editor.commands.setContent(normalizedValue, false, {
         preserveWhitespace: "full",
       });
