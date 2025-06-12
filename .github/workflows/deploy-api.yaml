@@ -13,13 +13,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Publish Outbound
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          workingDirectory: "./apps/outbound"
-
       - name: Install dependencies
         working-directory: ./apps/api
         run: |
