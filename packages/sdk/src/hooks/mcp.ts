@@ -130,97 +130,111 @@ export const useBindings = (binder: Binder) => {
     queryKey: KEYS.BINDINGS(workspace, binder),
     queryFn: async ({ signal }) => {
       const items = await listIntegrations(workspace, {}, signal);
-      const filtered: typeof items = [];
-      const BATCH_SIZE = 10;
-      const batchPromises: Promise<Integration | null>[] = [];
+      const filtered: Integration[] = [];
+      const CONCURRENT_LIMIT = 10;
 
-      for (const item of items) {
-        if (signal?.aborted) {
-          throw new Error("Query was cancelled");
-        }
+      const processWithLimiter = (items: Integration[]) => {
+        return new Promise<void>((resolve, reject) => {
+          let activeCount = 0;
+          let currentIndex = 0;
+          let hasError = false;
 
-        const promise = (async () => {
-          try {
-            const integrationTools = await Promise.race([
-              listTools(item.connection).then((tools) => ({
-                ...item,
-                tools: tools.tools,
-              })).catch((error) => {
-                console.error("error", error);
-                return {
-                  ...item,
-                  tools: [],
-                };
-              }),
-              new Promise<{
-                tools: MCPTool[];
-              }>((resolve) =>
-                setTimeout(() =>
-                  resolve({
-                    tools: [],
-                  }), 7_000)
-              ),
-            ]);
+          // Handle signal cancellation early
+          if (signal?.aborted) {
+            reject(new Error("Query was cancelled"));
+            return;
+          }
 
-            if (
-              Binding(WellKnownBindings[binder]).isImplementedBy(
-                integrationTools?.tools,
-              )
-            ) {
-              const itemKey = KEYS.INTEGRATION(workspace, item.id);
-              client.cancelQueries({ queryKey: itemKey });
-              client.setQueryData<Integration>(itemKey, item);
+          const processNext = async () => {
+            if (hasError || signal?.aborted) return;
 
-              return item;
+            // If we've processed all items and no active requests, we're done
+            if (currentIndex >= items.length && activeCount === 0) {
+              resolve();
+              return;
             }
 
-            return null;
-          } catch (error) {
-            console.error("Error processing integration:", item.id, error);
-            return null;
+            if (currentIndex >= items.length) return;
+
+            if (activeCount >= CONCURRENT_LIMIT) return;
+
+            const itemIndex = currentIndex++;
+            const item = items[itemIndex];
+            activeCount++;
+
+            try {
+              const integrationTools = await Promise.race([
+                listTools(item.connection).then((tools) => ({
+                  ...item,
+                  tools: tools.tools,
+                })).catch((error) => {
+                  console.error("error", error);
+                  return {
+                    ...item,
+                    tools: [],
+                  };
+                }),
+                new Promise<{
+                  tools: MCPTool[];
+                }>((resolve) =>
+                  setTimeout(() =>
+                    resolve({
+                      tools: [],
+                    }), 7_000)
+                ),
+              ]);
+
+              if (
+                Binding(WellKnownBindings[binder]).isImplementedBy(
+                  integrationTools?.tools,
+                )
+              ) {
+                const itemKey = KEYS.INTEGRATION(workspace, item.id);
+                client.cancelQueries({ queryKey: itemKey });
+                client.setQueryData<Integration>(itemKey, item);
+
+                filtered.push(item);
+
+                // Update query data incrementally as items complete - fix race condition
+                client.setQueryData<Integration[]>(
+                  KEYS.BINDINGS(workspace, binder),
+                  (prev) => prev ? [...prev, item] : [item],
+                );
+              }
+            } catch (error) {
+              console.error("Error processing integration:", item.id, error);
+            } finally {
+              activeCount--;
+              setTimeout(() => processNext(), 0);
+            }
+          };
+
+          // Handle signal cancellation with proper cleanup
+          if (signal) {
+            signal.addEventListener("abort", () => {
+              hasError = true;
+              // Clear any partial results from cache on cancellation
+              client.removeQueries({
+                queryKey: KEYS.BINDINGS(workspace, binder),
+              });
+              reject(new Error("Query was cancelled"));
+            });
           }
-        })();
 
-        batchPromises.push(promise);
+          // Start initial batch of concurrent requests
+          for (let i = 0; i < Math.min(CONCURRENT_LIMIT, items.length); i++) {
+            setTimeout(() =>
+              processNext().catch((error) => {
+                if (!hasError) {
+                  hasError = true;
+                  reject(error);
+                }
+              }), 0);
+          }
+        });
+      };
 
-        if (batchPromises.length >= BATCH_SIZE) {
-          // Wait for the current batch to complete
-          const batchResults = await Promise.all(batchPromises);
-
-          // Add valid results to filtered array
-          const validResults = batchResults.filter((
-            result,
-          ): result is Integration => result !== null);
-          filtered.push(...validResults);
-
-          // Update query data incrementally after each batch
-          client.setQueryData<Integration[]>(
-            KEYS.BINDINGS(workspace, binder),
-            [...filtered],
-          );
-
-          // Reset batch
-          batchPromises.length = 0;
-        }
-      }
-
-      // Process remaining items in the final batch
-      if (batchPromises.length > 0) {
-        const batchResults = await Promise.all(batchPromises);
-
-        // Add valid results to filtered array
-        const validResults = batchResults.filter((
-          result,
-        ): result is Integration => result !== null);
-        filtered.push(...validResults);
-
-        // Update query data with final complete results
-        client.setQueryData<Integration[]>(
-          KEYS.BINDINGS(workspace, binder),
-          [...filtered],
-        );
-      }
-
+      await processWithLimiter(items);
       return filtered;
     },
   });
