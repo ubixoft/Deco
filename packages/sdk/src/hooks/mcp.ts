@@ -1,5 +1,6 @@
 import {
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
   useSuspenseQuery,
@@ -18,6 +19,7 @@ import { KEYS } from "./api.ts";
 import { useSDK } from "./store.tsx";
 import { listTools, MCPTool } from "./index.ts";
 import { Binding, WellKnownBindings } from "@deco/sdk/mcp/bindings";
+import { useMemo } from "react";
 
 export const useCreateIntegration = () => {
   const client = useQueryClient();
@@ -126,122 +128,92 @@ export const useBindings = (binder: Binder) => {
   const { workspace } = useSDK();
   const client = useQueryClient();
 
-  const data = useQuery({
-    queryKey: KEYS.BINDINGS(workspace, binder),
-    queryFn: async ({ signal }) => {
-      const items = await listIntegrations(workspace, {}, signal);
-      const filtered: Integration[] = [];
-      const CONCURRENT_LIMIT = 10;
+  const { data: items, isLoading: isLoadingItems, error: itemsError } =
+    useQuery({
+      queryKey: KEYS.INTEGRATION(workspace),
+      queryFn: ({ signal }) => listIntegrations(workspace, {}, signal),
+      staleTime: 2 * 60 * 1000, // 2 minutes
+    });
 
-      const processWithLimiter = (items: Integration[]) => {
-        return new Promise<void>((resolve, reject) => {
-          let activeCount = 0;
-          let currentIndex = 0;
-          let hasError = false;
+  const integrationQueries = useQueries({
+    queries: (items || []).map((item) => ({
+      queryKey: KEYS.INTEGRATION_TOOLS(workspace, item.id),
+      queryFn: async () => {
+        try {
+          const result = await Promise.race([
+            listTools(item.connection).then((tools) => ({
+              integration: item,
+              tools: tools.tools,
+              success: true,
+            })),
+            new Promise<
+              { integration: Integration; tools: MCPTool[]; success: boolean }
+            >((resolve) =>
+              setTimeout(() =>
+                resolve({
+                  integration: item,
+                  tools: [],
+                  success: false,
+                }), 7_000)
+            ),
+          ]);
 
-          // Handle signal cancellation early
-          if (signal?.aborted) {
-            reject(new Error("Query was cancelled"));
-            return;
-          }
+          const itemKey = KEYS.INTEGRATION(workspace, item.id);
+          client.setQueryData<Integration>(itemKey, item);
 
-          const processNext = async () => {
-            if (hasError || signal?.aborted) return;
-
-            // If we've processed all items and no active requests, we're done
-            if (currentIndex >= items.length && activeCount === 0) {
-              resolve();
-              return;
-            }
-
-            if (currentIndex >= items.length) return;
-
-            if (activeCount >= CONCURRENT_LIMIT) return;
-
-            const itemIndex = currentIndex++;
-            const item = items[itemIndex];
-            activeCount++;
-
-            try {
-              const integrationTools = await Promise.race([
-                listTools(item.connection).then((tools) => ({
-                  ...item,
-                  tools: tools.tools,
-                })).catch((error) => {
-                  console.error("error", error);
-                  return {
-                    ...item,
-                    tools: [],
-                  };
-                }),
-                new Promise<{
-                  tools: MCPTool[];
-                }>((resolve) =>
-                  setTimeout(() =>
-                    resolve({
-                      tools: [],
-                    }), 7_000)
-                ),
-              ]);
-
-              if (
-                Binding(WellKnownBindings[binder]).isImplementedBy(
-                  integrationTools?.tools,
-                )
-              ) {
-                const itemKey = KEYS.INTEGRATION(workspace, item.id);
-                client.cancelQueries({ queryKey: itemKey });
-                client.setQueryData<Integration>(itemKey, item);
-
-                filtered.push(item);
-
-                // Update query data incrementally as items complete - fix race condition
-                client.setQueryData<Integration[]>(
-                  KEYS.BINDINGS(workspace, binder),
-                  (prev) => prev ? [...prev, item] : [item],
-                );
-              }
-            } catch (error) {
-              console.error("Error processing integration:", item.id, error);
-            } finally {
-              activeCount--;
-              setTimeout(() => processNext(), 0);
-            }
+          return result;
+        } catch (error) {
+          console.error(
+            "Error fetching tools for integration:",
+            item.id,
+            error,
+          );
+          return {
+            integration: item,
+            tools: [] as MCPTool[],
+            success: false,
           };
-
-          // Handle signal cancellation with proper cleanup
-          if (signal) {
-            signal.addEventListener("abort", () => {
-              hasError = true;
-              // Clear any partial results from cache on cancellation
-              client.removeQueries({
-                queryKey: KEYS.BINDINGS(workspace, binder),
-              });
-              reject(new Error("Query was cancelled"));
-            });
-          }
-
-          // Start initial batch of concurrent requests
-          for (let i = 0; i < Math.min(CONCURRENT_LIMIT, items.length); i++) {
-            setTimeout(() =>
-              processNext().catch((error) => {
-                if (!hasError) {
-                  hasError = true;
-                  reject(error);
-                }
-              }), 0);
-          }
-        });
-      };
-
-      await processWithLimiter(items);
-      return filtered;
-    },
+        }
+      },
+      enabled: !!items && items.length > 0,
+      staleTime: 5 * 60 * 1000, // 5 minutes - tools don't change often
+      retry: (failureCount: number) => failureCount < 2,
+      // Use a shorter timeout to prevent hanging queries
+      gcTime: 10 * 60 * 1000, // 10 minutes
+    })),
   });
 
+  // Derive filtered results from individual queries
+  const filteredIntegrations = useMemo(() => {
+    if (!items || integrationQueries.length === 0) return [];
+
+    return integrationQueries
+      .filter((query) => query.isSuccess && query.data)
+      .map((query) => query.data!)
+      .filter(({ tools }) =>
+        Binding(WellKnownBindings[binder]).isImplementedBy(tools)
+      )
+      .map(({ integration }) => integration);
+  }, [integrationQueries, items, binder]);
+
+  // Aggregate loading and error states
+  const isLoading = isLoadingItems ||
+    integrationQueries.some((q) => q.isLoading);
+  const hasErrors = !!itemsError || integrationQueries.some((q) => q.error);
+  const errors = [
+    itemsError,
+    ...integrationQueries.map((q) => q.error).filter(Boolean),
+  ].filter(Boolean);
+
   return {
-    ...data,
-    data: data.data || null,
+    data: filteredIntegrations,
+    isLoading,
+    isPending: isLoading,
+    error: hasErrors ? errors[0] : null,
+    isSuccess: !isLoading && !hasErrors,
+    totalIntegrations: items?.length || 0,
+    processedIntegrations:
+      integrationQueries.filter((q) => q.isSuccess || q.isError).length,
   };
 };
 

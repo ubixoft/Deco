@@ -87,8 +87,9 @@ function ChannelCard(
 export function Channels({ className }: ChannelsProps) {
   const {
     data: bindings,
-    isPending: isPendingBindings,
     isLoading: isLoadingBindings,
+    totalIntegrations,
+    processedIntegrations,
   } = useBindings(
     "Channel",
   );
@@ -108,6 +109,7 @@ export function Channels({ className }: ChannelsProps) {
   const removeChannelMutation = useRemoveChannel();
   const { data: channels } = useChannels();
   const workspaceLink = useWorkspaceLink();
+
   const [selectedBindingId, setSelectedBindingId] = useState<string | null>(
     null,
   );
@@ -258,21 +260,25 @@ export function Channels({ className }: ChannelsProps) {
       <div className="space-y-2">
         <div className="flex w-full justify-between gap-2 items-center">
           <div>
-            <h3 className="text-sm font-medium text-foreground leading-">
-              Communication Channels
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-medium text-foreground leading-">
+                Communication Channels
+              </h3>
+            </div>
             <p className="text-xs font-normal text-muted-foreground">
               These are the channels your agent can find users on and
               communicate with them
             </p>
           </div>
-          <Button
-            onClick={() => setShowCreateForm(true)}
-            className="gap-2 h-8 w-8"
-            type="button"
-          >
-            <Icon name="add" size={16} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowCreateForm(true)}
+              className="gap-2 h-8 w-8"
+              type="button"
+            >
+              <Icon name="add" size={16} />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -346,17 +352,9 @@ export function Channels({ className }: ChannelsProps) {
         </div>
       )}
 
-      {!showCreateForm
-        ? null
-        : (!bindings || bindings.length === 0)
-        ? (isPendingBindings || isLoadingBindings)
-          ? (
-            <div className="w-full flex items-center gap-2">
-              <Spinner size="sm" />
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            </div>
-          )
-          : (
+      {!showCreateForm ? null : (
+        <>
+          {!isLoadingBindings && (!bindings || bindings.length === 0) && (
             <Alert>
               <AlertDescription>
                 No channel integrations available. You need to install
@@ -369,95 +367,127 @@ export function Channels({ className }: ChannelsProps) {
                 </Link>
               </AlertDescription>
             </Alert>
-          )
-        : (
-          <>
-            <FormItem>
-              <FormLabel>Integration</FormLabel>
-              <FormControl>
-                <Select
-                  value={selectedBindingId ?? ""}
-                  onValueChange={(bindingId) => {
-                    setSelectedBindingId(bindingId);
+          )}
+
+          {/* Show waiting message when loading but no integrations available yet */}
+          {isLoadingBindings && (!bindings || bindings.length === 0) &&
+            totalIntegrations > 0 && (
+            <Alert>
+              <AlertDescription>
+                Waiting for channel integrations to load...
+                ({processedIntegrations}/{totalIntegrations} processed)
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Show form as soon as we have at least one integration available */}
+          {bindings && bindings.length > 0 && (
+            <>
+              <FormItem>
+                <div className="flex items-center justify-between">
+                  <FormLabel>Integration</FormLabel>
+                  {isLoadingBindings &&
+                    processedIntegrations < totalIntegrations && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Spinner size="xs" />
+                      Loading more...
+                    </span>
+                  )}
+                </div>
+                <FormControl>
+                  <Select
+                    value={selectedBindingId ?? ""}
+                    onValueChange={(bindingId) => {
+                      setSelectedBindingId(bindingId);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={bindings.length === 0
+                          ? "No integrations available"
+                          : isLoadingBindings
+                          ? `Select an integration (${bindings.length} available, ${
+                            totalIntegrations - processedIntegrations
+                          } loading...)`
+                          : "Select an integration"}
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bindings?.map((binding) => (
+                        <SelectItem key={binding.id} value={binding.id}>
+                          <div className="flex items-center gap-2">
+                            {binding.icon
+                              ? (
+                                <IntegrationIcon
+                                  className="before:hidden w-10 h-10"
+                                  name={binding.name}
+                                  icon={binding.icon}
+                                />
+                              )
+                              : <Icon name="chat" size={16} />}
+                            <span>{binding.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+              </FormItem>
+
+              <div className="space-y-2">
+                {selectedBinding &&
+                  (
+                    <ConnectionChannels
+                      key={selectedBindingId}
+                      binding={selectedBinding}
+                      discriminator={discriminator}
+                      setDiscriminator={setDiscriminator}
+                      setName={setName}
+                    />
+                  )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setDiscriminator("");
                   }}
                 >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select an integration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bindings?.map((binding) => (
-                      <SelectItem key={binding.id} value={binding.id}>
-                        <div className="flex items-center gap-2">
-                          {binding.icon
-                            ? (
-                              <IntegrationIcon
-                                className="before:hidden w-10 h-10"
-                                name={binding.name}
-                                icon={binding.icon}
-                              />
-                            )
-                            : <Icon name="chat" size={16} />}
-                          <span>{binding.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-            </FormItem>
-
-            <div className="space-y-2">
-              {selectedBinding &&
-                (
-                  <ConnectionChannels
-                    key={selectedBindingId}
-                    binding={selectedBinding}
-                    discriminator={discriminator}
-                    setDiscriminator={setDiscriminator}
-                    setName={setName}
-                  />
-                )}
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowCreateForm(false);
-                  setDiscriminator("");
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="default"
-                disabled={!discriminator.trim() || isCreating}
-                onClick={() => {
-                  if (!selectedBindingId) {
-                    toast.error("Please select an integration first");
-                    return;
-                  }
-                  handleCreateChannel(selectedBindingId);
-                }}
-                className="gap-2"
-              >
-                {isCreating
-                  ? (
-                    <>
-                      <Spinner size="sm" />
-                      Creating...
-                    </>
-                  )
-                  : (
-                    <>
-                      <Icon name="add" size={16} />
-                      Create Channel
-                    </>
-                  )}
-              </Button>
-            </div>
-          </>
-        )}
+                  Cancel
+                </Button>
+                <Button
+                  variant="default"
+                  disabled={!discriminator.trim() || isCreating}
+                  onClick={() => {
+                    if (!selectedBindingId) {
+                      toast.error("Please select an integration first");
+                      return;
+                    }
+                    handleCreateChannel(selectedBindingId);
+                  }}
+                  className="gap-2"
+                >
+                  {isCreating
+                    ? (
+                      <>
+                        <Spinner size="sm" />
+                        Creating...
+                      </>
+                    )
+                    : (
+                      <>
+                        <Icon name="add" size={16} />
+                        Create Channel
+                      </>
+                    )}
+                </Button>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
       <AlertDialog open={!!confirmChannelSwitch}>
         <AlertDialogContent>
