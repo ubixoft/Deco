@@ -113,7 +113,9 @@ appLogin.all("/oauth", async (ctx: AppContext) => {
 
   // user already logged in, set by userMiddleware
   if (user && !user.is_anonymous) {
-    return ctx.redirect("/");
+    const origin = ctx.req.header("referer") || ctx.req.header("origin") ||
+      "https://deco.chat";
+    return ctx.redirect(origin);
   }
 
   const { db, headers } = createDbAndHeadersForRequest(ctx);
