@@ -236,13 +236,20 @@ app.post("/webhooks/stripe", handleStripeWebhook);
 // Health check endpoint
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
 
+const DECO_WORKSPACE_HEADER = "x-deco-workspace";
 const SENSITIVE_HEADERS = ["Cookie", "Authorization"];
-app.all("/:root/:slug/views/:script/:path{.+}?", (c: Context) => {
+app.on("*", [
+  "/:root/:slug/views/:script/:path{.+}?",
+  "/views/:script/:path{.+}?",
+], (c: Context) => {
   const script = c.req.param("script");
   const path = c.req.param("path");
   const root = c.req.param("root");
   const slug = c.req.param("slug");
-  const workspace = `/${root}/${slug}`;
+  const workspace = root && slug
+    ? `/${root}/${slug}`
+    : c.req.header(DECO_WORKSPACE_HEADER);
+
   const url = new URL(c.req.raw.url);
   url.protocol = "https:";
   url.port = "443";
@@ -254,7 +261,7 @@ app.all("/:root/:slug/views/:script/:path{.+}?", (c: Context) => {
     headers.delete(header);
   });
 
-  headers.set("x-deco-workspace", workspace);
+  workspace && headers.set(DECO_WORKSPACE_HEADER, workspace);
   return fetchScript(
     c,
     script,
