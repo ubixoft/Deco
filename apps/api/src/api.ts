@@ -238,7 +238,14 @@ app.get("/health", (c: Context) => c.json({ status: "ok" }));
 
 const DECO_WORKSPACE_HEADER = "x-deco-workspace";
 const SENSITIVE_HEADERS = ["Cookie", "Authorization"];
-app.on("*", [
+app.on([
+  "GET",
+  "POST",
+  "PUT",
+  "DELETE",
+  "PATCH",
+  "OPTIONS",
+], [
   "/:root/:slug/views/:script/:path{.+}?",
   "/views/:script/:path{.+}?",
 ], (c: Context) => {
