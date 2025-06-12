@@ -18,7 +18,7 @@ export const isWellKnownHost = (host: string) => {
 export default {
   fetch: async (req: Request, env: Env) => {
     const host = req.headers.get("host") ?? new URL(req.url).hostname;
-    const fetcher = isWellKnownHost(host) ? env.DECO_CHAT_API.fetch : fetch;
+    const fetcher = isWellKnownHost(host) ? env.DECO_CHAT_API.fetch : fetch.bind(globalThis);
     if (host !== Hosts.API) { // just forward the request to the target url
       return fetcher(
         req,
