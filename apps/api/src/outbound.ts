@@ -47,7 +47,6 @@ export const app = new Hono<AppEnv>();
 app.use(withContextMiddleware);
 
 app.all("/*", async (c) => {
-  console.warn("outbound", c.req.url);
   let req = c.req.raw;
   const url = new URL(c.req.url);
   const host = c.req.header("host") ?? url.host;
