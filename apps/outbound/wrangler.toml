@@ -9,3 +9,5 @@ binding = "CF_VERSION_METADATA"
 
 [observability]
 enabled = true
+
+services = [{ binding = "DECO_CHAT_API", service = "deco-chat-api" }]

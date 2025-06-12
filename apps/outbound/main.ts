@@ -7,21 +7,21 @@ export interface Env {
   ISSUER_JWT_SECRET: string;
   SUPABASE_URL: string;
   SUPABASE_SERVER_TOKEN: string;
+  DECO_CHAT_API: Service;
 }
+
+const wellKnownHosts = Object.values(Hosts) as string[];
+export const isWellKnownHost = (host: string) => {
+  return wellKnownHosts.includes(host) || host.endsWith(Hosts.APPS);
+};
 
 export default {
   fetch: async (req: Request, env: Env) => {
     const host = req.headers.get("host") ?? new URL(req.url).hostname;
-    const reqHeaders = new Headers(req.headers);
+    const fetcher = isWellKnownHost(host) ? env.DECO_CHAT_API.fetch : fetch;
     if (host !== Hosts.API) { // just forward the request to the target url
-      reqHeaders.set("x-deco-chat-app-origin", env.DECO_CHAT_APP_ORIGIN);
-      return fetch(
-        new Request(req.url, {
-          method: req.method,
-          headers: reqHeaders,
-          body: req.body,
-          redirect: req.redirect,
-        }),
+      return fetcher(
+        req,
       );
     }
 
@@ -61,9 +61,10 @@ export default {
       aud: data?.workspace,
     });
 
+    const reqHeaders = new Headers(req.headers);
     reqHeaders.set("Authorization", `Bearer ${token}`);
 
-    return fetch(
+    return fetcher(
       new Request(req.url, {
         method: req.method,
         headers: reqHeaders,
