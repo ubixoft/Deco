@@ -13,6 +13,7 @@ const instrumentedApp = getRuntimeKey() === "deno" ? app : instrument(app);
 // Domains we consider "self"
 const SELF_DOMAINS: string[] = [
   Hosts.API,
+  Hosts.APPS,
   `localhost:${process.env.PORT || 8000}`,
 ];
 
@@ -47,7 +48,7 @@ globalThis.fetch = async function patchedFetch(
 
   const context = contextStorage.getStore();
 
-  if (SELF_DOMAINS.includes(url.host)) {
+  if (SELF_DOMAINS.some((domain) => url.host.endsWith(domain))) {
     if (!context) {
       throw new Error("Missing context for internal self-invocation");
     }

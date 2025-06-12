@@ -35,13 +35,11 @@ const normalizeHost = (req: Request, env?: AppEnv["Bindings"]) => {
 
   // authorize the request using outbound worker.
   if (originIsScript && isUnauthorized && wellKnownHost === Hosts.API) {
-    console.log("routing to outbound (1)", req.url);
     return Hosts.APPS_OUTBOUND;
   }
 
   // send to outbound any request that is not to a well known host.
   if (originIsScript && !hostIsWellKnown) {
-    console.log("routing to outbound (2)", req.url);
     return Hosts.APPS_OUTBOUND;
   }
 
