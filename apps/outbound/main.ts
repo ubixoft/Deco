@@ -11,14 +11,16 @@ export interface Env {
 }
 
 const wellKnownHosts = Object.values(Hosts) as string[];
-export const isWellKnownHost = (host: string) => {
+export const isWellKnownHost = (host: string): boolean => {
   return wellKnownHosts.includes(host) || host.endsWith(Hosts.APPS);
 };
 
 export default {
   fetch: async (req: Request, env: Env) => {
     const host = req.headers.get("host") ?? new URL(req.url).hostname;
-    const fetcher = isWellKnownHost(host) ? env.DECO_CHAT_API.fetch : fetch.bind(globalThis);
+    const fetcher = isWellKnownHost(host)
+      ? (req: Request, opts?: RequestInit) => env.DECO_CHAT_API.fetch(req, opts)
+      : fetch;
     if (host !== Hosts.API) { // just forward the request to the target url
       return fetcher(
         req,
