@@ -81,8 +81,8 @@ import { AgentWallet } from "./agent/wallet.ts";
 import { pickCapybaraAvatar } from "./capybaras.ts";
 import { mcpServerTools } from "./mcp.ts";
 import type {
-  AIAgent as IIAgent,
   Message as AIMessage,
+  AIAgent as IIAgent,
   StreamOptions,
   Thread,
   ThreadQueryOptions,
@@ -352,7 +352,15 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   }
 
   public req(url: string) {
-    return fetch(url);
+    return fetch(url).then((resp) => {
+      if (!resp.ok) {
+        console.error(`Failed to fetch ${url}: ${resp.statusText}`);
+      }
+      return resp;
+    }).catch((err) => {
+      console.error(`fetch thew an exception`, err);
+      throw resp;
+    });
   }
 
   private async _initMemory(
