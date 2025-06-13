@@ -155,7 +155,7 @@ export const FETCH = createInnateTool({
 export const POLL_FOR_CONTENT = createInnateTool({
   id: "POLL_FOR_CONTENT",
   description:
-    "Check if a URL has content available by verifying the Content-Length header, with retry logic. Will keep polling until content is found or max attempts are reached.",
+    "Check if a URL has content available with better detection methods, timeouts, and resource management. Uses HEAD requests for efficiency and proper retry logic.",
   inputSchema: PollForContentInputSchema,
   outputSchema: PollForContentOutputSchema,
   execute: () => async ({ context }) => {
@@ -164,28 +164,105 @@ export const POLL_FOR_CONTENT = createInnateTool({
       maxAttempts = RETRY_CONFIG.maxAttempts,
       maxDelay = RETRY_CONFIG.maxDelay,
     } = context;
+
+    try {
+      new URL(url);
+    } catch {
+      return {
+        hasContent: false,
+        message: "Invalid URL format",
+      };
+    }
+
     let attempt = 1;
 
     while (attempt <= maxAttempts) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       try {
-        const res = await fetch(url);
+        let hasContent = false;
+        let contentInfo = "";
 
-        if (res.ok) {
-          const contentLength = res.headers.get("Content-Length");
-          const hasContent = contentLength
-            ? parseInt(contentLength, 10) > 0
-            : false;
+        try {
+          const headRes = await fetch(url, {
+            method: "HEAD",
+            signal: controller.signal,
+          });
 
-          if (hasContent) {
-            return {
-              hasContent: true,
-              message: "URL has content available",
-            };
+          if (headRes.ok) {
+            const contentLength = headRes.headers.get("Content-Length");
+            const contentType = headRes.headers.get("Content-Type");
+
+            // Simple logic: if HEAD returns OK (200-299), content is likely available
+            // Additional checks for content length can help confirm
+            const hasValidLength = contentLength
+              ? parseInt(contentLength, 10) > 0
+              : true; // Default to true if no length header
+
+            if (hasValidLength) {
+              hasContent = true;
+              contentInfo =
+                `URL has content available (HEAD: ${headRes.status}, Content-Length: ${
+                  contentLength || "unknown"
+                }, Content-Type: ${contentType || "unknown"})`;
+            }
+          }
+        } catch (headError) {
+          console.debug(
+            "HEAD request failed, will try GET fallback:",
+            headError,
+          );
+        }
+
+        // If HEAD didn't confirm content, try GET as fallback
+        if (!hasContent) {
+          try {
+            const getRes = await fetch(url, {
+              method: "GET",
+              signal: controller.signal,
+              headers: {
+                "Range": "bytes=0-1023", // Only fetch first 1KB to minimize data transfer
+              },
+            });
+
+            if (getRes.ok) {
+              const contentLength = getRes.headers.get("Content-Length");
+              const contentType = getRes.headers.get("Content-Type");
+
+              // Cancel the response body to avoid downloading the full content
+              if (getRes.body) {
+                await getRes.body.cancel();
+              }
+
+              hasContent = true;
+              contentInfo =
+                `URL has content available (GET: ${getRes.status}, Content-Length: ${
+                  contentLength || "unknown"
+                }, Content-Type: ${contentType || "unknown"})`;
+            }
+          } catch (getError) {
+            // Both HEAD and GET failed, continue to retry logic
+            console.debug("GET request also failed:", getError);
           }
         }
 
+        clearTimeout(timeoutId);
+
+        if (hasContent) {
+          return {
+            hasContent: true,
+            message: contentInfo,
+          };
+        }
+
+        // If we reach here, no content was detected
         if (attempt < maxAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), maxDelay);
+          // Exponential backoff with jitter
+          const baseDelay = Math.min(500 * Math.pow(2, attempt - 1), maxDelay);
+          const jitter = Math.random() * 0.1 * baseDelay; // Add 10% jitter
+          const delay = baseDelay + jitter;
+
           await new Promise((resolve) => setTimeout(resolve, delay));
           attempt++;
           continue;
@@ -193,11 +270,41 @@ export const POLL_FOR_CONTENT = createInnateTool({
 
         return {
           hasContent: false,
-          message: "URL has no content after maximum attempts",
+          message: `URL has no content after ${maxAttempts} attempts`,
         };
       } catch (error) {
-        if (attempt < maxAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), maxDelay);
+        clearTimeout(timeoutId);
+
+        // Check if it's a timeout error
+        if (error instanceof Error && error.name === "AbortError") {
+          if (attempt < maxAttempts) {
+            const baseDelay = Math.min(
+              1000 * Math.pow(2, attempt - 1),
+              maxDelay,
+            );
+            const jitter = Math.random() * 0.1 * baseDelay;
+            const delay = baseDelay + jitter;
+
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            attempt++;
+            continue;
+          }
+
+          return {
+            hasContent: false,
+            message: "Request timed out after multiple attempts",
+          };
+        }
+
+        // For other errors, determine if they're retryable
+        const isRetryable = error instanceof TypeError || // Network errors
+          (error instanceof Error && error.message.includes("fetch"));
+
+        if (isRetryable && attempt < maxAttempts) {
+          const baseDelay = Math.min(1000 * Math.pow(2, attempt - 1), maxDelay);
+          const jitter = Math.random() * 0.1 * baseDelay;
+          const delay = baseDelay + jitter;
+
           await new Promise((resolve) => setTimeout(resolve, delay));
           attempt++;
           continue;
