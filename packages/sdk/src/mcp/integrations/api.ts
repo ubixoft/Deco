@@ -7,12 +7,12 @@ import {
 import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import {
-  Agent,
+  type Agent,
   AgentSchema,
-  API_SERVER_URL,
   BindingsSchema,
+  DECO_CHAT_API,
   INNATE_INTEGRATIONS,
-  Integration,
+  type Integration,
   IntegrationSchema,
   InternalServerError,
   NEW_INTEGRATION_TEMPLATE,
@@ -20,7 +20,7 @@ import {
 } from "../../index.ts";
 import { CallToolResultSchema } from "../../models/tool-call.ts";
 import type { Workspace } from "../../path.ts";
-import { QueryResult } from "../../storage/supabase/client.ts";
+import type { QueryResult } from "../../storage/supabase/client.ts";
 import { getKnowledgeBaseIntegrationId } from "../../utils/index.ts";
 import { IMPORTANT_ROLES } from "../agents/api.ts";
 import {
@@ -144,13 +144,13 @@ const virtualIntegrationsFor = (
     description: "Manage your teams, invites and profile",
     connection: {
       type: "HTTP",
-      url: new URL("/mcp", API_SERVER_URL).href,
+      url: new URL("/mcp", DECO_CHAT_API).href,
     },
     icon: "https://i.imgur.com/GD4o7vx.png",
     workspace,
     created_at: new Date().toISOString(),
   };
-  const workspaceMcp = new URL(`${workspace}/mcp`, API_SERVER_URL);
+  const workspaceMcp = new URL(`${workspace}/mcp`, DECO_CHAT_API);
 
   // Create a virtual Workspace Management integration
   const workspaceManagementIntegration = {

@@ -1,7 +1,7 @@
 import type { AuthUser, SupabaseClient } from "@supabase/supabase-js";
 import { jwtDecode } from "jwt-decode";
 import { LRUCache } from "lru-cache";
-import { Principal } from "../mcp/context.ts";
+import type { Principal } from "../mcp/context.ts";
 import { JwtIssuer } from "./jwt.ts";
 import {
   createSupabaseSessionClient,
@@ -26,6 +26,7 @@ export async function getUserBySupabaseCookie(
   const jwtIssuer = JwtIssuer.forSecret(supabaseJWTSecret);
   const accessToken = parseAuthorizationHeader(request);
   const sessionToken = getSessionToken(request);
+
   if (!sessionToken && !accessToken) {
     return undefined;
   }
@@ -42,9 +43,7 @@ export async function getUserBySupabaseCookie(
     )
     : { supabase: supabaseServerToken };
   const [{ data: _user }, jwt] = await Promise.all([
-    supabase.auth.getUser(
-      accessToken,
-    ),
+    supabase.auth.getUser(accessToken),
     jwtIssuer.verify(sessionToken).then((jwt) => {
       if (!jwt && accessToken) {
         return jwtIssuer.verify(accessToken);
@@ -52,6 +51,7 @@ export async function getUserBySupabaseCookie(
       return jwt;
     }),
   ]);
+
   const user = _user?.user;
   if (!user) {
     return jwt;
