@@ -353,7 +353,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   public req(url: string) {
     const script = new URL(url).host.replace(".deco.page", "");
-    return this.actorEnv.PROD_DISPATCHER.get(script).fetch(
+    return this.actorEnv.PROD_DISPATCHER.get(script, {}, {
+      outbound: {
+        DECO_CHAT_APP_ORIGIN: script,
+      },
+    }).fetch(
       new URL("https://localhost:8000"),
     ).then((resp: Response) => {
       if (!resp.ok) {
