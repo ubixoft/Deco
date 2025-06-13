@@ -81,8 +81,8 @@ import { AgentWallet } from "./agent/wallet.ts";
 import { pickCapybaraAvatar } from "./capybaras.ts";
 import { mcpServerTools } from "./mcp.ts";
 import type {
-  AIAgent as IIAgent,
   Message as AIMessage,
+  AIAgent as IIAgent,
   StreamOptions,
   Thread,
   ThreadQueryOptions,
@@ -351,9 +351,12 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return tools;
   }
 
-  public req(url: string) {
+  public async req(url: string) {
+    console.log("received request", url);
+    const resp = await fetch(url).catch((err) => err);
+    console.log("resp", resp);
     const script = new URL(url).host.replace(".deco.page", "");
-    return this.actorEnv.PROD_DISPATCHER.get(script, {}, {
+    const scriptResp = await this.actorEnv.PROD_DISPATCHER.get(script, {}, {
       outbound: {
         DECO_CHAT_APP_ORIGIN: script,
       },
@@ -368,6 +371,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       console.error(`fetch thew an exception`, err);
       throw err;
     });
+    console.log("scriptResp", scriptResp);
+    return scriptResp;
   }
 
   private async _initMemory(
