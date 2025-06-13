@@ -382,12 +382,6 @@ export const CONFIRM = createInnateTool({
 });
 
 const CreatePresignedUrlInputSchema = z.object({
-  filePath: z.string().describe(
-    `The path to the file to generate a presigned URL for. 
-    You must choose the directory from Pictures, Documents, or Videos, depending on what will be uploaded.
-    Examples: Pictures/image.jpg, Documents/report.pdf, Videos/video.mp4
-    Remember to add the file extension to the end of the path.`,
-  ),
   expiresIn: z.number().optional().describe(
     "Number of seconds until the URL expires (default: 3600)",
   ),
@@ -405,7 +399,7 @@ export const CREATE_PRESIGNED_URL = createInnateTool({
   inputSchema: CreatePresignedUrlInputSchema,
   outputSchema: CreatePresignedUrlOutputSchema,
   execute: (agent, env) => async ({ context }) => {
-    const { filePath, expiresIn = 3600 } = context;
+    const { expiresIn = 3600 } = context;
     if (!env) {
       throw new Error("Env is required");
     }
@@ -424,9 +418,9 @@ export const CREATE_PRESIGNED_URL = createInnateTool({
       },
     });
 
-    const s3Key = `${workspace}/${filePath}`;
+    const s3Key = `${workspace}/${crypto.randomUUID()}`;
 
-    const extension = filePath.split(".").pop()?.toLowerCase();
+    const extension = s3Key.split(".").pop()?.toLowerCase();
     const contentType = getContentType(extension || "");
 
     const putCommand = new PutObjectCommand({
