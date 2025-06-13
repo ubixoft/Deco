@@ -191,6 +191,13 @@ export const NEW_INTEGRATION_TEMPLATE: Omit<Integration, "id"> = {
 };
 
 export const INNATE_INTEGRATIONS = {
+  DECO_INTEGRATIONS: {
+    id: "DECO_INTEGRATIONS",
+    name: "Connection management",
+    description: "Tools for managing connections.",
+    icon: "https://assets.webdraw.app/uploads/integrations.png",
+    connection: { type: "INNATE", name: "DECO_INTEGRATIONS" },
+  },
   DECO_UTILS: {
     id: "DECO_UTILS",
     name: "Utils",
@@ -222,7 +229,19 @@ export const NEW_AGENT_TEMPLATE: Omit<Agent, "id"> = {
  * these tools hardcoded in here. Maybe a setup is missing?
  */
 export const WELL_KNOWN_AGENTS = {
-  teamAgent: { id: "teamAgent", ...NEW_AGENT_TEMPLATE },
+  teamAgent: {
+    id: "teamAgent",
+    ...NEW_AGENT_TEMPLATE,
+    tools_set: {
+      DECO_INTEGRATIONS: [
+        "DECO_INTEGRATIONS_SEARCH",
+        "DECO_INTEGRATION_INSTALL",
+        "DECO_INTEGRATION_ENABLE",
+        "DECO_INTEGRATION_DISABLE",
+        "DECO_INTEGRATION_LIST_TOOLS",
+      ],
+    },
+  },
   setupAgent: {
     id: "setupAgent",
     name: "Setup agent",
@@ -230,7 +249,15 @@ export const WELL_KNOWN_AGENTS = {
     description: "I can help you with this setup.",
     model: DEFAULT_MODEL.id,
     visibility: "PUBLIC",
-    tools_set: {},
+    tools_set: {
+      DECO_INTEGRATIONS: [
+        "DECO_INTEGRATIONS_SEARCH",
+        "DECO_INTEGRATION_INSTALL",
+        "DECO_INTEGRATION_ENABLE",
+        "DECO_INTEGRATION_DISABLE",
+        "DECO_INTEGRATION_LIST_TOOLS",
+      ],
+    },
     views: [],
     instructions: `
 You are an assistant that helps users set up integrations and agents. 

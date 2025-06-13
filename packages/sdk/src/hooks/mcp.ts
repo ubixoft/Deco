@@ -1,4 +1,3 @@
-import { Binding, WellKnownBindings } from "@deco/sdk/mcp/bindings";
 import {
   useMutation,
   useQueries,
@@ -6,7 +5,6 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
 import {
   createIntegration,
   deleteIntegration,
@@ -15,11 +13,13 @@ import {
   saveIntegration,
 } from "../crud/mcp.ts";
 import { InternalServerError } from "../errors.ts";
-import { MCPClient } from "../fetcher.ts";
 import type { Binder, Integration } from "../models/mcp.ts";
+import { useAgentStub } from "./agent.ts";
 import { KEYS } from "./api.ts";
-import { listTools, MCPTool } from "./index.ts";
 import { useSDK } from "./store.tsx";
+import { listTools, MCPTool } from "./index.ts";
+import { Binding, WellKnownBindings } from "@deco/sdk/mcp/bindings";
+import { useMemo } from "react";
 
 export const useCreateIntegration = () => {
   const client = useQueryClient();
@@ -256,19 +256,22 @@ export const useIntegrations = () => {
 };
 
 interface IntegrationsResult {
-  integrations: Array<Omit<Integration, "connection"> & { provider: string }>;
+  integrations: Array<Integration & { provider: string }>;
 }
 
 export const useMarketplaceIntegrations = () => {
-  const { workspace } = useSDK();
+  const agentStub = useAgentStub();
 
   return useSuspenseQuery<IntegrationsResult>({
     queryKey: ["integrations", "marketplace"],
     queryFn: () =>
-      MCPClient.forWorkspace(workspace).DECO_INTEGRATIONS_SEARCH({ query: "" })
-        .then((r: IntegrationsResult | string) =>
-          typeof r === "string" ? { integrations: [] } : r
-        ),
+      agentStub.callTool("DECO_INTEGRATIONS.DECO_INTEGRATIONS_SEARCH", {
+        query: "",
+        filters: { installed: false },
+        verbose: true,
+      }).then((r: IntegrationsResult | string) =>
+        typeof r === "string" ? { integrations: [] } : r
+      ),
   });
 };
 
@@ -281,8 +284,9 @@ const WELL_KNOWN_DECO_OAUTH_INTEGRATIONS = [
 ];
 
 export const useInstallFromMarketplace = () => {
-  const { workspace } = useSDK();
+  const agentStub = useAgentStub();
   const client = useQueryClient();
+  const { workspace } = useSDK();
 
   const mutation = useMutation({
     mutationFn: async (
@@ -292,9 +296,10 @@ export const useInstallFromMarketplace = () => {
         provider: string;
       },
     ) => {
-      const result: { installationId: string } = await MCPClient
-        .forWorkspace(workspace)
-        .DECO_INTEGRATION_INSTALL({ id: appName });
+      const result: { installationId: string } = await agentStub
+        .callTool("DECO_INTEGRATIONS.DECO_INTEGRATION_INSTALL", {
+          id: appName,
+        });
 
       const integration = await loadIntegration(
         workspace,
@@ -307,14 +312,14 @@ export const useInstallFromMarketplace = () => {
         WELL_KNOWN_DECO_OAUTH_INTEGRATIONS.includes(appName.toLowerCase()) &&
         provider === "deco"
       ) {
-        const result = await MCPClient
-          .forWorkspace(workspace)
-          .DECO_INTEGRATION_OAUTH_START({
+        const result = await agentStub.callTool(
+          "DECO_INTEGRATIONS.DECO_INTEGRATION_OAUTH_START",
+          {
             appName: appName,
             returnUrl,
             installId: integration.id.split(":").pop()!,
-          });
-
+          },
+        );
         redirectUrl = result?.redirectUrl;
         if (!redirectUrl) {
           throw new Error("No redirect URL found");
@@ -326,12 +331,10 @@ export const useInstallFromMarketplace = () => {
           throw new Error("Composio integration has no url");
         }
 
-        const result = await MCPClient
-          .forWorkspace(workspace)
-          .COMPOSIO_INTEGRATION_OAUTH_START({
-            url: integration.connection.url,
-          });
-
+        const result = await agentStub.callTool(
+          "DECO_INTEGRATIONS.COMPOSIO_INTEGRATION_OAUTH_START",
+          { url: integration.connection.url },
+        );
         redirectUrl = result?.redirectUrl;
         if (!redirectUrl) {
           const errorInfo = {
