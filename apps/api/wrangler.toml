@@ -45,4 +45,8 @@ service = "hyperdx-tail"
 
 [[migrations]]
 tag = "v2"
+new_classes = ["TestDO"]
+
+[[migrations]]
+tag = "v3"
 deleted_classes = ["TestDO"]
