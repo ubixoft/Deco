@@ -42,3 +42,7 @@ new_classes = ["Trigger", "AIAgent"]
 
 [[tail_consumers]]
 service = "hyperdx-tail"
+
+[[migrations]]
+tag = "v2"
+deleted_classes = ["TestDO"]
