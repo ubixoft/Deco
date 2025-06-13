@@ -7,6 +7,7 @@ export * from "@deco/sdk/mcp";
 export type AppEnv = {
   Variables: Vars & TimingVariables;
   Bindings: EnvVars & {
+    TEST_DO: DurableObjectNamespace;
     DECO_CHAT_APP_ORIGIN?: string;
     PROD_DISPATCHER: {
       get: <

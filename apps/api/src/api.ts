@@ -233,6 +233,12 @@ Object.entries(loginRoutes).forEach(([route, honoApp]) => {
 
 // External webhooks
 app.post("/webhooks/stripe", handleStripeWebhook);
+app.get("/test-do", (c: Context<AppEnv>) => {
+  const doNamespace = c.env.TEST_DO;
+  return doNamespace.get(doNamespace.idFromName("test-do")).fetch(
+    "http://localhost:8005",
+  );
+});
 
 // Health check endpoint
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
