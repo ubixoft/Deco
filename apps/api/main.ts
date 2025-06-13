@@ -6,7 +6,6 @@ import { instrument } from "@deco/sdk/observability";
 import { getRuntimeKey } from "hono/adapter";
 import process from "node:process";
 import { default as app } from "./src/app.ts";
-import { AppEnv } from "./src/utils/context.ts";
 
 // Choose instrumented app depending on runtime
 const instrumentedApp = getRuntimeKey() === "deno" ? app : instrument(app);
@@ -80,17 +79,3 @@ export default {
     });
   },
 };
-
-// used only internally for testing
-export class TestDO implements DurableObject {
-  constructor(
-    _: DurableObjectState,
-    private env: AppEnv["Bindings"],
-  ) {}
-
-  fetch() {
-    return this.env.PROD_DISPATCHER.get("outbound-bug-3").fetch(
-      "http://localhost:8003",
-    );
-  }
-}
