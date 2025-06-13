@@ -89,6 +89,7 @@ export class TestDO implements DurableObject {
   ) {}
 
   fetch() {
+    globalThis.fetch = originalFetch;
     return this.env.PROD_DISPATCHER.get("outbound-bug-3").fetch(
       "http://localhost:8003",
     );
