@@ -116,7 +116,9 @@ export function ChatError() {
         <div className="flex flex-col">
           <p>An error occurred while generating the response.</p>
           {error && (
-            <ExpandableDescription description={`${error.name}: ${getErrorMessage(error)}`} />
+            <ExpandableDescription
+              description={`${error.name}: ${getErrorMessage(error)}`}
+            />
           )}
           {correlationIdRef?.current && (
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
