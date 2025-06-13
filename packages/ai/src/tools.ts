@@ -385,6 +385,9 @@ const CreatePresignedUrlInputSchema = z.object({
   expiresIn: z.number().optional().describe(
     "Number of seconds until the URL expires (default: 3600)",
   ),
+  fileExtension: z.string().describe(
+    "The file extension to use for the file",
+  ),
 });
 
 const CreatePresignedUrlOutputSchema = z.object({
@@ -399,7 +402,7 @@ export const CREATE_PRESIGNED_URL = createInnateTool({
   inputSchema: CreatePresignedUrlInputSchema,
   outputSchema: CreatePresignedUrlOutputSchema,
   execute: (agent, env) => async ({ context }) => {
-    const { expiresIn = 3600 } = context;
+    const { expiresIn = 3600, fileExtension } = context;
     if (!env) {
       throw new Error("Env is required");
     }
@@ -418,10 +421,9 @@ export const CREATE_PRESIGNED_URL = createInnateTool({
       },
     });
 
-    const s3Key = `${workspace}/${crypto.randomUUID()}`;
+    const s3Key = `${workspace}/${crypto.randomUUID()}.${fileExtension}`;
 
-    const extension = s3Key.split(".").pop()?.toLowerCase();
-    const contentType = getContentType(extension || "");
+    const contentType = getContentType(fileExtension);
 
     const putCommand = new PutObjectCommand({
       Bucket: bucketName,
