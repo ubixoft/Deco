@@ -351,6 +351,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     return tools;
   }
 
+  public req(url: string) {
+    return fetch(url);
+  }
+
   private async _initMemory(
     memoryId: string,
     config: Configuration,
