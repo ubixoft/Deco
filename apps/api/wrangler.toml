@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+compatibility_flags = ["nodejs_compat", "global_fetch_private_origin"]
 
 name = "deco-chat-api"
 main = "main.ts"
