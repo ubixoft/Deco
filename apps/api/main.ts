@@ -33,6 +33,7 @@ globalThis.fetch = async function patchedFetch(
   resource: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
+  console.log("patchedFetch", resource);
   let req: Request;
   if (typeof resource === "string") {
     req = new Request(resource, init);
@@ -49,6 +50,7 @@ globalThis.fetch = async function patchedFetch(
   const context = contextStorage.getStore();
 
   if (SELF_DOMAINS.some((domain) => url.host.endsWith(domain))) {
+    console.log("handling self request to", url.host);
     if (!context) {
       throw new Error("Missing context for internal self-invocation");
     }

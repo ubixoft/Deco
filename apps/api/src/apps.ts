@@ -30,6 +30,7 @@ export const fetchScript = async (
       DECO_CHAT_APP_ORIGIN: script,
     },
   });
+  console.log("dispatching to", script);
   const response = await scriptFetcher.fetch(req).catch((err) => {
     if ("message" in err && err.message.startsWith("Worker not found")) {
       // we tried to get a worker that doesn't exist in our dispatch namespace
