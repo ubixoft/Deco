@@ -354,7 +354,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   public async req(url: string) {
     console.log("received request", url);
     const resp = await fetch(url).catch((err) => err);
-    console.log("resp", resp);
+    console.log("resp", resp?.status, resp?.statusText);
     const script = new URL(url).host.replace(".deco.page", "");
     const scriptResp = await this.actorEnv.PROD_DISPATCHER.get(script, {}, {
       outbound: {
@@ -362,16 +362,18 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       },
     }).fetch(
       new URL("https://localhost:8000"),
-    ).then((resp: Response) => {
+    ).then(async (resp: Response) => {
       if (!resp.ok) {
-        console.error(`Failed to fetch ${url}: ${resp.statusText}`);
+        console.error(
+          `Failed to fetch ${url}: ${resp.statusText} ${await resp.text()}`,
+        );
       }
       return resp;
     }).catch((err: Error) => {
       console.error(`fetch thew an exception`, err);
       throw err;
     });
-    console.log("scriptResp", scriptResp);
+    console.log("scriptResp", scriptResp?.status, scriptResp?.statusText);
     return scriptResp;
   }
 
