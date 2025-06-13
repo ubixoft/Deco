@@ -361,11 +361,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         DECO_CHAT_APP_ORIGIN: script,
       },
     }).fetch(
-      new URL("https://localhost:8000"),
-    ).then(async (resp: Response) => {
+      new URL("https://google.com"),
+    ).then((resp: Response) => {
       if (!resp.ok) {
         console.error(
-          `Failed to fetch ${url}: ${resp.statusText} ${await resp.text()}`,
+          `Failed to fetch ${url}: ${resp.statusText}`,
         );
       }
       return resp;

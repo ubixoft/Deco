@@ -236,6 +236,9 @@ app.post("/webhooks/stripe", handleStripeWebhook);
 
 // Health check endpoint
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
+app.all("/api-test-temporary", () => {
+  return fetch("https://outbound-3.deco.page");
+});
 
 const DECO_WORKSPACE_HEADER = "x-deco-workspace";
 const SENSITIVE_HEADERS = ["Cookie", "Authorization"];
