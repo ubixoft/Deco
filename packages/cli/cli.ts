@@ -1,7 +1,9 @@
 import { Command } from "@cliffy/command";
-import { loginCommand } from "./src/login.ts";
+import denoJson from "./deno.json" with { type: "json" };
 import { deploy } from "./src/hosting/deploy.ts";
 import { listApps } from "./src/hosting/list.ts";
+import { link } from "./src/link.ts";
+import { loginCommand } from "./src/login.ts";
 import { deleteSession, getSessionToken } from "./src/session.ts";
 import { whoamiCommand } from "./src/whoami.ts";
 
@@ -54,6 +56,34 @@ const hostingDeploy = new Command()
     await deploy({ ...args, appSlug: args.app, authCookie });
   });
 
+const linkCmd = new Command()
+  .description("Link the project to be accessed through a remote domain.")
+  .option("-p, --port <port:number>", "Port to link", {
+    required: false,
+  })
+  .arguments("[...build-cmd]")
+  .action(async function ({ port }) {
+    const runCommand = this.getLiteralArgs();
+
+    await link({
+      port,
+      onBeforeRegister: () => {
+        const [cmd, ...args] = runCommand;
+
+        if (runCommand.length === 0) {
+          console.error("No build command provided");
+          return;
+        }
+
+        new Deno.Command(cmd, {
+          args,
+          stdout: "inherit",
+          stderr: "inherit",
+        }).spawn();
+      },
+    });
+  });
+
 // Hosting parent command
 const hosting = new Command()
   .description("Manage hosting apps in a workspace.")
@@ -62,13 +92,12 @@ const hosting = new Command()
 
 // Main CLI
 await new Command()
-  .name("deco")
-  .version("0.1.0")
-  .description(
-    "A CLI for interacting with deco.chat.",
-  )
+  .name(denoJson.name)
+  .version(denoJson.version)
+  .description(denoJson.description)
   .command("login", login)
   .command("logout", logout)
   .command("whoami", whoami)
   .command("hosting", hosting)
+  .command("link", linkCmd)
   .parse(Deno.args);
