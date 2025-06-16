@@ -1,3 +1,7 @@
+// TODO @mcandeia, there are some diffs when deploying this file manually.
+// I'm not sure why.
+// for some reason this file needs to be deployed manually.
+
 const Hosts = {
   API: "api.deco.chat",
   APPS: "deco.page",
