@@ -74,7 +74,7 @@ const linkCmd = new Command()
           args,
           stdout: "inherit",
           stderr: "inherit",
-          env: { ...Deno.env.toObject(), DECO_CHAT_API_KEY: token },
+          env: { ...Deno.env.toObject(), DECO_CHAT_API_TOKEN: token },
         }).spawn();
 
         return process;
