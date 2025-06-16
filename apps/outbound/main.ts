@@ -42,7 +42,8 @@ export default {
         ? (req: Request, opts?: RequestInit) =>
           env?.DECO_CHAT_API?.fetch(req, opts) ?? fetch(req, opts)
         : fetch;
-      if (host !== Hosts.API) { // just forward the request to the target url
+      const isAuthorized = typeof req.headers.get("Authorization") === "string";
+      if (host !== Hosts.API || isAuthorized) { // just forward the request to the target url
         return fetcher(
           req,
         );
