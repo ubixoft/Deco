@@ -108,6 +108,18 @@ const linkCmd = new Command()
     });
   });
 
+const update = new Command()
+  .description("Update the deco CLI to the latest version.")
+  .action(async () => {
+    const deno = new Deno.Command("deno", {
+      args: ["install", "-Ar", "-g", "-n", "deco", "jsr:@deco/cli", "-f"],
+      stdout: "inherit",
+      stderr: "inherit",
+    }).spawn();
+
+    await deno.status;
+  });
+
 // Hosting parent command
 const hosting = new Command()
   .description("Manage hosting apps in a workspace.")
@@ -125,5 +137,6 @@ await new Command()
   .command("hosting", hosting)
   .command("deploy", hostingDeploy)
   .command("configure", configure)
+  .command("update", update)
   .command("link", linkCmd)
   .parse(Deno.args);
