@@ -141,14 +141,14 @@ interface DeployToCloudflareParams {
 const acceptedWranglerConfigSchema = z.object({
   kv_namespaces: z.array(
     z.object({
-      name: z.string(),
+      binding: z.string(),
       id: z.string(),
     }),
   ).optional(),
 }).transform((data) => {
   const kv_namespace_bindings = data.kv_namespaces?.map((namespace) => ({
     type: "kv_namespace" as const,
-    name: namespace.name,
+    name: namespace.binding,
     namespace_id: namespace.id,
   })) ?? [];
 
