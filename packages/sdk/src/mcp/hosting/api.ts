@@ -7,6 +7,7 @@ import {
 } from "../assertions.ts";
 import { type AppContext, createTool, getEnv } from "../context.ts";
 import { bundler } from "./bundler.ts";
+import { parse as tomlParse } from "smol-toml";
 import { polyfill } from "./fs-polyfill.ts";
 
 const SCRIPT_FILE_NAME = "script.mjs";
@@ -127,20 +128,46 @@ const addPolyfills = (
     }
   }
 };
-async function deployToCloudflare(
-  c: AppContext,
-  scriptSlug: string,
-  mainModule: string,
-  files: Record<string, File>,
-  envVars?: Record<string, string>,
-): Promise<DeployResult> {
+interface DeployToCloudflareParams {
+  c: AppContext;
+  scriptSlug: string;
+  mainModule: string;
+  files: Record<string, File>;
+  wranglerConfig?: Record<string, unknown>;
+  envVars?: Record<string, string>;
+}
+
+const acceptedWranglerConfigSchema = z.object({
+  bindings: z.array(
+    z.object({
+      type: z.enum(["kv_namespace"]),
+      name: z.string(),
+      namespace_id: z.string(),
+    }),
+  ),
+});
+
+async function deployToCloudflare({
+  c,
+  scriptSlug,
+  mainModule,
+  files,
+  wranglerConfig,
+  envVars,
+}: DeployToCloudflareParams): Promise<DeployResult> {
   assertHasWorkspace(c);
   const env = getEnv(c);
+
+  const verifiedWranglerConfig = acceptedWranglerConfigSchema.parse(
+    wranglerConfig,
+  );
+
   const metadata = {
     main_module: mainModule,
     compatibility_flags: ["nodejs_compat"],
     compatibility_date: "2024-11-27",
     tags: [c.workspace.value],
+    ...verifiedWranglerConfig,
   };
 
   addPolyfills(files, metadata, [polyfill]);
@@ -161,6 +188,7 @@ async function deployToCloudflare(
         metadata: {
           main_module: mainModule,
           compatibility_flags: ["nodejs_compat"],
+          ...verifiedWranglerConfig,
         },
       },
       {
@@ -345,6 +373,11 @@ Important Notes:
       );
     }
 
+    const wranglerConfig = filesRecord["wrangler.toml"]
+      ? tomlParse(filesRecord["wrangler.toml"])
+      : undefined;
+    delete filesRecord["wrangler.toml"];
+
     await createNamespaceOnce(c);
     const { workspace, slug: scriptSlug } = getWorkspaceParams(c, appSlug);
 
@@ -366,13 +399,14 @@ Important Notes:
       DECO_CHAT_SCRIPT_SLUG: scriptSlug,
     };
 
-    const result = await deployToCloudflare(
+    const result = await deployToCloudflare({
       c,
       scriptSlug,
-      SCRIPT_FILE_NAME,
-      fileObjects,
-      { ...envVars, ...appEnvVars },
-    );
+      mainModule: SCRIPT_FILE_NAME,
+      files: fileObjects,
+      wranglerConfig,
+      envVars: { ...envVars, ...appEnvVars },
+    });
     const data = await updateDatabase(
       c,
       workspace,
