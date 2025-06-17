@@ -139,13 +139,22 @@ interface DeployToCloudflareParams {
 }
 
 const acceptedWranglerConfigSchema = z.object({
-  bindings: z.array(
+  kv_namespaces: z.array(
     z.object({
-      type: z.enum(["kv_namespace"]),
       name: z.string(),
-      namespace_id: z.string(),
+      id: z.string(),
     }),
   ).optional(),
+}).transform((data) => {
+  const kv_namespace_bindings = data.kv_namespaces?.map(namespace => ({
+    type: "kv_namespace",
+    name: namespace.name,
+    namespace_id: namespace.id,
+  })) ?? [];
+
+  return {
+    bindings: [...kv_namespace_bindings],
+  };
 });
 
 async function deployToCloudflare({
@@ -159,9 +168,9 @@ async function deployToCloudflare({
   assertHasWorkspace(c);
   const env = getEnv(c);
 
-  const verifiedWranglerConfig = wranglerConfig
-    ? acceptedWranglerConfigSchema.parse(wranglerConfig)
-    : {};
+  const verifiedWranglerConfig = acceptedWranglerConfigSchema.parse(
+    wranglerConfig ?? {},
+  );
 
   const metadata = {
     main_module: mainModule,
