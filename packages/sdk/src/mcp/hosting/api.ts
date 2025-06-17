@@ -146,7 +146,7 @@ const acceptedWranglerConfigSchema = z.object({
     }),
   ).optional(),
 }).transform((data) => {
-  const kv_namespace_bindings = data.kv_namespaces?.map(namespace => ({
+  const kv_namespace_bindings = data.kv_namespaces?.map((namespace) => ({
     type: "kv_namespace",
     name: namespace.name,
     namespace_id: namespace.id,
