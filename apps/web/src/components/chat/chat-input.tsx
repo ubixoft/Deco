@@ -1,7 +1,6 @@
 import {
   DEFAULT_MODEL,
   NotFoundError,
-  readFile,
   useAgent,
   useModels,
   useSDK,
@@ -34,6 +33,8 @@ import { useChatContext } from "./context.tsx";
 import { ModelSelector } from "./model-selector.tsx";
 import { RichTextArea } from "./rich-text.tsx";
 import ToolsButton from "./tools-button.tsx";
+import { formatFilename } from "../../utils/format.ts";
+import { Hosts } from "@deco/sdk/hosts";
 
 export function ChatInput() {
   return (
@@ -239,7 +240,7 @@ ChatInput.UI = (
 
   async function uploadFile(file: File) {
     try {
-      const path = `uploads/${file.name}`;
+      const path = `uploads/${formatFilename(file.name)}`;
       const buffer = await file.arrayBuffer();
       await writeFileMutation.mutateAsync({
         path,
@@ -247,7 +248,7 @@ ChatInput.UI = (
         content: new Uint8Array(buffer),
       });
 
-      const url = await readFile({ workspace, path });
+      const url = `https://${Hosts.API}/files/${workspace}/${path}`; // does not work when running locally
 
       setUploadedFiles((prev) =>
         prev.map((uf) =>
