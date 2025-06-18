@@ -253,7 +253,7 @@ app.get("/files/:root/:slug/:path{.+}", async (c) => {
     c: appCtx,
     existingBucketName: bucketName,
     path: filePath,
-    expiresIn: 3600,
+    expiresIn: 10,
   });
 
   return c.redirect(url, 301);
