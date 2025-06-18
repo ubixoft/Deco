@@ -30,11 +30,14 @@ export const getAgentsByIds = async (
 
   const dbIds = ids.filter((id) => !(id in WELL_KNOWN_AGENTS));
 
-  let dbAgents: z.infer<typeof AgentSchema>[] = [];
+  let dbAgents: Omit<
+    z.infer<typeof AgentSchema>,
+    "instructions" | "memory" | "views" | "visibility" | "access"
+  >[] = [];
   if (dbIds.length > 0) {
     const { data, error } = await c.db
       .from("deco_chat_agents")
-      .select("*")
+      .select("id, name, description, tools_set, avatar")
       .in("id", dbIds)
       .eq("workspace", c.workspace.value);
 
@@ -42,7 +45,15 @@ export const getAgentsByIds = async (
       throw error;
     }
 
-    dbAgents = data.map((item) => AgentSchema.parse(item));
+    dbAgents = data.map((item) =>
+      AgentSchema.omit({
+        instructions: true,
+        memory: true,
+        views: true,
+        visibility: true,
+        access: true,
+      }).parse(item)
+    );
   }
 
   return ids
