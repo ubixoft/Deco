@@ -76,22 +76,22 @@ type Capability =
 // First one is the default model for agents, so choose wisely.
 export const WELL_KNOWN_MODELS: Model[] = [
   {
+    id: "openai:gpt-4.1-mini",
+    model: "openai:gpt-4.1-mini",
+    name: "OpenAI GPT-4.1 mini",
+    logo: LOGOS.openai,
+    capabilities: ["reasoning", "image-upload", "file-upload"],
+    byDeco: true,
+    isEnabled: true,
+    hasCustomKey: false,
+  },
+  {
     id: "google:gemini-2.5-pro-preview",
     model: "google:gemini-2.5-pro-preview",
     name: "Google Gemini Pro 2.5",
     logo: LOGOS.gemini,
     capabilities: ["reasoning", "image-upload", "file-upload"],
     legacyId: "google:gemini-2.5-pro-preview-03-25",
-    byDeco: true,
-    isEnabled: true,
-    hasCustomKey: false,
-  },
-  {
-    id: "openai:gpt-4.1-mini",
-    model: "openai:gpt-4.1-mini",
-    name: "OpenAI GPT-4.1 mini",
-    logo: LOGOS.openai,
-    capabilities: ["reasoning", "image-upload", "file-upload"],
     byDeco: true,
     isEnabled: true,
     hasCustomKey: false,
