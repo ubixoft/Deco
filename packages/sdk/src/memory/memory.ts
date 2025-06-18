@@ -107,24 +107,46 @@ export class WorkspaceMemory extends MastraMemory {
       memorySystemMessage: string;
     },
   ): CoreMessage[] {
-    // deno-lint-ignore no-explicit-any
-    const processedMessages: any[] = super.processMessages({
+    const processedMessages = super.processMessages({
       messages,
       systemMessage,
       memorySystemMessage,
     });
 
-    // Keep removing tool-call + tool pairs from the beginning until we don't have this pattern
+    let startIndex = 0;
     while (
-      processedMessages.length >= 2 &&
-      processedMessages[0].role === "assistant" &&
-      processedMessages[0].type === "tool-call" &&
-      processedMessages[1].role === "tool"
+      startIndex + 1 < processedMessages.length &&
+      this.isToolCallMessage(processedMessages[startIndex]) &&
+      this.isToolResultMessage(processedMessages[startIndex + 1])
     ) {
-      processedMessages.splice(0, 2);
+      startIndex += 2;
     }
 
-    return processedMessages;
+    return startIndex > 0
+      ? processedMessages.slice(startIndex)
+      : processedMessages;
+  }
+
+  /**
+   * Type guard to check if a message is a tool-call message
+   */
+  private isToolCallMessage(message: CoreMessage): boolean {
+    return message &&
+      typeof message === "object" &&
+      "role" in message &&
+      "type" in message &&
+      message.role === "assistant" &&
+      message.type === "tool-call";
+  }
+
+  /**
+   * Type guard to check if a message is a tool result message
+   */
+  private isToolResultMessage(message: CoreMessage): boolean {
+    return message &&
+      typeof message === "object" &&
+      "role" in message &&
+      message.role === "tool";
   }
 }
 
