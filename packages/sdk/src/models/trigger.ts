@@ -133,7 +133,7 @@ export const GetWebhookTriggerUrlOutputSchema = z.object({
 export const TriggerOutputSchema = z.object({
   id: z.string().describe("The trigger ID"),
   type: z.enum(["cron", "webhook"]),
-  agent: AgentSchema,
+  agent: AgentSchema.pick({ id: true }),
   createdAt: z.string().describe("The creation date"),
   updatedAt: z.string().describe("The update date"),
   user: z.object({

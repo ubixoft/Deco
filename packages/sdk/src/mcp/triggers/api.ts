@@ -7,7 +7,6 @@ import {
   UserInputError,
 } from "../../errors.ts";
 import { Hosts } from "../../hosts.ts";
-import type { AgentSchema } from "../../models/agent.ts";
 import type { IntegrationSchema } from "../../models/mcp.ts";
 import {
   CreateCronTriggerInputSchema,
@@ -20,7 +19,6 @@ import {
 } from "../../models/trigger.ts";
 import { Path } from "../../path.ts";
 import type { Json, QueryResult } from "../../storage/index.ts";
-import { getAgentsByIds } from "../agents/api.ts";
 import {
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
@@ -43,7 +41,6 @@ const SELECT_TRIGGER_QUERY = `
 
 function mapTrigger(
   trigger: QueryResult<"deco_chat_triggers", typeof SELECT_TRIGGER_QUERY>,
-  agentsById: Record<string, z.infer<typeof AgentSchema>>,
 ) {
   return {
     type: trigger.metadata && typeof trigger.metadata === "object" &&
@@ -51,7 +48,6 @@ function mapTrigger(
       ? "cron" as const
       : "webhook" as const,
     id: trigger.id,
-    agent: agentsById[trigger.agent_id],
     createdAt: trigger.created_at,
     updatedAt: trigger.updated_at,
     user: {
@@ -64,6 +60,9 @@ function mapTrigger(
     active: trigger.active,
     data: trigger.metadata as z.infer<typeof TriggerSchema>,
     binding: trigger.binding ? convertFromDatabase(trigger.binding) : null,
+    agent: {
+      id: trigger.agent_id,
+    },
   };
 }
 
@@ -105,19 +104,8 @@ export const listTriggers = createTool({
       throw new InternalServerError(error.message);
     }
 
-    const agentIds = Array.from(
-      new Set(data.map((trigger) => trigger.agent_id).filter(Boolean)),
-    );
-
-    const agents = await getAgentsByIds(agentIds, c);
-
-    const agentsById = agents.reduce((acc, agent) => {
-      acc[agent.id] = agent;
-      return acc;
-    }, {} as Record<string, z.infer<typeof AgentSchema>>);
-
     return {
-      triggers: data.map((trigger) => mapTrigger(trigger, agentsById)),
+      triggers: data.map((trigger) => mapTrigger(trigger)),
     };
   },
 });
@@ -230,13 +218,7 @@ export const upsertTrigger = createTool({
       },
     );
 
-    const agents = await getAgentsByIds([agentId], c);
-    const agentsById = agents.reduce((acc, agent) => {
-      acc[agent.id] = agent;
-      return acc;
-    }, {} as Record<string, z.infer<typeof AgentSchema>>);
-
-    return mapTrigger(trigger, agentsById);
+    return mapTrigger(trigger);
   },
 });
 
@@ -434,13 +416,7 @@ export const getTrigger = createTool({
       throw new NotFoundError("Trigger not found");
     }
 
-    const agents = await getAgentsByIds([trigger.agent_id], c);
-    const agentsById = agents.reduce((acc, agent) => {
-      acc[agent.id] = agent;
-      return acc;
-    }, {} as Record<string, z.infer<typeof AgentSchema>>);
-
-    return mapTrigger(trigger, agentsById);
+    return mapTrigger(trigger);
   },
 });
 

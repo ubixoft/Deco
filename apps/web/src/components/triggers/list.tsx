@@ -19,6 +19,7 @@ import type { z } from "zod";
 import { TriggerToggle } from "./trigger-toggle.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
+import { useAgents } from "@deco/sdk";
 
 const SORTABLE_KEYS = ["title", "type", "agent", "author"] as const;
 
@@ -155,6 +156,7 @@ function TableView(
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [openModalId, setOpenModalId] = useState<string | null>(null);
   const navigate = useNavigateWorkspace();
+  const { data: agents } = useAgents();
 
   function handleSort(key: string) {
     const k = key as SortKey;
@@ -170,7 +172,10 @@ function TableView(
     trigger: z.infer<typeof TriggerOutputSchema>,
     key: SortKey,
   ): string {
-    if (key === "agent") return trigger.agent?.name?.toLowerCase() || "";
+    if (key === "agent") {
+      const agent = agents?.find((a) => a.id === trigger.agent?.id);
+      return agent?.name?.toLowerCase() || "";
+    }
     if (key === "author") {
       return trigger.user?.metadata?.full_name?.toLowerCase() || "";
     }
@@ -189,7 +194,7 @@ function TableView(
   });
 
   function handleTriggerClick(trigger: z.infer<typeof TriggerOutputSchema>) {
-    if (!openModalId && trigger.agent?.id && trigger.id) {
+    if (!openModalId) {
       navigate(`/trigger/${trigger.agent.id}/${trigger.id}`);
     }
   }
