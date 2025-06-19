@@ -2,7 +2,7 @@ import { Form, FormItem } from "@deco/ui/components/form.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
-import { useCallback, useState } from "react";
+import { useCallback, useDeferredValue, useState } from "react";
 import { Button } from "@deco/ui/components/button.tsx";
 import { useAgentSettingsForm } from "../agent/edit.tsx";
 import { SelectConnectionDialog } from "../integrations/select-connection-dialog.tsx";
@@ -65,20 +65,14 @@ function Connections() {
     installedIntegrations,
     disableAllTools,
   } = useAgentSettingsToolsSet();
-  const [search, setSearch] = useState("");
+  const [_search, setSearch] = useState("");
+  const search = useDeferredValue(_search.toLowerCase());
 
   const onConfigureConnection = useConfigureConnection();
 
   const connections = installedIntegrations
     .filter(connectionFilter)
-    .filter((connection) => !!toolsSet[connection.id])
-    .filter((connection) => {
-      const searchTerm = search.toLowerCase();
-      return (
-        connection?.name?.toLowerCase().includes(searchTerm) ||
-        connection?.description?.toLowerCase().includes(searchTerm)
-      );
-    });
+    .filter((connection) => !!toolsSet[connection.id]);
 
   const showAddConnectionEmptyState = connections.length === 0 && !search;
   return (
@@ -118,8 +112,8 @@ function Connections() {
                     className="text-muted-foreground"
                   />
                   <Input
-                    placeholder="Search"
-                    value={search}
+                    placeholder="Search tools..."
+                    value={_search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="flex-1 h-full border-none focus-visible:ring-0 placeholder:text-muted-foreground bg-transparent px-2"
                   />
@@ -138,6 +132,7 @@ function Connections() {
                       onConfigure={onConfigureConnection}
                       onRemove={(integrationId) =>
                         disableAllTools(integrationId)}
+                      searchTerm={search}
                     />
                   ))}
                 </div>
