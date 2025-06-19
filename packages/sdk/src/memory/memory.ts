@@ -134,16 +134,6 @@ export class WorkspaceMemory extends MastraMemory {
       message.role === "assistant" &&
       message.type === "tool-call";
   }
-
-  /**
-   * Type guard to check if a message is a tool result message
-   */
-  private isToolResultMessage(message: CoreMessage): boolean {
-    return message &&
-      typeof message === "object" &&
-      "role" in message &&
-      message.role === "tool";
-  }
 }
 
 export interface AgentMemoryConfig extends WorkspaceMemoryConfig {
