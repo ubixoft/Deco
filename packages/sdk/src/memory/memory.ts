@@ -98,7 +98,7 @@ export class WorkspaceMemory extends MastraMemory {
   }
 
   /**
-   * This is a workaround to remove the tool-call and tool-result messages from the processed messages when they are the first two messages, because Anthropic fails to process them in this case.
+   * This is a workaround to remove the first tool-call message from the processed messages, because Anthropic fails to process them when they are at index 0.
    */
   override processMessages(
     { messages, systemMessage, memorySystemMessage }: {
@@ -113,18 +113,14 @@ export class WorkspaceMemory extends MastraMemory {
       memorySystemMessage,
     });
 
-    let startIndex = 0;
-    while (
-      startIndex + 1 < processedMessages.length &&
-      this.isToolCallMessage(processedMessages[startIndex]) &&
-      this.isToolResultMessage(processedMessages[startIndex + 1])
+    if (
+      processedMessages.length > 0 &&
+      this.isToolCallMessage(processedMessages[0])
     ) {
-      startIndex += 2;
+      return processedMessages.slice(1);
     }
 
-    return startIndex > 0
-      ? processedMessages.slice(startIndex)
-      : processedMessages;
+    return processedMessages;
   }
 
   /**
