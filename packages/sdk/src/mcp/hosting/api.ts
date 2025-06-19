@@ -174,6 +174,7 @@ async function deployToCloudflare(
       name: workflow.binding,
       workflow_name: workflow.name,
       class_name: workflow.class_name,
+      script_name: mainModule,
     })) ?? [],
   ];
 
