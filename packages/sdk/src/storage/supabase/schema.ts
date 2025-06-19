@@ -307,6 +307,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      connections_admin: {
+        Row: {
+          id: string;
+          site: string;
+          user_id: string | null;
+          workspace: string | null;
+        };
+        Insert: {
+          id?: string;
+          site: string;
+          user_id?: string | null;
+          workspace?: string | null;
+        };
+        Update: {
+          id?: string;
+          site?: string;
+          user_id?: string | null;
+          workspace?: string | null;
+        };
+        Relationships: [];
+      };
       deco_chat_access: {
         Row: {
           allowed_roles: string[] | null;
@@ -619,89 +640,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      deco_chat_temp_wpp_invites: {
-        Row: {
-          accept_message: string;
-          accepted_at: string | null;
-          created_at: string;
-          phone: string;
-          trigger_id: string;
-          updated_at: string | null;
-          user_id: string | null;
-          wpp_message_id: string;
-        };
-        Insert: {
-          accept_message: string;
-          accepted_at?: string | null;
-          created_at?: string;
-          phone: string;
-          trigger_id: string;
-          updated_at?: string | null;
-          user_id?: string | null;
-          wpp_message_id: string;
-        };
-        Update: {
-          accept_message?: string;
-          accepted_at?: string | null;
-          created_at?: string;
-          phone?: string;
-          trigger_id?: string;
-          updated_at?: string | null;
-          user_id?: string | null;
-          wpp_message_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "deco_chat_temp_wpp_invites_trigger_id_fkey";
-            columns: ["trigger_id"];
-            isOneToOne: false;
-            referencedRelation: "deco_chat_triggers";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "deco_chat_temp_wpp_invites_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users_meta_data_view";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      deco_chat_temp_wpp_users: {
-        Row: {
-          created_at: string;
-          phone: string;
-          trigger_id: string | null;
-          trigger_url: string;
-          triggers: string[];
-          updated_at: string | null;
-        };
-        Insert: {
-          created_at?: string;
-          phone: string;
-          trigger_id?: string | null;
-          trigger_url: string;
-          triggers?: string[];
-          updated_at?: string | null;
-        };
-        Update: {
-          created_at?: string;
-          phone?: string;
-          trigger_id?: string | null;
-          trigger_url?: string;
-          triggers?: string[];
-          updated_at?: string | null;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "deco_chat_temp_wpp_agents_trigger_id_fkey";
-            columns: ["trigger_id"];
-            isOneToOne: false;
-            referencedRelation: "deco_chat_triggers";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       deco_chat_trigger_runs: {
         Row: {
           id: string;
@@ -748,7 +686,6 @@ export type Database = {
           metadata: Json;
           updated_at: string;
           user_id: string | null;
-          whatsapp_enabled: boolean;
           workspace: string;
         };
         Insert: {
@@ -761,7 +698,6 @@ export type Database = {
           metadata: Json;
           updated_at?: string;
           user_id?: string | null;
-          whatsapp_enabled?: boolean;
           workspace: string;
         };
         Update: {
@@ -774,7 +710,6 @@ export type Database = {
           metadata?: Json;
           updated_at?: string;
           user_id?: string | null;
-          whatsapp_enabled?: boolean;
           workspace?: string;
         };
         Relationships: [
@@ -2395,6 +2330,32 @@ export type Database = {
           },
         ];
       };
+      sites_metadata: {
+        Row: {
+          created_at: string;
+          id: number;
+          metadata: Json;
+        };
+        Insert: {
+          created_at?: string;
+          id?: number;
+          metadata: Json;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          metadata?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sites_metadata_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "sites";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       students: {
         Row: {
           referral_id: string | null;
@@ -2713,42 +2674,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "webdraw_user_metadata";
             referencedColumns: ["user_id"];
-          },
-        ];
-      };
-      temp_wpp_agents: {
-        Row: {
-          agent_id: string;
-          created_at: string;
-          id: number;
-          user_id: string;
-        };
-        Insert: {
-          agent_id: string;
-          created_at?: string;
-          id?: number;
-          user_id: string;
-        };
-        Update: {
-          agent_id?: string;
-          created_at?: string;
-          id?: number;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "temp_wpp_agents_agent_id_fkey";
-            columns: ["agent_id"];
-            isOneToOne: false;
-            referencedRelation: "deco_chat_agents";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "temp_wpp_agents_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
-            referencedRelation: "users_meta_data_view";
-            referencedColumns: ["id"];
           },
         ];
       };
