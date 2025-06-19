@@ -174,9 +174,10 @@ async function deployToCloudflare(
       name: workflow.binding,
       workflow_name: workflow.name,
       class_name: workflow.class_name,
-      script_name: mainModule,
     })) ?? [],
   ];
+
+  console.log("bindings", JSON.stringify(wranglerBindings, null, 2));
 
   const decoBindings = deco?.bindings ?? [];
   if (decoBindings.length > 0) {
