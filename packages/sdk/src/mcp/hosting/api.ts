@@ -139,7 +139,7 @@ async function deployToCloudflare(
     queues,
     workflows,
     triggers,
-    ...rest
+    migrations,
   }: WranglerConfig,
   mainModule: string,
   files: Record<string, File>,
@@ -182,8 +182,9 @@ async function deployToCloudflare(
   if (decoBindings.length > 0) {
     envVars["DECO_CHAT_BINDINGS"] = WorkersMCPBindings.stringify(decoBindings);
   }
+  const lastMigration = migrations?.[migrations.length - 1];
+  const previousMigration = migrations?.[migrations.length - 2];
   const metadata = {
-    ...rest,
     main_module: mainModule,
     compatibility_flags: compatibility_flags ?? ["nodejs_compat"],
     compatibility_date: compatibility_date ?? "2024-11-27",
@@ -193,6 +194,22 @@ async function deployToCloudflare(
     observability: {
       enabled: true,
     },
+    migration: lastMigration
+      ? {
+        old_tag: previousMigration?.tag,
+        // Convert our migration format to Cloudflare's SingleStepMigrationParam format
+        new_tag: lastMigration.tag,
+        ...(("new_classes" in lastMigration) && {
+          new_classes: lastMigration.new_classes,
+        }),
+        ...(("deleted_classes" in lastMigration) && {
+          deleted_classes: lastMigration.deleted_classes,
+        }),
+        ...(("renamed_classes" in lastMigration) && {
+          renamed_classes: lastMigration.renamed_classes,
+        }),
+      }
+      : undefined,
   };
 
   addPolyfills(files, metadata, [polyfill]);
@@ -311,6 +328,30 @@ const FileSchema = z.object({
   content: z.string(),
 });
 
+export interface MigrationBase {
+  tag: string;
+}
+
+export interface NewClassMigration extends MigrationBase {
+  new_classes: string[];
+}
+
+export interface DeletedClassMigration extends MigrationBase {
+  deleted_classes: string[];
+}
+
+export interface RenamedClassMigration extends MigrationBase {
+  renamed_classes: {
+    from: string;
+    to: string;
+  }[];
+}
+
+export type Migration =
+  | NewClassMigration
+  | DeletedClassMigration
+  | RenamedClassMigration;
+
 export interface KVNamespace {
   binding: string;
   id: string;
@@ -353,6 +394,7 @@ export interface WranglerConfig {
     class_name?: string;
     script_name?: string;
   }[];
+  migrations?: Migration[];
   //
   deco?: {
     bindings?: Binding[];
@@ -425,6 +467,7 @@ Common patterns:
 
 
 import { withRuntime } from "jsr:@deco/workers-runtime@${DECO_WORKER_RUNTIME_VERSION}";
+import { DeleteModelInput } from '../models/api';
 
 export default withRuntime({
   fetch: async (request: Request, env: any) => {
