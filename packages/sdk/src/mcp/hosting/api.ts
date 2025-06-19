@@ -1,3 +1,5 @@
+import { type Binding, WorkersMCPBindings } from "@deco/workers-runtime";
+import { parse as parseToml } from "smol-toml";
 import { z } from "zod";
 import { NotFoundError, UserInputError } from "../../errors.ts";
 import type { Database } from "../../storage/index.ts";
@@ -7,9 +9,7 @@ import {
 } from "../assertions.ts";
 import { type AppContext, createTool, getEnv } from "../context.ts";
 import { bundler } from "./bundler.ts";
-import { parse as tomlParse } from "smol-toml";
 import { polyfill } from "./fs-polyfill.ts";
-import { USER_WORKER_APP_ENTRYPOINTS } from "../../constants.ts";
 
 const SCRIPT_FILE_NAME = "script.mjs";
 const HOSTING_APPS_DOMAIN = ".deco.page";
@@ -68,21 +68,16 @@ const Mappers = {
   },
 };
 
-function getWorkspaceParams(c: AppContext, appSlug?: string) {
-  assertHasWorkspace(c);
-  const slug = appSlug ?? c.workspace.slug;
-  return { workspace: c.workspace.value, slug };
-}
-
 // 1. List apps for a given workspace
 export const listApps = createTool({
   name: "HOSTING_APPS_LIST",
   description: "List all apps for the current tenant",
   inputSchema: z.object({}),
   handler: async (_, c) => {
-    const { workspace } = getWorkspaceParams(c);
-
     await assertWorkspaceResourceAccess(c.tool.name, c);
+
+    assertHasWorkspace(c);
+    const workspace = c.workspace.value;
 
     const { data, error } = await c.db
       .from(DECO_CHAT_HOSTING_APPS_TABLE)
@@ -129,55 +124,71 @@ const addPolyfills = (
     }
   }
 };
-interface DeployToCloudflareParams {
-  c: AppContext;
-  scriptSlug: string;
-  mainModule: string;
-  files: Record<string, File>;
-  wranglerConfig?: Record<string, unknown>;
-  envVars?: Record<string, string>;
-}
-
-const acceptedWranglerConfigSchema = z.object({
-  kv_namespaces: z.array(
-    z.object({
-      binding: z.string(),
-      id: z.string(),
-    }),
-  ).optional(),
-}).transform((data) => {
-  const kv_namespace_bindings = data.kv_namespaces?.map((namespace) => ({
-    type: "kv_namespace" as const,
-    name: namespace.binding,
-    namespace_id: namespace.id,
-  })) ?? [];
-
-  return {
-    bindings: [...kv_namespace_bindings],
-  };
-});
-
-async function deployToCloudflare({
-  c,
-  scriptSlug,
-  mainModule,
-  files,
-  wranglerConfig,
-  envVars,
-}: DeployToCloudflareParams): Promise<DeployResult> {
+async function deployToCloudflare(
+  c: AppContext,
+  {
+    name: scriptSlug,
+    compatibility_flags,
+    compatibility_date,
+    vars,
+    kv_namespaces,
+    deco,
+    ai,
+    browser,
+    durable_objects,
+    queues,
+    workflows,
+    triggers,
+    ...rest
+  }: WranglerConfig,
+  mainModule: string,
+  files: Record<string, File>,
+  _envVars?: Record<string, string>,
+): Promise<DeployResult> {
   assertHasWorkspace(c);
   const env = getEnv(c);
-
-  const verifiedWranglerConfig = acceptedWranglerConfigSchema.parse(
-    wranglerConfig ?? {},
-  );
-
+  const envVars = {
+    ..._envVars,
+    ...vars,
+  };
+  const wranglerBindings = [
+    ...kv_namespaces?.map((kv) => ({
+      type: "kv_namespace" as const,
+      name: kv.binding,
+      namespace_id: kv.id,
+    })) ?? [],
+    ...ai ? [{ type: "ai" as const, name: ai.binding }] : [],
+    ...browser ? [{ type: "browser" as const, name: browser.binding }] : [],
+    ...durable_objects?.bindings?.map((binding) => ({
+      type: "durable_object_namespace" as const,
+      name: binding.name,
+      class_name: binding.class_name,
+    })) ?? [],
+    ...queues?.producers?.map((producer) => ({
+      type: "queue" as const,
+      queue_name: producer.queue,
+      name: producer.binding,
+    })) ?? [],
+    ...workflows?.map((workflow) => ({
+      type: "workflow" as const,
+      name: workflow.name,
+      workflow_name: workflow.name,
+      binding: workflow.binding,
+      class_name: workflow.class_name,
+    })) ?? [],
+  ];
+  const decoBindings = deco?.bindings ?? [];
+  if (decoBindings.length > 0) {
+    envVars["DECO_CHAT_BINDINGS"] = WorkersMCPBindings.stringify(decoBindings);
+  }
   const metadata = {
+    ...rest,
     main_module: mainModule,
-    compatibility_flags: ["nodejs_compat"],
-    compatibility_date: "2024-11-27",
+    compatibility_flags: compatibility_flags ?? ["nodejs_compat"],
+    compatibility_date: compatibility_date ?? "2024-11-27",
     tags: [c.workspace.value],
-    ...verifiedWranglerConfig,
+    bindings: wranglerBindings,
+    triggers,
   };
 
   addPolyfills(files, metadata, [polyfill]);
@@ -195,11 +206,7 @@ async function deployToCloudflare({
       scriptSlug,
       {
         account_id: env.CF_ACCOUNT_ID,
-        metadata: {
-          main_module: mainModule,
-          compatibility_flags: ["nodejs_compat"],
-          ...verifiedWranglerConfig,
-        },
+        metadata,
       },
       {
         method: "put",
@@ -290,17 +297,69 @@ const createNamespaceOnce = async (c: AppContext) => {
   }).catch(() => {});
 };
 
+// main.ts or main.mjs or main.js or main.cjs
+const ENTRYPOINTS = ["main.ts", "main.mjs", "main.js", "main.cjs"];
+const CONFIGS = ["wrangler.toml"];
+
 // First, let's define a new type for the file structure
 const FileSchema = z.object({
   path: z.string(),
   content: z.string(),
 });
 
+export interface KVNamespace {
+  binding: string;
+  id: string;
+}
+export interface Triggers {
+  crons: string[];
+}
+export interface WranglerConfig {
+  name: string;
+  main?: string;
+  main_module?: string;
+  compatibility_date?: string;
+  compatibility_flags?: string[];
+  vars?: Record<string, string>;
+  kv_namespaces?: KVNamespace[];
+  triggers?: Triggers;
+  //
+  ai?: {
+    binding: string;
+  };
+  browser?: {
+    binding: string;
+  };
+  durable_objects?: {
+    bindings?: { name: string; class_name: string }[];
+  };
+  queues?: {
+    consumers?: {
+      queue: string;
+      max_batch_timeout: number;
+    }[];
+    producers?: {
+      queue: string;
+      binding: string;
+    }[];
+  };
+  workflows?: {
+    name: string;
+    binding: string;
+    class_name: string;
+  }[];
+  //
+  deco?: {
+    bindings?: Binding[];
+  };
+}
+
+const DECO_WORKER_RUNTIME_VERSION = "0.1.2";
 // Update the schema in deployFiles
 export const deployFiles = createTool({
   name: "HOSTING_APP_DEPLOY",
   description:
-    `Deploy multiple TypeScript files that use Deno as runtime for Cloudflare Workers. The entrypoint should always be ${USER_WORKER_APP_ENTRYPOINTS}.
+    `Deploy multiple TypeScript files that use Deno as runtime for Cloudflare Workers. You must provide a wrangler.toml file matching the Workers for Platforms format. Use 'main_module' instead of 'main', and define bindings using the [[bindings]] array, where each binding is a table specifying its type and properties. To add custom Deco bindings, set type = "MCP" in a binding entry (these will be filtered and handled automatically).
 
 Common patterns:
 1. Use a deps.ts file to centralize dependencies:
@@ -313,24 +372,105 @@ Common patterns:
    // main.ts
    import { lodash, z, createClient } from "./deps.ts";
 
+3. Use wrangler.toml to configure your app:
+   // wrangler.toml
+   name = "app-slug"
+   compatibility_date = "2025-06-17"
+   main_module = "main.ts"
+   kv_namespaces = [
+     { binding = "TODO", id = "06779da6940b431db6e566b4846d64db" }
+   ]
+
+   browser = { binding = "MYBROWSER" }
+
+   [triggers]
+   # Schedule cron triggers:
+   crons = [ "*/3 * * * *", "0 15 1 * *", "59 23 LW * *" ]
+
+  [[durable_objects.bindings]]
+  name = "MY_DURABLE_OBJECT"
+  class_name = "MyDurableObject"
+
+   [ai]
+   binding = "AI"
+
+   [[queues.consumers]]
+    queue = "queues-web-crawler"
+    max_batch_timeout = 60
+
+    [[queues.producers]]
+    queue = "queues-web-crawler"
+    binding = "CRAWLER_QUEUE"
+
+   [[deco.bindings]]
+   type = "MCP"
+   name = "MY_BINDING"
+   value = "INTEGRATION_ID"
+
+   [[workflows]]
+    # name of your workflow
+    name = "workflows-starter"
+    # binding name env.MY_WORKFLOW
+    binding = "MY_WORKFLOW"
+    # this is class that extends the Workflow class in src/index.ts
+    class_name = "MyWorkflow"
+
+   # You can add any supported binding type as per Workers for Platforms documentation.
+4. You should always surround the user fetch with the withRuntime function.
+
+
+import { withRuntime } from "jsr:@deco/workers-runtime@${DECO_WORKER_RUNTIME_VERSION}";
+
+export default withRuntime({
+  fetch: async (request: Request, env: any) => {
+    return new Response("Hello from Deno on Cloudflare!");
+  }
+});
+
+You must use the Workers for Platforms TOML format for wrangler.toml. The [[bindings]] array supports all standard binding types (ai, analytics_engine, assets, browser_rendering, d1, durable_object_namespace, hyperdrive, kv_namespace, mtls_certificate, plain_text, queue, r2_bucket, secret_text, service, tail_consumer, vectorize, version_metadata, etc). For Deco-specific bindings, use type = "MCP".
+
 Example of files deployment:
 [
   {
     "path": "main.ts",
     "content": \`
       import { z } from "./deps.ts";
+      import { withRuntime } from "jsr:@deco/workers-runtime@${DECO_WORKER_RUNTIME_VERSION}";
 
-      export default {
+
+      export default withRuntime({
         async fetch(request: Request, env: any): Promise<Response> {
           return new Response("Hello from Deno on Cloudflare!");
         }
-      }
+      })
     \`
   },
   {
     "path": "deps.ts",
     "content": \`
       export { z } from "npm:zod";
+    \`
+  },
+  {
+    "path": "wrangler.toml",
+    "content": \`
+      name = "app-slug"
+      compatibility_date = "2025-06-17"
+      main = "main.ts"
+
+      [triggers]
+      crons = [ "*/3 * * * *", "0 15 1 * *", "59 23 LW * *" ]
+
+      [[bindings]]
+      type = "kv_namespace"
+      name = "KV_NAME"
+      namespace_id = "KV_ID"
+      namespace_id = "KV_ID"
+
+      [[bindings]]
+      type = "MCP"
+      name = "MY_BINDING"
+      integration_id = "INTEGRATION_ID"
     \`
   }
 ]
@@ -346,7 +486,9 @@ Important Notes:
 - No package.json or deno.json needed
 - Dependencies are imported directly using npm: or jsr: specifiers`,
   inputSchema: z.object({
-    appSlug: z.string().describe("The slug identifier for the app"),
+    appSlug: z.string().optional().describe(
+      "The slug identifier for the app, if not provided, you should use the wrangler.toml file to determine the slug (using the name field).",
+    ),
     files: z.array(FileSchema).describe(
       "An array of files with their paths and contents. Must include main.ts as entrypoint",
     ),
@@ -359,7 +501,7 @@ Important Notes:
     id: z.string(),
     workspace: z.string(),
   }),
-  handler: async ({ appSlug, files, envVars }, c) => {
+  handler: async ({ appSlug: _appSlug, files, envVars }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
     // Convert array to record for bundler
@@ -368,25 +510,40 @@ Important Notes:
       return acc;
     }, {} as Record<string, string>);
 
+    const wranglerFile = CONFIGS.find((file) => file in filesRecord);
+    const wranglerConfig: WranglerConfig = wranglerFile
+      // deno-lint-ignore no-explicit-any
+      ? parseToml(filesRecord[wranglerFile]) as any as WranglerConfig
+      : { name: _appSlug } as WranglerConfig;
+
     // check if the entrypoint is in the files
-    const entrypoint = USER_WORKER_APP_ENTRYPOINTS.find((entrypoint) =>
+    const entrypoints = [
+      ...ENTRYPOINTS,
+      wranglerConfig.main ?? wranglerConfig.main_module ?? "main.ts",
+    ];
+    const entrypoint = entrypoints.find((entrypoint) =>
       entrypoint in filesRecord
     );
     if (!entrypoint) {
       throw new UserInputError(
         `Entrypoint not found in files. Entrypoint must be one of: ${
-          USER_WORKER_APP_ENTRYPOINTS.join(", ")
+          [...new Set(entrypoints)].join(", ")
         }`,
       );
     }
 
-    const wranglerConfig = filesRecord["wrangler.toml"]
-      ? tomlParse(filesRecord["wrangler.toml"])
-      : undefined;
-    delete filesRecord["wrangler.toml"];
+    if (!wranglerConfig?.name) {
+      throw new UserInputError(
+        `App slug not found in wrangler.toml`,
+      );
+    }
+
+    const appSlug = wranglerConfig.name;
 
     await createNamespaceOnce(c);
-    const { workspace, slug: scriptSlug } = getWorkspaceParams(c, appSlug);
+    assertHasWorkspace(c);
+    const workspace = c.workspace.value;
+    const scriptSlug = appSlug;
 
     // Bundle the files
     const bundledScript = await bundler(filesRecord, entrypoint);
@@ -406,14 +563,13 @@ Important Notes:
       DECO_CHAT_SCRIPT_SLUG: scriptSlug,
     };
 
-    const result = await deployToCloudflare({
+    const result = await deployToCloudflare(
       c,
-      scriptSlug,
-      mainModule: SCRIPT_FILE_NAME,
-      files: fileObjects,
       wranglerConfig,
-      envVars: { ...envVars, ...appEnvVars },
-    });
+      SCRIPT_FILE_NAME,
+      fileObjects,
+      { ...envVars, ...appEnvVars },
+    );
     const data = await updateDatabase(
       c,
       workspace,
@@ -436,9 +592,11 @@ export const deleteApp = createTool({
   inputSchema: AppInputSchema,
   handler: async ({ appSlug }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
+    assertHasWorkspace(c);
+    const workspace = c.workspace.value;
+    const scriptSlug = appSlug;
 
     const cf = c.cf;
-    const { workspace, slug: scriptSlug } = getWorkspaceParams(c, appSlug);
     const env = getEnv(c);
     const namespace = env.CF_DISPATCH_NAMESPACE;
 
@@ -476,14 +634,16 @@ export const getAppInfo = createTool({
   inputSchema: AppInputSchema,
   handler: async ({ appSlug }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
+    assertHasWorkspace(c);
+    const workspace = c.workspace.value;
+    const scriptSlug = appSlug;
 
-    const { workspace, slug } = getWorkspaceParams(c, appSlug);
     // 1. Fetch from DB
     const { data, error } = await c.db
       .from(DECO_CHAT_HOSTING_APPS_TABLE)
       .select("*")
       .eq("workspace", workspace)
-      .eq("slug", slug)
+      .eq("slug", scriptSlug)
       .single();
 
     if (error || !data) {

@@ -1,0 +1,21 @@
+{
+  "name": "@deco/workers-runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20250617.0",
+    "zod": "^3.25.67"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./proxy": "./src/proxy.ts"
+  },
+  "devDependencies": {
+    "wrangler": "^4.13.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

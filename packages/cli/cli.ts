@@ -1,14 +1,15 @@
 import { Command } from "@cliffy/command";
 import { Input } from "@cliffy/prompt";
 import denoJson from "./deno.json" with { type: "json" };
+import { getConfig, writeConfigFile } from "./src/config.ts";
+import { DECO_CHAT_API_LOCAL } from "./src/constants.ts";
 import { deploy } from "./src/hosting/deploy.ts";
 import { listApps } from "./src/hosting/list.ts";
 import { link } from "./src/link.ts";
 import { loginCommand } from "./src/login.ts";
-import { deleteSession, getSessionToken } from "./src/session.ts";
+import { deleteSession, readSession } from "./src/session.ts";
 import { whoamiCommand } from "./src/whoami.ts";
-import { DECO_CHAT_API_LOCAL } from "./src/constants.ts";
-import { getConfig, writeConfigFile } from "./src/config.ts";
+import { ensureDevEnvironment, getEnvVars } from "./src/wrangler.ts";
 
 // Placeholder for login command implementation
 const login = new Command()
@@ -55,9 +56,14 @@ const configure = new Command()
 const hostingList = new Command()
   .description("List all apps in the current workspace.")
   .option("-w, --workspace <workspace:string>", "Workspace name", {
-    required: true,
+    required: false,
   })
-  .action(listApps);
+  .action(async (args) => {
+    return listApps({
+      workspace: args.workspace ??
+        await readSession().then((session) => session?.workspace!),
+    });
+  });
 
 // Placeholder for hosting deploy command implementation
 const hostingDeploy = new Command()
@@ -72,8 +78,10 @@ const hostingDeploy = new Command()
     { required: false },
   )
   .action(async (args) => {
-    const config = await getConfig({ inlineOptions: args });
-    await deploy(config);
+    const config = await getConfig({
+      inlineOptions: args,
+    });
+    return deploy(config);
   });
 
 const linkCmd = new Command()
@@ -84,8 +92,8 @@ const linkCmd = new Command()
   .arguments("[...build-cmd]")
   .action(async function ({ port }) {
     const runCommand = this.getLiteralArgs();
-    const token = await getSessionToken();
 
+    const env = await getEnvVars();
     await link({
       port,
       onBeforeRegister: () => {
@@ -100,7 +108,7 @@ const linkCmd = new Command()
           args,
           stdout: "inherit",
           stderr: "inherit",
-          env: { ...Deno.env.toObject(), DECO_CHAT_API_TOKEN: token },
+          env,
         }).spawn();
 
         return process;
@@ -113,6 +121,20 @@ const update = new Command()
   .action(async () => {
     const deno = new Deno.Command("deno", {
       args: ["install", "-Ar", "-g", "-n", "deco", "jsr:@deco/cli", "-f"],
+      stdout: "inherit",
+      stderr: "inherit",
+    }).spawn();
+
+    await deno.status;
+  });
+
+const dev = new Command()
+  .description("Start a development server.")
+  .action(async () => {
+    await ensureDevEnvironment();
+
+    const deno = new Deno.Command("deco", {
+      args: ["link", "-p", "8787", "--", "npx", "wrangler", "dev"],
       stdout: "inherit",
       stderr: "inherit",
     }).spawn();
@@ -136,6 +158,7 @@ await new Command()
   .command("whoami", whoami)
   .command("hosting", hosting)
   .command("deploy", hostingDeploy)
+  .command("dev", dev)
   .command("configure", configure)
   .command("update", update)
   .command("link", linkCmd)
