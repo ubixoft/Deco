@@ -163,24 +163,6 @@ export const upsertTrigger = createTool({
 
     const userId = typeof user.id === "string" ? user.id : undefined;
 
-    // Check if there's already a WhatsApp-enabled trigger for this agent
-    const whatsappEnabled =
-      (data as z.infer<typeof TriggerSchema> & { whatsappEnabled: boolean })
-        .whatsappEnabled;
-    if (whatsappEnabled) {
-      const { data: _existingTriggers, error: checkError } = await db.from(
-        "deco_chat_triggers",
-      )
-        .select("id")
-        .eq("agent_id", agentId)
-        .eq("workspace", workspace)
-        .eq("whatsapp_enabled", true);
-
-      if (checkError) {
-        throw new InternalServerError(checkError.message);
-      }
-    }
-
     // Delete existing trigger if updating
     if (triggerId) {
       await stub(Trigger).new(triggerPath).delete();
@@ -197,9 +179,6 @@ export const upsertTrigger = createTool({
         user_id: userId,
         binding_id: bindingId,
         metadata: data as Json,
-        whatsapp_enabled:
-          (data as z.infer<typeof TriggerSchema> & { whatsappEnabled: boolean })
-            .whatsappEnabled,
       })
       .select(SELECT_TRIGGER_QUERY)
       .single();
