@@ -171,12 +171,12 @@ async function deployToCloudflare(
     })) ?? [],
     ...workflows?.map((workflow) => ({
       type: "workflow" as const,
-      name: workflow.name,
+      name: workflow.binding,
       workflow_name: workflow.name,
-      binding: workflow.binding,
       class_name: workflow.class_name,
     })) ?? [],
   ];
+
   const decoBindings = deco?.bindings ?? [];
   if (decoBindings.length > 0) {
     envVars["DECO_CHAT_BINDINGS"] = WorkersMCPBindings.stringify(decoBindings);
