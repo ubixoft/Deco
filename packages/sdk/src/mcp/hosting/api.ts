@@ -172,7 +172,9 @@ async function deployToCloudflare(
     ...workflows?.map((workflow) => ({
       type: "workflow" as const,
       name: workflow.binding,
-      workflow_name: workflow.class_name,
+      workflow_name: workflow.name,
+      class_name: workflow.class_name,
+      script_name: workflow.script_name,
     })) ?? [],
   ];
 
@@ -348,7 +350,8 @@ export interface WranglerConfig {
   workflows?: {
     name: string;
     binding: string;
-    class_name: string;
+    class_name?: string;
+    script_name?: string;
   }[];
   //
   deco?: {
