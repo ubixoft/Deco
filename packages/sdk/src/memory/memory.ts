@@ -6,6 +6,10 @@ import { Memory as MastraMemory } from "@mastra/memory";
 import { slugify, slugifyForDNS, toAlphanumericId } from "../mcp/slugify.ts";
 import { LibSQLFactory, type LibSQLFactoryOpts } from "./libsql.ts";
 import { createOpenAI } from "@ai-sdk/openai";
+import { MemoryProcessor } from "@mastra/core/memory";
+import type { CoreMessage } from "@mastra/core";
+import type { TextPart, ToolCallPart } from "ai";
+
 export { slugify, slugifyForDNS, toAlphanumericId };
 type CreateThreadOpts = Parameters<MastraMemory["createThread"]>[0];
 
@@ -145,3 +149,120 @@ export function buildMemoryId(workspace: Workspace, discriminator?: string) {
     `${workspace}/${discriminator ?? "default"}`,
   );
 }
+
+export class PatchToolCallProcessor extends MemoryProcessor {
+  constructor() {
+    super({ name: "PatchToolCallProcessor" });
+  }
+
+  override process(
+    messages: CoreMessage[],
+  ): CoreMessage[] {
+    return patchToolCallProcessor(messages);
+  }
+}
+
+const isToolCallMessage = (message: CoreMessage): boolean => {
+  if (
+    typeof message !== "object" || !("role" in message) ||
+    message.role !== "assistant"
+  ) {
+    return false;
+  }
+
+  if (!Array.isArray(message.content)) {
+    return false;
+  }
+
+  return message.content.some((part) =>
+    typeof part === "object" && part.type === "tool-call"
+  );
+};
+
+const isToolResultMessage = (message: CoreMessage): boolean => {
+  return typeof message === "object" && "role" in message &&
+    message.role === "tool";
+};
+
+const patchToolCallProcessor = (
+  processedMessages: CoreMessage[],
+): CoreMessage[] => {
+  const condensedMessages: CoreMessage[] = [];
+  let i = 0;
+
+  while (i < processedMessages.length) {
+    // Check if current message is a tool-call message and next is a tool-result message
+    if (
+      i < processedMessages.length - 1 &&
+      isToolCallMessage(processedMessages[i]) &&
+      isToolResultMessage(processedMessages[i + 1])
+    ) {
+      const toolCallMessage = processedMessages[i];
+
+      // Find the tool call part in the content
+      const toolCallPart =
+        (toolCallMessage.content as (TextPart | ToolCallPart)[]).find((
+          part,
+        ): part is ToolCallPart =>
+          typeof part === "object" && part.type === "tool-call"
+        );
+
+      if (!toolCallPart) {
+        // If no tool call part found, keep message as is
+        condensedMessages.push(processedMessages[i]);
+        i += 1;
+        continue;
+      }
+
+      const toolCallContent: (TextPart | ToolCallPart)[] = [];
+
+      // Add any text parts first
+      for (const part of toolCallMessage.content) {
+        if (typeof part === "string") {
+          toolCallContent.push({
+            type: "text",
+            text: part,
+          });
+        } else if (typeof part === "object" && part.type === "text") {
+          toolCallContent.push(part as TextPart);
+        }
+      }
+
+      // Add the summarized tool call as text
+      toolCallContent.push({
+        type: "text",
+        text: JSON.stringify({
+          type: "tool-call",
+          toolName: toolCallPart.toolName,
+          args: toolCallPart.args,
+        }),
+      });
+
+      const relevantToolCallMessage: CoreMessage = {
+        role: "assistant",
+        content: toolCallContent,
+      };
+      const toolResultMessage = processedMessages[i + 1];
+
+      // Create a condensed message with both messages as JSON content
+      const condensedMessage: CoreMessage = {
+        role: "assistant",
+        content: JSON.stringify({
+          toolCall: relevantToolCallMessage,
+          toolResult: toolResultMessage,
+        }),
+      };
+
+      condensedMessages.push(condensedMessage);
+
+      // Skip the next message since we processed both
+      i += 2;
+    } else {
+      // Keep the message as is
+      condensedMessages.push(processedMessages[i]);
+      i += 1;
+    }
+  }
+
+  return condensedMessages;
+};
