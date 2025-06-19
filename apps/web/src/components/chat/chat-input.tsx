@@ -240,7 +240,7 @@ ChatInput.UI = (
 
   async function uploadFile(file: File) {
     try {
-      const path = `uploads/${formatFilename(file.name)}`;
+      const path = `uploads/${formatFilename(file.name)}-${Date.now()}`;
       const buffer = await file.arrayBuffer();
       await writeFileMutation.mutateAsync({
         path,
