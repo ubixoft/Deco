@@ -15,5 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Publish package
-        run: cd ./packages/cli && npx jsr publish
+        run: cd ./packages/cli && deno install && deno publish
