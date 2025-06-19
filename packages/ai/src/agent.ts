@@ -15,13 +15,21 @@ import { createOpenAI } from "@ai-sdk/openai";
 import type { JSONSchema7 } from "@ai-sdk/provider";
 import type { ActorState, InvokeMiddlewareOptions } from "@deco/actors";
 import { Actor } from "@deco/actors";
-import {
-  type Agent as Configuration,
-  DEFAULT_MODEL,
-  WELL_KNOWN_AGENTS,
-} from "@deco/sdk";
+import type { Agent as Configuration } from "@deco/sdk";
 import { type AuthMetadata, BaseActor } from "@deco/sdk/actors";
 import { JwtIssuer, SUPABASE_URL } from "@deco/sdk/auth";
+import {
+  DEFAULT_MAX_STEPS,
+  DEFAULT_MAX_THINKING_TOKENS,
+  DEFAULT_MAX_TOKENS,
+  DEFAULT_MEMORY_LAST_MESSAGES,
+  DEFAULT_MIN_THINKING_TOKENS,
+  DEFAULT_MODEL,
+  MAX_MAX_STEPS,
+  MAX_MAX_TOKENS,
+  MIN_MAX_TOKENS,
+  WELL_KNOWN_AGENTS,
+} from "@deco/sdk/constants";
 import { contextStorage } from "@deco/sdk/fetch";
 import {
   type AppContext,
@@ -73,17 +81,6 @@ import { getRuntimeKey } from "hono/adapter";
 import process from "node:process";
 import { createWalletClient } from "../../sdk/src/mcp/wallet/index.ts";
 import { replacePromptMentions } from "../../sdk/src/utils/prompt-mentions.ts";
-import { pickCapybaraAvatar } from "./capybaras.ts";
-import { mcpServerTools } from "./mcp.ts";
-import type {
-  AIAgent as IIAgent,
-  Message as AIMessage,
-  StreamOptions,
-  Thread,
-  ThreadQueryOptions,
-} from "./types.ts";
-import type { GenerateOptions } from "./types.ts";
-import { AgentWallet } from "./agent/wallet.ts";
 import { convertToAIMessage } from "./agent/ai-message.ts";
 import { createAgentOpenAIVoice } from "./agent/audio.ts";
 import {
@@ -91,6 +88,17 @@ import {
   DEFAULT_ACCOUNT_ID,
   getLLMConfig,
 } from "./agent/llm.ts";
+import { AgentWallet } from "./agent/wallet.ts";
+import { pickCapybaraAvatar } from "./capybaras.ts";
+import { mcpServerTools } from "./mcp.ts";
+import type {
+  AIAgent as IIAgent,
+  GenerateOptions,
+  Message as AIMessage,
+  StreamOptions,
+  Thread,
+  ThreadQueryOptions,
+} from "./types.ts";
 
 const TURSO_AUTH_TOKEN_KEY = "turso-auth-token";
 const ANONYMOUS_INSTRUCTIONS =
@@ -126,14 +134,6 @@ const normalizeMCPId = (mcpId: string) => {
     ? mcpId.slice(2)
     : mcpId;
 };
-
-const DEFAULT_MEMORY_LAST_MESSAGES = 8;
-const DEFAULT_MAX_STEPS = 25;
-const MAX_STEPS = 25;
-const DEFAULT_MAX_TOKENS = 8192;
-const MAX_TOKENS = 64000;
-const MAX_THINKING_TOKENS = 12000;
-const MIN_THINKING_TOKENS = 1024;
 
 const NON_SERIALIZABLE_FIELDS = ["WALLET"];
 
@@ -476,17 +476,17 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     };
   }
 
-  private _maxSteps(): number {
+  private _maxSteps(override?: number): number {
     return Math.min(
-      this._configuration?.max_steps ?? DEFAULT_MAX_STEPS,
-      MAX_STEPS,
+      override ?? this._configuration?.max_steps ?? DEFAULT_MAX_STEPS,
+      MAX_MAX_STEPS,
     );
   }
 
   private _maxTokens(): number {
     return Math.min(
       this._configuration?.max_tokens ?? DEFAULT_MAX_TOKENS,
-      MAX_TOKENS,
+      MAX_MAX_TOKENS,
     );
   }
 
@@ -930,7 +930,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const result = await agent.generate(aiMessages, {
       ...this.thread,
-      maxSteps: this._maxSteps(),
+      maxSteps: this._maxSteps(options?.maxSteps),
       maxTokens: this._maxTokens(),
       instructions: options?.instructions,
       toolsets,
@@ -1019,9 +1019,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       })
       : undefined;
 
-    const maxLimit = Math.max(MAX_TOKENS, this._maxTokens());
+    const maxLimit = Math.max(MIN_MAX_TOKENS, this._maxTokens());
     const budgetTokens = Math.min(
-      MAX_THINKING_TOKENS,
+      DEFAULT_MAX_THINKING_TOKENS,
       maxLimit - this._maxTokens(),
     );
 
@@ -1050,10 +1050,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         context,
         toolsets,
         instructions: processedInstructions,
-        maxSteps: this._maxSteps(),
+        maxSteps: this._maxSteps(options?.maxSteps),
         maxTokens: this._maxTokens(),
         experimental_transform: experimentalTransform,
-        providerOptions: budgetTokens > MIN_THINKING_TOKENS
+        providerOptions: budgetTokens > DEFAULT_MIN_THINKING_TOKENS
           ? {
             anthropic: {
               thinking: {
