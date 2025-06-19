@@ -427,7 +427,7 @@ export default withRuntime({
   }
 });
 
-You must use the Workers for Platforms TOML format for wrangler.toml. The [[bindings]] array supports all standard binding types (ai, analytics_engine, assets, browser_rendering, d1, durable_object_namespace, hyperdrive, kv_namespace, mtls_certificate, plain_text, queue, r2_bucket, secret_text, service, tail_consumer, vectorize, version_metadata, etc). For Deco-specific bindings, use type = "MCP".
+You must use the Workers for Platforms TOML format for wrangler.toml. The bindings supports all standard binding types (ai, analytics_engine, assets, browser_rendering, d1, durable_object_namespace, hyperdrive, kv_namespace, mtls_certificate, plain_text, queue, r2_bucket, secret_text, service, tail_consumer, vectorize, version_metadata, etc). For Deco-specific bindings, use type = "MCP".
 
 Example of files deployment:
 [
@@ -455,22 +455,45 @@ Example of files deployment:
     "path": "wrangler.toml",
     "content": \`
       name = "app-slug"
-      compatibility_date = "2025-06-17"
-      main = "main.ts"
+   compatibility_date = "2025-06-17"
+   main_module = "main.ts"
+   kv_namespaces = [
+     { binding = "TODO", id = "06779da6940b431db6e566b4846d64db" }
+   ]
 
-      [triggers]
-      crons = [ "*/3 * * * *", "0 15 1 * *", "59 23 LW * *" ]
+   browser = { binding = "MYBROWSER" }
 
-      [[bindings]]
-      type = "kv_namespace"
-      name = "KV_NAME"
-      namespace_id = "KV_ID"
-      namespace_id = "KV_ID"
+   [triggers]
+   # Schedule cron triggers:
+   crons = [ "*/3 * * * *", "0 15 1 * *", "59 23 LW * *" ]
 
-      [[bindings]]
-      type = "MCP"
-      name = "MY_BINDING"
-      integration_id = "INTEGRATION_ID"
+  [[durable_objects.bindings]]
+  name = "MY_DURABLE_OBJECT"
+  class_name = "MyDurableObject"
+
+   [ai]
+   binding = "AI"
+
+   [[queues.consumers]]
+    queue = "queues-web-crawler"
+    max_batch_timeout = 60
+
+    [[queues.producers]]
+    queue = "queues-web-crawler"
+    binding = "CRAWLER_QUEUE"
+
+   [[deco.bindings]]
+   type = "MCP"
+   name = "MY_BINDING"
+   value = "INTEGRATION_ID"
+
+   [[workflows]]
+    # name of your workflow
+    name = "workflows-starter"
+    # binding name env.MY_WORKFLOW
+    binding = "MY_WORKFLOW"
+    # this is class that extends the Workflow class in src/index.ts
+    class_name = "MyWorkflow"
     \`
   }
 ]
