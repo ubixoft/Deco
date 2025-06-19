@@ -1,6 +1,6 @@
 import type { Workspace } from "@deco/sdk/path";
 import type { Client as LibSQLClient } from "@libsql/client";
-import type { CoreMessage, StorageThreadType } from "@mastra/core";
+import type { StorageThreadType } from "@mastra/core";
 import type { SharedMemoryConfig } from "@mastra/core/memory";
 import { Memory as MastraMemory } from "@mastra/memory";
 import { slugify, slugifyForDNS, toAlphanumericId } from "../mcp/slugify.ts";
@@ -95,44 +95,6 @@ export class WorkspaceMemory extends MastraMemory {
       console.error("Error listing threads", error);
       return [];
     }
-  }
-
-  /**
-   * This is a workaround to remove the first tool-call message from the processed messages, because Anthropic fails to process them when they are at index 0.
-   */
-  override processMessages(
-    { messages, systemMessage, memorySystemMessage }: {
-      messages: CoreMessage[];
-      systemMessage: string;
-      memorySystemMessage: string;
-    },
-  ): CoreMessage[] {
-    const processedMessages = super.processMessages({
-      messages,
-      systemMessage,
-      memorySystemMessage,
-    });
-
-    if (
-      processedMessages.length > 0 &&
-      this.isToolCallMessage(processedMessages[0])
-    ) {
-      return processedMessages.slice(1);
-    }
-
-    return processedMessages;
-  }
-
-  /**
-   * Type guard to check if a message is a tool-call message
-   */
-  private isToolCallMessage(message: CoreMessage): boolean {
-    return message &&
-      typeof message === "object" &&
-      "role" in message &&
-      "type" in message &&
-      message.role === "assistant" &&
-      message.type === "tool-call";
   }
 }
 
