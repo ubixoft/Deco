@@ -172,12 +172,9 @@ async function deployToCloudflare(
     ...workflows?.map((workflow) => ({
       type: "workflow" as const,
       name: workflow.binding,
-      workflow_name: workflow.name,
-      class_name: workflow.class_name,
+      workflow_name: workflow.class_name,
     })) ?? [],
   ];
-
-  console.log("bindings", JSON.stringify(wranglerBindings, null, 2));
 
   const decoBindings = deco?.bindings ?? [];
   if (decoBindings.length > 0) {
@@ -191,6 +188,9 @@ async function deployToCloudflare(
     tags: [c.workspace.value],
     bindings: wranglerBindings,
     triggers,
+    observability: {
+      enabled: true,
+    },
   };
 
   addPolyfills(files, metadata, [polyfill]);
