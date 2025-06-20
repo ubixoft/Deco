@@ -1,32 +1,36 @@
-import { DEFAULT_MAX_STEPS, useAgent } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { useMemo } from "react";
 import { useChatContext } from "./context.tsx";
 
-export function ChatMaxSteps() {
-  const { agentId, chat: { append, status, messages } } = useChatContext();
-  const { data: { max_steps = DEFAULT_MAX_STEPS } } = useAgent(agentId);
+const REPORTS_BY_FINISH_REASON = {
+  "tool-calls": {
+    title: "Agent hit the step limit for this response",
+    description:
+      "You can let the agent keep going from where it stopped, or adjust the step limit in settings.",
+  },
+  "length": {
+    title: "Agent hit the token limit for this response",
+    description:
+      "You can let the agent keep going from where it stopped, or adjust the token limit in settings.",
+  },
+};
 
-  /**
-   * Reverse search for the number of llm calls in the last agent run
-   */
-  const toolCalls = useMemo(() => {
-    let toolCalls = 0;
+export function ChatFinishReason() {
+  const {
+    chat: { append, status, finishReason },
+  } = useChatContext();
 
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role !== "assistant") {
-        break;
-      }
-
-      toolCalls += messages[i].toolInvocations?.length ?? 1;
+  if (
+    status !== "ready" ||
+    (finishReason !== "tool-calls" && finishReason !== "length")
+  ) {
+    if (finishReason !== "stop") {
+      console.warn(
+        "Unknown finish reason. Consider adding it to REPORTS_BY_FINISH_REASON in chat-finish-reason.tsx. Finish reason: ",
+        finishReason,
+      );
     }
-    return toolCalls;
-  }, [messages]);
 
-  const hasReachedMaxSteps = toolCalls >= max_steps;
-
-  if (!hasReachedMaxSteps || status !== "ready") {
     return null;
   }
 
@@ -42,11 +46,10 @@ export function ChatMaxSteps() {
 
         <div className="flex flex-col gap-1">
           <div className="text-sm font-medium text-foreground">
-            Agent hit the step limit for this response
+            {REPORTS_BY_FINISH_REASON[finishReason].title}
           </div>
           <div className="text-xs text-muted-foreground">
-            You can let the agent keep going from where it stopped, or adjust
-            the step limit in settings.
+            {REPORTS_BY_FINISH_REASON[finishReason].description}
           </div>
         </div>
 
