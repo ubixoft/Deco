@@ -14,12 +14,14 @@ import {
   useIntegrations,
   useMarketplaceIntegrations,
   WELL_KNOWN_KNOWLEDGE_BASE_CONNECTION_ID_STARTSWITH,
+  WellKnownMcpGroupIds,
 } from "@deco/sdk";
 import { useEffect, useMemo } from "react";
 import {
   INTEGRATION_CHANNEL,
   type IntegrationMessage,
 } from "../../lib/broadcast-channels.ts";
+import { LEGACY_INTEGRATIONS } from "../../constants.ts";
 
 export interface GroupedApp {
   id: string;
@@ -78,11 +80,6 @@ export const WELL_KNOWN_APPS: Record<string, GroupedApp> = {
   },
 } as const;
 
-const WELL_KNOWN_DECO_CHAT_CONNECTION_IDS = [
-  "i:workspace-management",
-  "i:user-management",
-];
-
 export function isWellKnownApp(appKey: string): boolean {
   return WELL_KNOWN_DECO_CHAT_APP_KEY === appKey ||
     WELL_KNOWN_KNOWLEDGE_BASE_APP_KEY === appKey;
@@ -91,9 +88,7 @@ export function isWellKnownApp(appKey: string): boolean {
 export function getConnectionAppKey(connection: Integration): AppKey {
   try {
     if (
-      WELL_KNOWN_DECO_CHAT_CONNECTION_IDS.some((id) =>
-        connection.id.startsWith(id)
-      )
+      WellKnownMcpGroupIds.some((id) => connection.id.startsWith(id))
     ) {
       return AppKeys.parse(WELL_KNOWN_DECO_CHAT_APP_KEY);
     }
@@ -218,8 +213,16 @@ export function useGroupedApps({
     const apps: GroupedApp[] = [];
 
     for (const [key, integrations] of Object.entries(grouped)) {
+      if (
+        LEGACY_INTEGRATIONS.some((id) =>
+          key.endsWith(id)
+        )
+      ) {
+        continue;
+      }
+
       if (WELL_KNOWN_APPS[key]) {
-        apps.push(WELL_KNOWN_APPS[key]);
+        apps.push({ ...WELL_KNOWN_APPS[key], instances: integrations.length });
         continue;
       }
 

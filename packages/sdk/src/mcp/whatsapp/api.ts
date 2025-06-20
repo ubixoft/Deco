@@ -3,10 +3,17 @@ import {
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
 } from "../assertions.ts";
-import { createTool, getEnv } from "../context.ts";
+import { createToolGroup, getEnv } from "../context.ts";
 import { NotFoundError } from "../index.ts";
 
 const ALLOWED_WORKSPACES = ["/shared/deco.cx"];
+
+const createTool = createToolGroup("Whatsapp", {
+  name: "WhatsApp",
+  description: "Manage WhatsApp user interactions.",
+  icon:
+    "https://assets.decocache.com/mcp/5775ad49-916a-45cf-a82e-3a2d2b36360d/whatsapp-management.png",
+});
 
 export const sendWhatsAppTemplateMessage = createTool({
   name: "WHATSAPP_SEND_TEMPLATE_MESSAGE",
