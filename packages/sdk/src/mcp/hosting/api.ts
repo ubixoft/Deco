@@ -10,6 +10,7 @@ import {
 import { type AppContext, createTool, getEnv } from "../context.ts";
 import { bundler } from "./bundler.ts";
 import { polyfill } from "./fs-polyfill.ts";
+import { isDoBinding, migrationDiff } from "./migrations.ts";
 
 const SCRIPT_FILE_NAME = "script.mjs";
 const HOSTING_APPS_DOMAIN = ".deco.page";
@@ -124,6 +125,7 @@ const addPolyfills = (
     }
   }
 };
+
 async function deployToCloudflare(
   c: AppContext,
   {
@@ -182,8 +184,20 @@ async function deployToCloudflare(
   if (decoBindings.length > 0) {
     envVars["DECO_CHAT_BINDINGS"] = WorkersMCPBindings.stringify(decoBindings);
   }
-  const lastMigration = migrations?.[migrations.length - 1];
-  const previousMigration = migrations?.[migrations.length - 2];
+
+  const { bindings } = await c.cf
+    .workersForPlatforms
+    .dispatch.namespaces
+    .scripts.settings.get(env.CF_DISPATCH_NAMESPACE, scriptSlug, {
+      account_id: env.CF_ACCOUNT_ID,
+    }).catch(() => ({
+      bindings: [],
+    }));
+
+  const doMigrations = migrationDiff(
+    migrations ?? [],
+    (bindings ?? []).filter(isDoBinding),
+  );
   const metadata = {
     main_module: mainModule,
     compatibility_flags: compatibility_flags ?? ["nodejs_compat"],
@@ -194,22 +208,7 @@ async function deployToCloudflare(
     observability: {
       enabled: true,
     },
-    migration: lastMigration
-      ? {
-        old_tag: previousMigration?.tag,
-        // Convert our migration format to Cloudflare's SingleStepMigrationParam format
-        new_tag: lastMigration.tag,
-        ...(("new_classes" in lastMigration) && {
-          new_classes: lastMigration.new_classes,
-        }),
-        ...(("deleted_classes" in lastMigration) && {
-          deleted_classes: lastMigration.deleted_classes,
-        }),
-        ...(("renamed_classes" in lastMigration) && {
-          renamed_classes: lastMigration.renamed_classes,
-        }),
-      }
-      : undefined,
+    migrations: doMigrations,
   };
 
   addPolyfills(files, metadata, [polyfill]);

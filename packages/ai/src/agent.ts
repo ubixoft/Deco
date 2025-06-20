@@ -44,10 +44,7 @@ import {
   SupabaseLLMVault,
   type WorkspaceTools,
 } from "@deco/sdk/mcp";
-import {
-  type AgentMemoryConfig,
-  PatchToolCallProcessor,
-} from "@deco/sdk/memory";
+import type { AgentMemoryConfig } from "@deco/sdk/memory";
 import {
   AgentMemory,
   buildMemoryId,
@@ -383,10 +380,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         tursoAdminToken: this.env.TURSO_ADMIN_TOKEN,
         tursoOrganization,
         tokenStorage,
-        processors: [
-          new TokenLimiter({ limit: tokenLimit }),
-          new PatchToolCallProcessor(),
-        ],
+        processors: [new TokenLimiter({ limit: tokenLimit })],
         embedder: this._embedder,
         workspace: this.workspace,
         options: {
@@ -883,10 +877,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const aiMessages = await Promise.all(
       payload.map((msg) =>
-        convertToAIMessage({
-          message: msg,
-          agent: this._agent,
-        })
+        convertToAIMessage({ message: msg, agent: this._agent })
       ),
     );
     const result = await this._agent.generate(aiMessages, {
@@ -921,10 +912,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const aiMessages = await Promise.all(
       payload.map((msg) =>
-        convertToAIMessage({
-          message: msg,
-          agent: this._agent,
-        })
+        convertToAIMessage({ message: msg, agent: this._agent })
       ),
     );
 
@@ -1027,10 +1015,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const aiMessages = await Promise.all(
       payload.map((msg) =>
-        convertToAIMessage({
-          message: msg,
-          agent: this._agent,
-        })
+        convertToAIMessage({ message: msg, agent: this._agent })
       ),
     );
 
