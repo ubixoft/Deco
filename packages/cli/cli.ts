@@ -11,6 +11,7 @@ import { deleteSession, readSession } from "./src/session.ts";
 import { whoamiCommand } from "./src/whoami.ts";
 import { ensureDevEnvironment, getEnvVars } from "./src/wrangler.ts";
 import { genEnv } from "./src/typings.ts";
+import { checkForUpdates, upgrade } from "./src/upgrade.ts";
 
 // Placeholder for login command implementation
 const login = new Command()
@@ -119,15 +120,7 @@ const linkCmd = new Command()
 
 const update = new Command()
   .description("Update the deco CLI to the latest version.")
-  .action(async () => {
-    const deno = new Deno.Command("deno", {
-      args: ["install", "-Ar", "-g", "-n", "deco", "jsr:@deco/cli", "-f"],
-      stdout: "inherit",
-      stderr: "inherit",
-    }).spawn();
-
-    await deno.status;
-  });
+  .action(upgrade);
 
 const dev = new Command()
   .description("Start a development server.")
@@ -162,6 +155,7 @@ const gen = new Command()
   });
 
 // Main CLI
+await checkForUpdates();
 await new Command()
   .name(denoJson.name)
   .version(denoJson.version)
