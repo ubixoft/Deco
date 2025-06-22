@@ -44,7 +44,7 @@ import {
   SupabaseLLMVault,
   type WorkspaceTools,
 } from "@deco/sdk/mcp";
-import { type AgentMemoryConfig } from "@deco/sdk/memory";
+import type { AgentMemoryConfig } from "@deco/sdk/memory";
 import {
   AgentMemory,
   buildMemoryId,
