@@ -36,15 +36,14 @@ import { AgentAvatar } from "../common/avatar/index.tsx";
 import type { Tab } from "../dock/index.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
 import ToolsAndKnowledgeTab from "../settings/integrations.tsx";
-import PromptTab from "../settings/prompt.tsx";
+import AgentProfileTab from "../settings/agent-profile.tsx";
+import AdvancedTab from "../settings/advanced.tsx";
 import { AgentTriggers } from "../triggers/agent-triggers.tsx";
 import { AgentBreadcrumbSegment } from "./breadcrumb-segment.tsx";
 import AgentPreview from "./preview.tsx";
 import ThreadView from "./thread.tsx";
 import Threads from "./threads.tsx";
 import { WhatsAppButton } from "./whatsapp-button.tsx";
-import { lazy } from "react";
-import { wrapWithUILoadingFallback } from "../../main.tsx";
 import { useTabsForAgent } from "./preview.tsx";
 
 interface Props {
@@ -104,10 +103,6 @@ const Chat = () => {
   );
 };
 
-const AgentSettings = lazy(() =>
-  wrapWithUILoadingFallback(import("../settings/agent.tsx"))
-);
-
 const TABS: Record<string, Tab> = {
   chatView: {
     Component: ThreadView,
@@ -119,36 +114,41 @@ const TABS: Record<string, Tab> = {
     title: "Preview",
     hideFromViews: true,
   },
-  triggers: {
-    Component: AgentTriggers,
-    title: "Agent Triggers",
-  },
-  setup: {
-    Component: AgentSettings,
-    title: "Settings",
-    initialOpen: "right",
-  },
-  prompt: {
-    Component: PromptTab,
-    title: "System prompt",
-    initialOpen: "within",
-  },
-  integrations: {
-    Component: ToolsAndKnowledgeTab,
-    title: "Tools & Knowledge",
-    initialOpen: "within",
-    // it is not the ideal solution
-    // but initialWidth is not working as expected
-    maximumWidth: 500,
-  },
-  audit: {
-    Component: Threads,
-    title: "Threads",
-  },
+  // Left side group
   chat: {
     Component: Chat,
     title: "Chat",
     initialOpen: "left",
+    initialWidth: 600,
+    active: true,
+  },
+  audit: {
+    Component: Threads,
+    title: "Threads",
+    initialOpen: "within",
+  },
+  // Right side group
+  profile: {
+    Component: AgentProfileTab,
+    title: "Profile",
+    initialOpen: "right",
+    initialWidth: 600,
+    active: true,
+  },
+  integrations: {
+    Component: ToolsAndKnowledgeTab,
+    title: "Tools",
+    initialOpen: "within",
+  },
+  triggers: {
+    Component: AgentTriggers,
+    title: "Triggers",
+    initialOpen: "within",
+  },
+  advanced: {
+    Component: AdvancedTab,
+    title: "Advanced",
+    initialOpen: "within",
   },
 };
 
