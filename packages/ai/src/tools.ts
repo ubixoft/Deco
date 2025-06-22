@@ -724,10 +724,23 @@ export const TRANSCRIBE_AUDIO = createInnateTool({
         };
       }
 
+      // Check content type to ensure it's not HTML or other non-audio content
+      const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+      if (
+        contentType.includes("text/html") ||
+        contentType.includes("application/json") ||
+        contentType.includes("text/plain")
+      ) {
+        return {
+          transcription: "",
+          success: false,
+          message: "Invalid content: The URL returned a web page instead of an audio file. The file may be private or require authentication.",
+        };
+      }
+
       const audioBuffer = await response.arrayBuffer();
       const audioBufferUint8Array = new Uint8Array(audioBuffer);
 
-      // Perform transcription using existing infrastructure
       const transcription = await agent.listen(audioBufferUint8Array) as string;
 
       if (!transcription) {
@@ -754,6 +767,8 @@ export const TRANSCRIBE_AUDIO = createInnateTool({
           errorMessage = "Audio file too large (maximum 25MB allowed)";
         } else if (error.message.includes("Invalid audio")) {
           errorMessage = "Invalid audio format or corrupted audio data";
+        } else if (error.message.includes("Invalid file format")) {
+          errorMessage = "Invalid file format: The file may be corrupted, protected, or not a supported audio format";
         } else {
           errorMessage = `Transcription failed: ${error.message}`;
         }
