@@ -44,10 +44,7 @@ import {
   SupabaseLLMVault,
   type WorkspaceTools,
 } from "@deco/sdk/mcp";
-import {
-  type AgentMemoryConfig,
-  PatchToolCallProcessor,
-} from "@deco/sdk/memory";
+import { type AgentMemoryConfig } from "@deco/sdk/memory";
 import {
   AgentMemory,
   buildMemoryId,
@@ -386,7 +383,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         tokenStorage,
         processors: [
           new TokenLimiter({ limit: tokenLimit }),
-          new PatchToolCallProcessor(),
         ],
         embedder: this._embedder,
         workspace: this.workspace,
