@@ -690,9 +690,41 @@ export const TRANSCRIBE_AUDIO = createInnateTool({
         };
       }
 
-      const audioBuffer = await fetch(audioUrl).then((res) =>
-        res.arrayBuffer()
-      );
+      const response = await fetch(audioUrl);
+
+      if (response.status === 403) {
+        return {
+          transcription: "",
+          success: false,
+          message: "Forbidden: Access to the audio file is denied",
+        };
+      }
+
+      if (response.status === 404) {
+        return {
+          transcription: "",
+          success: false,
+          message: "Not Found: Audio file not found",
+        };
+      }
+
+      if (response.status === 401) {
+        return {
+          transcription: "",
+          success: false,
+          message: "Unauthorized: Access to the audio file is denied",
+        };
+      }
+
+      if (!response.ok) {
+        return {
+          transcription: "",
+          success: false,
+          message: `Failed to fetch audio file: ${response.statusText}`,
+        };
+      }
+
+      const audioBuffer = await response.arrayBuffer();
       const audioBufferUint8Array = new Uint8Array(audioBuffer);
 
       // Perform transcription using existing infrastructure
