@@ -44,7 +44,10 @@ import {
   SupabaseLLMVault,
   type WorkspaceTools,
 } from "@deco/sdk/mcp";
-import type { AgentMemoryConfig } from "@deco/sdk/memory";
+import {
+  type AgentMemoryConfig,
+  PatchToolCallProcessor,
+} from "@deco/sdk/memory";
 import {
   AgentMemory,
   buildMemoryId,
@@ -381,7 +384,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         tursoAdminToken: this.env.TURSO_ADMIN_TOKEN,
         tursoOrganization,
         tokenStorage,
-        processors: [new TokenLimiter({ limit: tokenLimit })],
+        processors: [
+          new TokenLimiter({ limit: tokenLimit }),
+          new PatchToolCallProcessor(),
+        ],
         embedder: this._embedder,
         workspace: this.workspace,
         options: {
