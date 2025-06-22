@@ -256,7 +256,28 @@ app.get("/files/:root/:slug/:path{.+}", async (c) => {
     expiresIn: 3600,
   });
 
-  return c.redirect(url, 301);
+  const response = await fetch(url);
+
+  if (response.status === 404) {
+    throw new HTTPException(404, { message: "File not found" });
+  }
+
+  if (response.status === 403) {
+    throw new HTTPException(403, { message: "Forbidden" });
+  }
+
+  if (response.status === 401) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  if (!response.body) {
+    throw new HTTPException(404, { message: "File not found" });
+  }
+
+  return c.body(response.body, 200, {
+    "Content-Type": response.headers.get("content-type") ||
+      "application/octet-stream",
+  });
 });
 
 // External webhooks
