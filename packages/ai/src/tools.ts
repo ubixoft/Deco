@@ -725,7 +725,8 @@ export const TRANSCRIBE_AUDIO = createInnateTool({
       }
 
       // Check content type to ensure it's not HTML or other non-audio content
-      const contentType = response.headers.get("content-type")?.toLowerCase() || "";
+      const contentType = response.headers.get("content-type")?.toLowerCase() ||
+        "";
       if (
         contentType.includes("text/html") ||
         contentType.includes("application/json") ||
@@ -734,7 +735,8 @@ export const TRANSCRIBE_AUDIO = createInnateTool({
         return {
           transcription: "",
           success: false,
-          message: "Invalid content: The URL returned a web page instead of an audio file. The file may be private or require authentication.",
+          message:
+            "Invalid content: The URL returned a web page instead of an audio file. The file may be private or require authentication.",
         };
       }
 
@@ -768,7 +770,8 @@ export const TRANSCRIBE_AUDIO = createInnateTool({
         } else if (error.message.includes("Invalid audio")) {
           errorMessage = "Invalid audio format or corrupted audio data";
         } else if (error.message.includes("Invalid file format")) {
-          errorMessage = "Invalid file format: The file may be corrupted, protected, or not a supported audio format";
+          errorMessage =
+            "Invalid file format: The file may be corrupted, protected, or not a supported audio format";
         } else {
           errorMessage = `Transcription failed: ${error.message}`;
         }
