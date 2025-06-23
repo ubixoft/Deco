@@ -478,7 +478,8 @@ Important Notes:
 
     await Promise.all(
       (wranglerConfig.routes ?? []).map((route) =>
-        route.custom_domain && assertsDomainUniqueness(c, route.pattern)
+        route.custom_domain &&
+        assertsDomainUniqueness(c, route.pattern, scriptSlug)
       ),
     );
 
