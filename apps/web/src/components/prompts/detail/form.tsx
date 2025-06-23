@@ -16,7 +16,10 @@ export function DetailForm() {
   const {
     onSubmit,
     form,
+    prompt,
   } = useFormContext();
+
+  const isReadonly = prompt.readonly;
 
   return (
     <ScrollArea className="h-full w-full p-6 text-foreground">
@@ -35,6 +38,7 @@ export function DetailForm() {
                   <FormControl>
                     <Input
                       placeholder="e.g. Shopify"
+                      disabled={isReadonly}
                       {...field}
                     />
                   </FormControl>
@@ -54,6 +58,7 @@ export function DetailForm() {
                   <Textarea
                     placeholder="Brief description of the prompt"
                     className="min-h-[100px]"
+                    disabled={isReadonly}
                     {...field}
                     value={field.value || undefined}
                   />
@@ -73,6 +78,7 @@ export function DetailForm() {
                   <PromptInput
                     placeholder="The prompt content"
                     className="min-h-[49lvh]"
+                    disabled={isReadonly}
                     {...field}
                   />
                 </FormControl>

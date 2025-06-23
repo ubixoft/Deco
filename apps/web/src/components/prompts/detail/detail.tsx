@@ -47,17 +47,21 @@ function MainChat() {
   );
 }
 
+const FORM_TAB: Record<string, Tab> = {
+  form: {
+    Component: DetailForm,
+    title: "Prompt",
+    initialOpen: "right",
+  },
+};
+
 const TABS: Record<string, Tab> = {
   main: {
     Component: MainChat,
     title: "Chat",
     initialOpen: "left",
   },
-  form: {
-    Component: DetailForm,
-    title: "Prompt",
-    initialOpen: "right",
-  },
+  ...FORM_TAB,
 };
 
 export default function Page() {
@@ -180,7 +184,7 @@ export default function Page() {
         >
           <PageLayout
             hideViewsButton
-            tabs={TABS}
+            tabs={prompt.readonly ? FORM_TAB : TABS}
             actionButtons={
               <div
                 className={cn(
@@ -199,7 +203,8 @@ export default function Page() {
                 </Button>
                 <Button
                   className="bg-primary-light text-primary-dark hover:bg-primary-light/90 gap-2"
-                  disabled={!numberOfChanges}
+                  disabled={!numberOfChanges ||
+                    prompt.readonly}
                   onClick={() => {
                     onSubmit(form.getValues());
                   }}

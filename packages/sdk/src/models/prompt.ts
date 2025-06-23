@@ -10,6 +10,7 @@ export const PromptValidationSchema = z.object({
   content: z.string().describe("The prompt content"),
   created_at: z.string().describe("The prompt creation date"),
   updated_at: z.string().nullable().describe("The prompt update date"),
+  readonly: z.boolean().describe("Whether the prompt is readonly").optional(),
 });
 
 export type Prompt = z.infer<typeof PromptValidationSchema>;

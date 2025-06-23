@@ -114,6 +114,7 @@ const virtualPromptsFor = (
     name: string;
     description: string;
     created_at: string;
+    readonly: boolean;
   }[],
   string[],
 ] => {
@@ -122,15 +123,17 @@ const virtualPromptsFor = (
       content: workspace,
       created_at: new Date().toISOString(),
       description: "The workspace name",
-      id: `workspace:${workspace}`,
+      id: `dynamic-workspace`,
       name: "workspace",
+      readonly: true,
     },
     {
       content: new Date().toISOString(),
       created_at: new Date().toISOString(),
       description: "The current date and time",
       id: `date:now`,
-      name: "now",
+      name: "dynamic-now",
+      readonly: true,
     },
   ];
   if (!ids || ids.length === 0) {
@@ -183,13 +186,13 @@ export const getPrompt = createTool({
   }),
   handler: async (props, c) => {
     assertHasWorkspace(c);
+    await assertWorkspaceResourceAccess(c.tool.name, c);
+
     const workspace = c.workspace.value;
     const { id } = props;
     const [virtualPrompts, _] = virtualPromptsFor(workspace, [id]);
     const prompt = virtualPrompts[0];
     if (prompt) return prompt;
-
-    await assertWorkspaceResourceAccess(c.tool.name, c);
 
     const { data, error } = await c.db
       .from("deco_chat_prompts")
