@@ -138,13 +138,15 @@ async function updateDatabase(
     // If not updated, insert
     const { data: inserted, error: insertError } = await c.db
       .from(DECO_CHAT_HOSTING_APPS_TABLE)
-      .insert({
+      .upsert({
         workspace,
         slug: scriptSlug,
         updated_at: new Date().toISOString(),
         cloudflare_script_hash: result.etag,
         cloudflare_worker_id: result.id,
         files,
+      }, {
+        onConflict: "slug,workspace",
       })
       .select("*")
       .single();
