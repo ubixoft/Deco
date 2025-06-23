@@ -9,8 +9,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { z } from "zod";
 import type { JWTPayload } from "../auth/jwt.ts";
 import type { AuthorizationClient, PolicyClient } from "../auth/policy.ts";
-import { ForbiddenError, type HttpError } from "../errors.ts";
 import { type WellKnownMcpGroup, WellKnownMcpGroups } from "../crud/groups.ts";
+import { ForbiddenError, type HttpError } from "../errors.ts";
 import type { WithTool } from "./assertions.ts";
 import type { ResourceAccess } from "./auth/index.ts";
 import { addGroup, type GroupIntegration } from "./groups.ts";
@@ -80,6 +80,7 @@ const envSchema = z.object({
   CF_DISPATCH_NAMESPACE: z.string().readonly(),
   CF_ACCOUNT_ID: z.string().readonly(),
   CF_API_TOKEN: z.string().readonly(),
+  CF_ZONE_ID: z.string().readonly(),
   CF_R2_ACCESS_KEY_ID: z.any().optional().readonly(),
   CF_R2_SECRET_ACCESS_KEY: z.any().optional().readonly(),
   VITE_USE_LOCAL_BACKEND: z.any().optional().readonly(),
@@ -172,6 +173,26 @@ export const createToolGroup = (
     integration,
   );
 
+export const withMCPErrorHandling = <
+  TInput = any,
+  TReturn extends object | null | boolean = object,
+>(f: (props: TInput) => Promise<TReturn>) =>
+async (props: TInput) => {
+  try {
+    const result = await f(props);
+
+    return {
+      isError: false,
+      structuredContent: result,
+    };
+  } catch (error) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: serializeError(error) }],
+    };
+  }
+};
+
 export const createToolFactory = <
   TAppContext extends AppContext = AppContext,
 >(
@@ -208,26 +229,6 @@ export const createToolFactory = <
       return result;
     },
   };
-};
-
-export const withMCPErrorHandling = <
-  TInput = any,
-  TReturn extends object | null | boolean = object,
->(f: (props: TInput) => Promise<TReturn>) =>
-async (props: TInput) => {
-  try {
-    const result = await f(props);
-
-    return {
-      isError: false,
-      structuredContent: result,
-    };
-  } catch (error) {
-    return {
-      isError: true,
-      content: [{ type: "text", text: serializeError(error) }],
-    };
-  }
 };
 
 export const createTool = createToolFactory<WithTool<AppContext>>(
