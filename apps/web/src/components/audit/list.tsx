@@ -241,7 +241,7 @@ const TABS: Record<string, Tab> = {
 function Page() {
   return (
     <PageLayout
-      displayViewsTrigger={false}
+      hideViewsButton
       tabs={TABS}
       breadcrumb={
         <DefaultBreadcrumb items={[{ label: "Activity", link: "/audits" }]} />

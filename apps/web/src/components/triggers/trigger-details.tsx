@@ -120,7 +120,7 @@ export default function Page() {
 
   return (
     <PageLayout
-      displayViewsTrigger={false}
+      hideViewsButton
       breadcrumb={
         <DefaultBreadcrumb
           items={[

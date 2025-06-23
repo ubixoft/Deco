@@ -1039,6 +1039,7 @@ export default function Page() {
 
   return (
     <PageLayout
+      hideViewsButton
       tabs={{
         main: {
           Component: () => <AppDetail appKey={appKey} />,
@@ -1046,7 +1047,6 @@ export default function Page() {
           initialOpen: true,
         },
       }}
-      displayViewsTrigger={false}
       breadcrumb={
         <DefaultBreadcrumb
           items={[
