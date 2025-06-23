@@ -145,8 +145,6 @@ async function updateDatabase(
         cloudflare_script_hash: result.etag,
         cloudflare_worker_id: result.id,
         files,
-      }, {
-        onConflict: "slug,workspace",
       })
       .select("*")
       .single();
@@ -161,7 +159,7 @@ async function updateDatabase(
   const routes = wranglerConfig.routes ?? [];
   const mappedRoutes = routes.map((r) => ({
     route_pattern: r.pattern,
-    custom_domain: r.custom_domain ?? false,
+    custom_domain: r.custom_domain,
   }));
 
   // 1. Fetch current routes for this app
@@ -211,12 +209,15 @@ async function updateDatabase(
     toInsert.length > 0
       ? c.db
         .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-        .insert(
+        .upsert(
           toInsert.map((route) => ({
             hosting_app_id: app.id,
             route_pattern: route.route_pattern,
             custom_domain: route.custom_domain ?? false,
           })),
+          {
+            onConflict: "hosting_app_id,route_pattern,custom_domain",
+          },
         )
       : Promise.resolve(),
   ]);

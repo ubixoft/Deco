@@ -201,6 +201,12 @@ export async function deployToCloudflare(
           hostname: route.pattern,
           zone_id: env.CF_ZONE_ID,
           ...CUSTOM_HOSTNAME_POST_BODY,
+        }).catch((err) => {
+          if (err.status === 409) {
+            // fine, domain already exists
+            return;
+          }
+          throw err;
         });
       })
     ),
