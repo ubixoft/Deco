@@ -31,16 +31,32 @@ export const assertsDomainOwnership = async (
 export const assertsDomainUniqueness = async (
   c: AppContext,
   domain: string,
+  slug: string,
 ) => {
   const { data, error } = await c.db
     .from("deco_chat_hosting_routes")
-    .select("*")
+    .select(`
+      *,
+      deco_chat_hosting_apps!inner(slug, workspace)
+    `)
     .eq("route_pattern", domain)
     .maybeSingle();
+
   if (error) {
     throw new UserInputError(error.message);
   }
+
   if (data) {
+    // Check if the domain belongs to the same app slug and workspace
+    const hostingApp = data.deco_chat_hosting_apps;
+    if (
+      hostingApp && hostingApp.slug === slug &&
+      hostingApp.workspace === c.workspace?.value
+    ) {
+      // Domain is already allocated to the same script, so skip the check
+      return;
+    }
+
     throw new UserInputError(
       `The domain ${domain} is already in use`,
     );
