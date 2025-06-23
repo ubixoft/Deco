@@ -132,7 +132,7 @@ const virtualPromptsFor = (
       created_at: new Date().toISOString(),
       description: "The current date and time",
       id: `date:now`,
-      name: "dynamic-now",
+      name: "now",
       readonly: true,
     },
   ];
