@@ -19,6 +19,8 @@ import {
 import { EmptyState } from "./components/common/empty-state.tsx";
 import { useWorkspaceLink } from "./hooks/use-navigate-workspace.ts";
 
+const isDev = globalThis.location?.hostname === "localhost";
+
 type LazyComp<P> = Promise<{
   default: React.ComponentType<P>;
 }>;
@@ -45,7 +47,7 @@ const RouteLayout = lazy(() =>
   }))
 );
 
-const PageviewTrackerLayout = lazy(
+const PageviewTrackerLayout = isDev ? null : lazy(
   () => import("./components/analytics/pageview-tracker.tsx"),
 );
 
