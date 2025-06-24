@@ -118,19 +118,20 @@ const virtualPromptsFor = (
   }[],
   string[],
 ] => {
+  const now = new Date().toISOString();
   const virtualPrompts = [
     {
       content: workspace,
-      created_at: new Date().toISOString(),
+      created_at: now,
       description: "The workspace name",
       id: `dynamic-workspace`,
       name: "workspace",
       readonly: true,
     },
     {
-      content: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      description: "The current date and time",
+      content: now,
+      created_at: now,
+      description: `The current date and time ${now}`,
       id: `date:now`,
       name: "now",
       readonly: true,
