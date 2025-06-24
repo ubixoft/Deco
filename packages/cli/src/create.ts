@@ -1,6 +1,6 @@
 import { Input, Select } from "@cliffy/prompt";
-import { join } from "https://deno.land/std@0.212.0/path/mod.ts";
-import { copy, ensureDir } from "https://deno.land/std@0.212.0/fs/mod.ts";
+import { join } from "@std/path";
+import { copy, ensureDir } from "@std/fs";
 
 interface Template {
   name: string;
