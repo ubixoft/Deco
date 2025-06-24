@@ -11,16 +11,16 @@ import type { ForwardableEmailMessage } from "@cloudflare/workers-types";
 import { createMimeMessage } from "mimetext";
 import { runtime } from "./middlewares/actors.ts";
 import type { Bindings } from "./utils/context.ts";
+// Add postal-mime import at the top
+import PostalMime from "postal-mime";
 
 const readContent = async (message: ForwardableEmailMessage) => {
-  const textDecoder = new TextDecoder();
-  let result = "";
-  for await (const chunk of message.raw) {
-    result += textDecoder.decode(chunk, { stream: true });
-  }
-  return result;
-};
+  // Parse the MIME message to extract structured content
+  const email = await PostalMime.parse(message.raw);
 
+  // Return the text content, fallback to HTML if text is not available
+  return email.text || email.html || "";
+};
 export function email(
   message: ForwardableEmailMessage,
   env: Bindings,
