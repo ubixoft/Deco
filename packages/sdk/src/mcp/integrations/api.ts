@@ -544,7 +544,7 @@ const virtualInstallableIntegrations = () => {
     group: WellKnownMcpGroups.Email,
     description: "Manage your agents email",
     icon:
-      "https://assets.decocache.com/mcp/9e5d7fcd-3a3a-469b-9450-f2af05cdcc7e/Channel-Management.png",
+      "https://assets.decocache.com/mcp/65334e3f-17b4-470f-b644-5d226c565db9/email-integration.png",
     provider: "deco",
   }];
 };
