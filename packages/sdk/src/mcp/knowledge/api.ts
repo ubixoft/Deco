@@ -201,6 +201,9 @@ export const search = createKnowledgeBaseTool({
   }),
   handler: async ({ query, topK }, c) => {
     assertHasWorkspace(c);
+    if (!c.envVars.OPENAI_API_KEY) {
+      throw new InternalServerError("Missing OPENAI_API_KEY");
+    }
 
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
@@ -212,10 +215,6 @@ export const search = createKnowledgeBaseTool({
       discriminator: KNOWLEDGE_BASE_GROUP, // used to create a unique database for the knowledge base
     });
     const vector = mem.vector;
-
-    if (!c.envVars.OPENAI_API_KEY) {
-      throw new InternalServerError("Missing OPENAI_API_KEY");
-    }
 
     const indexName = c.name;
     const embedder = openAIEmbedder(c.envVars.OPENAI_API_KEY);
