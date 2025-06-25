@@ -587,10 +587,10 @@ It's always handy to search for installed integrations with no query, since all 
     const virtualIntegrations = virtualInstallableIntegrations();
     return {
       integrations: [
-        ...list,
         ...virtualIntegrations.filter((integration) =>
           !query || integration.name.includes(query)
         ),
+        ...list,
       ],
     };
   },
