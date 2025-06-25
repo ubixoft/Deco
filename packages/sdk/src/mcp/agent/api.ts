@@ -25,25 +25,24 @@ export const agentGenerateText = createAgentTool(
     name: "AGENT_GENERATE_TEXT",
     description: "Generate text output using an agent",
     inputSchema: z.object({
-      messages: z.array(
-        z.object({
-          role: z.enum(["user", "assistant"]),
-          content: z.string(),
-        }),
-      ),
-      options: AgentGenerateOptions.optional(),
+      message: z.string().describe("The message to send to the agent"),
+      options: AgentGenerateOptions.optional().nullable(),
     }),
     outputSchema: z.object({
       text: z.string().optional().describe("The text output from the agent"),
     }),
-    handler: async ({ messages }, c) => {
+    handler: async ({ message }, c) => {
       assertHasWorkspace(c);
       await assertWorkspaceResourceAccess(c.tool.name, c);
 
       const agentStub = stub<AIAgent>("AIAgent")
         .new(`${c.workspace.value}/Agents/${c.agent}`);
 
-      const response = await agentStub.generate(messages);
+      const response = await agentStub.generate([{
+        id: crypto.randomUUID(),
+        role: "user" as const,
+        content: message,
+      }]);
 
       return {
         text: response.text,
@@ -57,10 +56,7 @@ export const agentGenerateObject = createAgentTool(
     name: "AGENT_GENERATE_OBJECT",
     description: "Generate an object using an agent",
     inputSchema: z.object({
-      messages: z.array(z.object({
-        role: z.enum(["user", "assistant"]),
-        content: z.string(),
-      })),
+      message: z.string().describe("The message to send to the agent"),
       schema: z.any().describe(
         "The JSON schema to use for a structured response. If provided, the response will be an object.",
       ),
@@ -68,14 +64,18 @@ export const agentGenerateObject = createAgentTool(
     outputSchema: z.object({
       object: z.any().describe("The object output from the agent"),
     }),
-    handler: async ({ messages, schema }, c) => {
+    handler: async ({ message, schema }, c) => {
       assertHasWorkspace(c);
       await assertWorkspaceResourceAccess(c.tool.name, c);
 
       const agentStub = stub<AIAgent>("AIAgent")
         .new(`${c.workspace.value}/Agents/${c.agent}`);
 
-      const response = await agentStub.generateObject(messages, schema);
+      const response = await agentStub.generateObject([{
+        id: crypto.randomUUID(),
+        role: "user" as const,
+        content: message,
+      }], schema);
 
       return {
         object: response.object,

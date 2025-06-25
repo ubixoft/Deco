@@ -62,7 +62,7 @@ export interface AIAgent extends Actor {
    * @returns Promise containing the generated text result
    */
   generate(
-    payload: Omit<Message, "id">[],
+    payload: Message[],
     options?: GenerateOptions,
   ): Promise<GenerateTextResult<any, any>>;
 
@@ -73,7 +73,7 @@ export interface AIAgent extends Actor {
    * @returns Promise containing the generated object result
    */
   generateObject<TObject = any>(
-    payload: Omit<Message, "id">[],
+    payload: Message[],
     jsonSchema: JSONSchema7,
   ): Promise<GenerateObjectResult<TObject>>;
 
