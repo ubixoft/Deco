@@ -16,7 +16,10 @@ export function createMCPClientProxy<T extends Record<string, unknown>>(
 
         return async (args: unknown, init?: RequestInit) => {
           const traceDebugId = options?.debugId?.() ?? crypto.randomUUID();
-          const workspace = options?.workspace ?? "";
+          let workspace = options?.workspace ?? "";
+          if (!workspace.startsWith("/")) {
+            workspace = `/shared/${workspace}`;
+          }
           let payload = args;
           let toolName = name;
           let mapper = (data: unknown) => data;
