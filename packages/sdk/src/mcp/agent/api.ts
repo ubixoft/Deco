@@ -31,7 +31,7 @@ export const agentGenerateText = createAgentTool(
           content: z.string(),
         }),
       ),
-      options: AgentGenerateOptions,
+      options: AgentGenerateOptions.optional(),
     }),
     outputSchema: z.object({
       text: z.string().optional().describe("The text output from the agent"),
