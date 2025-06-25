@@ -97,6 +97,7 @@ import type {
   Thread,
   ThreadQueryOptions,
 } from "./types.ts";
+import type { TextPart } from "ai";
 
 const TURSO_AUTH_TOKEN_KEY = "turso-auth-token";
 const ANONYMOUS_INSTRUCTIONS =
@@ -998,9 +999,12 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       Array.isArray(message.annotations)
         ? message.annotations.map((annotation) => ({
           role: "user" as const,
-          content: typeof annotation === "string"
-            ? annotation
-            : JSON.stringify(annotation),
+          content: typeof annotation === "string" ? annotation : [
+            {
+              type: "text",
+              text: JSON.stringify(annotation),
+            } as TextPart,
+          ],
         }))
         : []
     );
