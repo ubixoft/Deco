@@ -1,15 +1,5 @@
 import type { CreateStubAPIOptions } from "./mcp.ts";
 
-const getWorkspace = (workspace?: string) => {
-  if (
-    workspace && workspace.length > 0 &&
-    !workspace.startsWith("/")
-  ) {
-    return `/shared/${workspace}`;
-  }
-  return workspace ?? "";
-};
-
 /**
  * The base fetcher used to fetch the MCP from API.
  */
@@ -26,7 +16,10 @@ export function createMCPClientProxy<T extends Record<string, unknown>>(
 
         return async (args: unknown, init?: RequestInit) => {
           const traceDebugId = options?.debugId?.() ?? crypto.randomUUID();
-          const workspace = getWorkspace(options?.workspace);
+          let workspace = options?.workspace ?? "";
+          if (!workspace.startsWith("/")) {
+            workspace = `/shared/${workspace}`;
+          }
           let payload = args;
           let toolName = name;
           let mapper = (data: unknown) => data;
