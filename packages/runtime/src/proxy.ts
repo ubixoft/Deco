@@ -3,7 +3,7 @@ import type { CreateStubAPIOptions } from "./mcp.ts";
 const getWorkspace = (workspace?: string) => {
   if (
     workspace && workspace.length > 0 &&
-    !workspace.startsWith("/")
+    !workspace.includes("/")
   ) {
     return `/shared/${workspace}`;
   }
