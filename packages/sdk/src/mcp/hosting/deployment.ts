@@ -193,13 +193,19 @@ export async function deployToCloudflare(
       script_name: workflow.script_name,
     })) ?? [],
   ];
+
+  const zoneId = env.CF_ZONE_ID;
+  if (!zoneId) {
+    throw new Error("CF_ZONE_ID is not set");
+  }
+
   await Promise.all(
     (routes ?? []).map((route) =>
       route.custom_domain &&
       assertsDomainOwnership(route.pattern, scriptSlug).then(() => {
         return c.cf.customHostnames.create({
           hostname: route.pattern,
-          zone_id: env.CF_ZONE_ID,
+          zone_id: zoneId,
           ...CUSTOM_HOSTNAME_POST_BODY,
         }).catch((err) => {
           if (err.status === 409) {
