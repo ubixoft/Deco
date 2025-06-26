@@ -96,7 +96,7 @@ const withDefaultBindings = (env: DefaultEnv) => {
   env["DECO_CHAT_WORKSPACE_API"] = workspaceClient(env);
 };
 
-export const withBindings = <TEnv extends DefaultEnv>(_env: TEnv) => {
+export const withBindings = <TEnv extends DefaultEnv>(_env: TEnv): TEnv => {
   const env = _env as DefaultEnv;
   const bindings = WorkersMCPBindings.parse(env.DECO_CHAT_BINDINGS);
 
