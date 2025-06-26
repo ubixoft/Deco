@@ -4,6 +4,7 @@ import {
   type Integration,
   NotFoundError,
   useAgent,
+  useFile,
   useIntegrations,
   useUpdateAgent,
   useUpdateAgentCache,
@@ -44,6 +45,8 @@ import AgentPreview, { useTabsForAgent } from "./preview.tsx";
 import ThreadView from "./thread.tsx";
 import Threads from "./threads.tsx";
 import { WhatsAppButton } from "./whatsapp-button.tsx";
+import { isFilePath } from "../../utils/path.ts";
+import { useDocumentMetadata } from "../../hooks/use-document-metadata.ts";
 
 interface Props {
   agentId?: string;
@@ -231,6 +234,9 @@ function ActionButtons({
 function FormProvider(props: Props & { agentId: string; threadId: string }) {
   const { agentId, threadId } = props;
   const { data: agent } = useAgent(agentId);
+  const { data: resolvedAvatar } = useFile(
+    agent?.avatar && isFilePath(agent.avatar) ? agent.avatar : "",
+  );
   const { data: installedIntegrations } = useIntegrations();
   const updateAgent = useUpdateAgent();
   const updateAgentCache = useUpdateAgentCache();
@@ -245,6 +251,17 @@ function FormProvider(props: Props & { agentId: string; threadId: string }) {
   const form = useForm({
     defaultValues: agent,
     resolver: zodResolver(AgentSchema),
+  });
+
+  useDocumentMetadata({
+    title: agent ? `${agent.name} | deco.chat` : undefined,
+    description: agent
+      ? (agent.description ?? agent.instructions ?? "")
+      : undefined,
+    favicon: isFilePath(agent?.avatar)
+      ? (typeof resolvedAvatar === "string" ? resolvedAvatar : undefined)
+      : agent?.avatar,
+    socialImage: agent?.avatar,
   });
 
   const numberOfChanges = Object.keys(form.formState.dirtyFields).length;

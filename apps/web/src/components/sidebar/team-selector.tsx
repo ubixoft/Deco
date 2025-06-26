@@ -19,6 +19,7 @@ import { Avatar } from "../common/avatar/index.tsx";
 import { CreateTeamDialog } from "./create-team-dialog.tsx";
 import { InviteTeamMembersDialog } from "../common/invite-team-members-dialog.tsx";
 import type { Theme } from "@deco/sdk";
+import { useDocumentMetadata } from "../../hooks/use-document-metadata.ts";
 
 interface CurrentTeam {
   avatarUrl: string | undefined;
@@ -277,7 +278,12 @@ function SwitchTeam(
 export function TeamSelector() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const { id: teamId } = useCurrentTeam();
+  const { id: teamId, label, avatarUrl } = useCurrentTeam();
+
+  useDocumentMetadata({
+    title: label ? `${label} | deco.chat` : undefined,
+    favicon: avatarUrl,
+  });
 
   return (
     <>

@@ -1,4 +1,4 @@
-import { WELL_KNOWN_AGENT_IDS } from "@deco/sdk";
+import { useAgent, useFile, WELL_KNOWN_AGENT_IDS } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import {
   DropdownMenu,
@@ -25,6 +25,8 @@ import { AgentBreadcrumbSegment } from "./breadcrumb-segment.tsx";
 import AgentPreview from "./preview.tsx";
 import ThreadView from "./thread.tsx";
 import { WhatsAppButton } from "./whatsapp-button.tsx";
+import { isFilePath } from "../../utils/path.ts";
+import { useDocumentMetadata } from "../../hooks/use-document-metadata.ts";
 
 export type WellKnownAgents =
   typeof WELL_KNOWN_AGENT_IDS[keyof typeof WELL_KNOWN_AGENT_IDS];
@@ -177,6 +179,25 @@ function Breadcrumb({ agentId }: { agentId: string }) {
   );
 }
 
+function AgentMetadataUpdater({ agentId }: { agentId: string }) {
+  const { data: agent } = useAgent(agentId);
+  const { data: resolvedAvatar } = useFile(
+    agent?.avatar && isFilePath(agent.avatar) ? agent.avatar : "",
+  );
+
+  // Compute favicon href, favouring resolved file URLs for local files.
+  const faviconHref = isFilePath(agent?.avatar)
+    ? (typeof resolvedAvatar === "string" ? resolvedAvatar : undefined)
+    : agent?.avatar;
+
+  useDocumentMetadata({
+    title: agent ? `${agent.name} | deco.chat` : undefined,
+    favicon: faviconHref,
+  });
+
+  return null;
+}
+
 function Page(props: Props) {
   const params = useParams();
   const agentId = useMemo(
@@ -214,6 +235,7 @@ function Page(props: Props) {
           showThreadMessages: props.showThreadMessages ?? true,
         }}
       >
+        <AgentMetadataUpdater agentId={agentId} />
         <PageLayout
           tabs={TABS}
           key={agentId}
