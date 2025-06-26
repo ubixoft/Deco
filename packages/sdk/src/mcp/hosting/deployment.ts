@@ -239,6 +239,7 @@ export async function deployToCloudflare(
     migrations ?? [],
     (bindings ?? []).filter(isDoBinding),
   );
+
   const metadata = {
     main_module: mainModule,
     compatibility_flags: compatibility_flags ?? ["nodejs_compat"],

@@ -30,6 +30,7 @@ const applyMigration = (currentBindings: DoBinding[]) =>
 ): [DoBinding[], SingleStepMigration] => {
   let bindingsResult: DoBinding[] = bindings;
   const shouldRunMigration = stepMigration.old_tag != null;
+
   if ("new_classes" in migration) {
     bindingsResult = [
       ...bindings,
@@ -39,7 +40,6 @@ const applyMigration = (currentBindings: DoBinding[]) =>
         type: "durable_object_namespace" as const,
       })),
     ];
-    // we can accumulate the old tag if we have a new class migration
     if (shouldRunMigration) {
       stepMigration.new_classes = [
         ...(stepMigration.new_classes ?? []),
@@ -47,6 +47,7 @@ const applyMigration = (currentBindings: DoBinding[]) =>
       ];
     }
   }
+
   if ("deleted_classes" in migration) {
     bindingsResult = bindings.filter((binding) =>
       !migration.deleted_classes.includes(binding.class_name)
@@ -58,6 +59,7 @@ const applyMigration = (currentBindings: DoBinding[]) =>
       ];
     }
   }
+
   if ("renamed_classes" in migration) {
     const renamedClasses = migration.renamed_classes.reduce(
       (acc, renamedClass) => {
@@ -77,14 +79,19 @@ const applyMigration = (currentBindings: DoBinding[]) =>
       ];
     }
   }
+
   if (bindingsAreEqual(bindingsResult, currentBindings)) {
     stepMigration.old_tag = migration.tag;
   }
-  if (shouldRunMigration) {
+
+  // Set new_tag for any migration that should run OR the next migration after finding current state
+  if (shouldRunMigration || stepMigration.old_tag === migration.tag) {
     stepMigration.new_tag = migration.tag;
   }
+
   return [bindingsResult, stepMigration];
 };
+
 /**
  * Takes wrangler.toml migrations and do bindings and returns a single step migration
  */
@@ -93,15 +100,98 @@ export const migrationDiff = (
   doBindings?: DoBinding[],
 ): SingleStepMigration | undefined => {
   const currentBindings = doBindings ?? [];
-  const [_, migration]: [DoBinding[], SingleStepMigration] = allMigrations
-    .reduce(
-      applyMigration(currentBindings),
-      [[], {} as SingleStepMigration],
-    );
-  if (!migration.new_tag || migration.old_tag === migration.new_tag) {
-    return undefined;
+  let simulatedBindings: DoBinding[] = [];
+  let foundCurrentState = false;
+  let oldTag: string | undefined = undefined;
+
+  const migration: SingleStepMigration = {};
+
+  for (const migrationStep of allMigrations) {
+    // Apply this migration to see what the state would be
+    const newBindings = applyMigration(currentBindings)([
+      simulatedBindings,
+      migration,
+    ], migrationStep);
+
+    if (!foundCurrentState) {
+      // Check if this state matches the current deployment state
+      if (bindingsAreEqual(newBindings[0], currentBindings)) {
+        foundCurrentState = true;
+        oldTag = migrationStep.tag;
+        simulatedBindings = newBindings[0];
+        continue; // This migration is already applied, skip it
+      }
+      simulatedBindings = newBindings[0];
+    } else {
+      // We're past the current state, accumulate this migration in the diff
+      if ("new_classes" in migrationStep) {
+        migration.new_classes = [
+          ...(migration.new_classes ?? []),
+          ...migrationStep.new_classes,
+        ];
+      }
+
+      if ("deleted_classes" in migrationStep) {
+        migration.deleted_classes = [
+          ...(migration.deleted_classes ?? []),
+          ...migrationStep.deleted_classes,
+        ];
+      }
+
+      if ("renamed_classes" in migrationStep) {
+        migration.renamed_classes = [
+          ...(migration.renamed_classes ?? []),
+          ...migrationStep.renamed_classes,
+        ];
+      }
+
+      migration.new_tag = migrationStep.tag;
+    }
   }
-  return migration;
+
+  // If we never found the current state, it means we need to apply all migrations
+  if (!foundCurrentState) {
+    for (const migrationStep of allMigrations) {
+      if ("new_classes" in migrationStep) {
+        migration.new_classes = [
+          ...(migration.new_classes ?? []),
+          ...migrationStep.new_classes,
+        ];
+      }
+
+      if ("deleted_classes" in migrationStep) {
+        migration.deleted_classes = [
+          ...(migration.deleted_classes ?? []),
+          ...migrationStep.deleted_classes,
+        ];
+      }
+
+      if ("renamed_classes" in migrationStep) {
+        migration.renamed_classes = [
+          ...(migration.renamed_classes ?? []),
+          ...migrationStep.renamed_classes,
+        ];
+      }
+
+      migration.new_tag = migrationStep.tag;
+    }
+    oldTag = undefined; // Starting from scratch
+  }
+
+  migration.old_tag = oldTag;
+
+  // Return migration if there are changes to apply
+  if (
+    migration.new_tag && (
+      migration.new_classes?.length ||
+      migration.deleted_classes?.length ||
+      migration.renamed_classes?.length
+    )
+  ) {
+    return migration;
+  }
+
+  return undefined;
 };
 export function isDoBinding(
   binding: unknown | DoBinding,
