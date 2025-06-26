@@ -550,6 +550,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       });
       const { llm } = createLLMInstance({
         ...llmConfig,
+        bypassOpenRouter: options.bypassOpenRouter,
         envs: this.env,
       });
 
@@ -952,7 +953,18 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const toolsets = await this._withToolOverrides(options?.tools);
 
-    const agent = await this._withAgentOverrides(options);
+    const isClaude = this._configuration?.model.includes("claude");
+    const hasPdf = payload.some((message) =>
+      message.experimental_attachments?.some((attachment) =>
+        attachment.contentType === "application/pdf"
+      )
+    );
+    const bypassOpenRouter = isClaude && hasPdf;
+
+    const agent = await this._withAgentOverrides({
+      ...options,
+      bypassOpenRouter: bypassOpenRouter ?? options?.bypassOpenRouter ?? false,
+    });
 
     const aiMessages = await Promise.all(
       payload.map((msg) =>
@@ -990,6 +1002,14 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       resourceId: options?.resourceId ?? this._thread.resourceId,
     };
 
+    const isClaude = this._configuration?.model.includes("claude");
+    const hasPdf = payload.some((message) =>
+      message.experimental_attachments?.some((attachment) =>
+        attachment.contentType === "application/pdf"
+      )
+    );
+    const bypassOpenRouter = isClaude && hasPdf;
+
     /*
      * Additional context from the payload, through annotations (converting to a CoreMessage-like object)
      * TODO (@0xHericles) We should find a way to extend the Message Object
@@ -1015,7 +1035,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       thread,
     );
     const agentOverridesTiming = timings.start("agent-overrides");
-    const agent = await this._withAgentOverrides(options);
+    const agent = await this._withAgentOverrides({
+      ...options,
+      bypassOpenRouter: bypassOpenRouter ?? options?.bypassOpenRouter ?? false,
+    });
     agentOverridesTiming.end();
 
     const wallet = this.wallet;
@@ -1032,7 +1055,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         "agent.id": this.state.id,
         model: options?.model ?? this._configuration?.model,
         "thread.id": thread.threadId,
-        "openrouter.bypass": `${options?.bypassOpenRouter ?? false}`,
+        "openrouter.bypass": `${
+          bypassOpenRouter ?? options?.bypassOpenRouter ?? false
+        }`,
       },
     });
     let ended = false;
