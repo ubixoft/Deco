@@ -1,11 +1,17 @@
-import { unescapeHTML, weakEscapeHTML } from "@deco/sdk/utils";
-import { Label } from "@deco/ui/components/label.tsx";
-import { Switch } from "@deco/ui/components/switch.tsx";
-import { useState } from "react";
-import RichTextArea from "./markdown.tsx";
-import RawTextArea from "./raw.tsx";
+import { usePrompts } from "@deco/sdk";
+import { Icon } from "@deco/ui/components/icon.tsx";
+import { cn } from "@deco/ui/lib/utils.ts";
+import Placeholder from "@tiptap/extension-placeholder";
+import { EditorContent, type Extensions, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useEffect, useMemo, useRef } from "react";
+import { Markdown } from "tiptap-markdown";
+import BubbleMenu from "./bubble-menu.tsx";
+import { mentionToTag, removeMarkdownCodeBlock } from "./common.ts";
+import { Comment } from "./extensions/comment.tsx";
+import { mentions } from "./extensions/mentions/mentions.ts";
 
-export interface PromptInputProps {
+interface Props {
   value: string;
   onChange: (markdown: string) => void;
   onKeyDown?: (
@@ -21,87 +27,106 @@ export interface PromptInputProps {
   placeholder?: string;
   className?: string;
   enableMentions?: boolean;
-  showToggle?: boolean;
-  renderToggle?: (
-    view: "raw" | "markdown",
-    setView: (view: "raw" | "markdown") => void,
-  ) => React.ReactNode;
+  excludeIds?: string[];
 }
 
-export default function PromptInput({
+export default function RichTextArea({
   value,
   onChange,
   onKeyDown,
   onKeyUp,
   onPaste,
-  disabled,
+  disabled = false,
   placeholder,
   className,
   enableMentions = false,
-  showToggle = true,
-  renderToggle,
-}: PromptInputProps) {
-  const [view, setView] = useState<"raw" | "markdown">("markdown");
+  excludeIds = [],
+}: Props) {
+  const hadUserInteraction = useRef(false);
+  const { data: prompts } = usePrompts({ excludeIds });
+
+  const extensions = useMemo(() => {
+    const extensions: Extensions = [
+      StarterKit,
+      Markdown.configure({
+        html: true,
+        transformCopiedText: true,
+        transformPastedText: true,
+      }),
+      Placeholder.configure({
+        placeholder: placeholder ?? "Type a message...",
+      }),
+      Comment,
+    ];
+
+    if (enableMentions) {
+      extensions.push(
+        mentions(prompts ?? []),
+      );
+    }
+
+    return extensions;
+  }, [enableMentions, placeholder, prompts]);
+
+  const editor = useEditor({
+    extensions,
+    content: mentionToTag(removeMarkdownCodeBlock(value), true),
+    editable: !disabled,
+    onUpdate: ({ editor }) => {
+      const markdown = editor.storage.markdown.getMarkdown();
+
+      if (!hadUserInteraction.current && editor.isFocused) {
+        hadUserInteraction.current = true;
+      }
+
+      if (hadUserInteraction.current) {
+        onChange(markdown);
+      }
+    },
+    editorProps: {
+      attributes: {
+        class: cn(
+          "h-full placeholder:text-muted-foreground field-sizing-content w-full bg-transparent text-base transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 prose whitespace-pre-wrap break-words wrap-anywhere",
+          className,
+        ),
+      },
+    },
+  }, [prompts]);
+
+  // sync external value changes to the editor
+  useEffect(() => {
+    if (!editor) return;
+
+    const _value = removeMarkdownCodeBlock(value);
+    if (mentionToTag(_value) !== editor.storage.markdown.getMarkdown()) {
+      editor.commands.setContent(mentionToTag(_value, true), false, {
+        preserveWhitespace: "full",
+      });
+    }
+  }, [value, editor]);
+
+  useEffect(() => {
+    editor?.setEditable(!disabled);
+  }, [disabled, editor]);
 
   return (
-    <div>
-      {showToggle && (
-        <div className="flex justify-between items-center gap-2 mb-3 mt-1 px-3 py-2 rounded-xl border">
-          <p className="text-xs text-muted-foreground">
-            You can use{" "}
-            <a
-              href="https://www.commonmark.org/help/"
-              className="underline text-primary-dark font-medium"
-            >
-              markdown
-            </a>{" "}
-            here.
+    <div className="h-full flex flex-col">
+      {enableMentions && (
+        <div className="rounded-full flex gap-1 bg-secondary text-muted-foreground w-fit items-center px-1.5 py-0.5 mb-2.5 select-none">
+          <Icon name="info" size={10} />
+          <p className="text-xs font-medium">
+            Type / to add tools and more
           </p>
-          <div className="flex items-center gap-2">
-            <Switch
-              id="markdown-view"
-              checked={view === "markdown"}
-              onCheckedChange={(checked: boolean) => {
-                setView(checked ? "markdown" : "raw");
-              }}
-              className="cursor-pointer"
-            />
-            <Label
-              htmlFor="markdown-view"
-              className="text-xs text-foreground cursor-pointer"
-            >
-              Markdown
-            </Label>
-          </div>
         </div>
       )}
-      {renderToggle?.(view, setView)}
-      {view === "markdown"
-        ? (
-          <RichTextArea
-            value={weakEscapeHTML(value)}
-            onChange={onChange}
-            onKeyDown={onKeyDown}
-            onKeyUp={onKeyUp}
-            onPaste={onPaste}
-            disabled={disabled}
-            placeholder={placeholder}
-            className={className}
-            enableMentions={enableMentions}
-          />
-        )
-        : (
-          <RawTextArea
-            value={unescapeHTML(value)}
-            onChange={onChange}
-            onKeyDown={onKeyDown}
-            onKeyUp={onKeyUp}
-            onPaste={onPaste}
-            disabled={disabled}
-            placeholder={placeholder}
-            className={className}
-          />
-        )}
+      <BubbleMenu editor={editor} />
+      <EditorContent
+        className="h-full"
+        editor={editor}
+        onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
+        onPaste={onPaste}
+      />
     </div>
   );
 }
