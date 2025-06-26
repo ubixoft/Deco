@@ -4,7 +4,6 @@ import type {
   MessageBatch,
   ScheduledController,
 } from "@cloudflare/workers-types";
-import { WorkerEntrypoint } from "cloudflare:workers";
 import { createIntegrationBinding, workspaceClient } from "./bindings.ts";
 import { MCPClient } from "./mcp.ts";
 export {
