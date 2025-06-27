@@ -8,6 +8,7 @@ interface Options {
   workspace: string;
   app: string;
   local: boolean;
+  skipConfirmation?: boolean;
 }
 
 const readEnvFile = async (rootDir: string) => {
@@ -93,7 +94,9 @@ const manifestFrom = ({ appSlug, files, envVars }: BuildManifest) => ({
   envVars,
 });
 
-export const deploy = async ({ workspace, app: appSlug, local }: Options) => {
+export const deploy = async (
+  { workspace, app: appSlug, local, skipConfirmation }: Options,
+) => {
   const rootDir = Deno.cwd();
   console.log(`\n🚀 Deploying '${appSlug}' to '${workspace}'...\n`);
 
@@ -107,7 +110,8 @@ export const deploy = async ({ workspace, app: appSlug, local }: Options) => {
   console.log(`  App: ${appSlug}`);
   console.log(`  Files: ${files.length}`);
 
-  const confirmed = await Confirm.prompt("Proceed with deployment?");
+  const confirmed = skipConfirmation ||
+    await Confirm.prompt("Proceed with deployment?");
   if (!confirmed) {
     console.log("❌ Deployment cancelled");
     Deno.exit(0);

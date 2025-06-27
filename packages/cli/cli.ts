@@ -75,11 +75,12 @@ const hostingDeploy = new Command()
     required: false,
   })
   .option("-a, --app <app:string>", "App name", { required: false })
+  .option("-y, --yes", "Skip confirmation", { required: false })
   .action(async (args) => {
     const config = await getConfig({
       inlineOptions: args,
     });
-    return deploy(config);
+    return deploy({ ...config, skipConfirmation: args.yes });
   });
 
 const linkCmd = new Command()
