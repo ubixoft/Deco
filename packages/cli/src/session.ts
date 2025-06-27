@@ -2,6 +2,7 @@
 import type { User } from "@supabase/supabase-js";
 import z from "zod";
 import { createClient } from "./supabase.ts";
+import { decodeJwt } from "jose";
 
 const SessionSchema = z.object({
   access_token: z.string().optional(),
@@ -58,7 +59,11 @@ export async function readSession(): Promise<SessionData | null> {
   const content = await Deno.readTextFile(sessionPath);
   const sessionData = SessionSchema.safeParse(JSON.parse(content)).data;
   return getToken()
-    ? { ...sessionData ?? {}, api_token: getToken() }
+    ? {
+      workspace: decodeJwt(getToken()).aud as string,
+      ...sessionData ?? {},
+      api_token: getToken(),
+    }
     : sessionData ?? null;
 }
 
