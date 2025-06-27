@@ -49,7 +49,7 @@ export const WorkersMCPBindings = {
 };
 
 export interface UserDefaultExport<
-  TUserEnv extends Record<string, unknown> = Record<string, unknown>,
+  TUserEnv = Record<string, unknown>,
 > {
   queue?: (
     batch: MessageBatch,
@@ -96,7 +96,7 @@ const withDefaultBindings = (env: DefaultEnv) => {
   env["DECO_CHAT_WORKSPACE_API"] = workspaceClient(env);
 };
 
-export const withBindings = <TEnv extends DefaultEnv>(_env: TEnv): TEnv => {
+export const withBindings = <TEnv>(_env: TEnv): TEnv => {
   const env = _env as DefaultEnv;
   const bindings = WorkersMCPBindings.parse(env.DECO_CHAT_BINDINGS);
 
@@ -112,8 +112,8 @@ export const withBindings = <TEnv extends DefaultEnv>(_env: TEnv): TEnv => {
   return env as TEnv;
 };
 
-export const withRuntime = <TEnv extends DefaultEnv>(
-  userFns: UserDefaultExport,
+export const withRuntime = <TEnv>(
+  userFns: UserDefaultExport<TEnv>,
 ): UserDefaultExport<TEnv> => {
   return {
     ...userFns,
