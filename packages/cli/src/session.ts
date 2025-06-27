@@ -1,8 +1,8 @@
 // Utility functions for saving and reading session data securely
 import type { User } from "@supabase/supabase-js";
+import { decodeJwt } from "jose";
 import z from "zod";
 import { createClient } from "./supabase.ts";
-import { decodeJwt } from "jose";
 
 const SessionSchema = z.object({
   access_token: z.string().optional(),
@@ -55,16 +55,16 @@ export async function saveSession(
  * @returns The parsed session data, or null if not found or error.
  */
 export async function readSession(): Promise<SessionData | null> {
+  const token = getToken();
+  if (token) {
+    return {
+      workspace: decodeJwt(token).aud as string,
+      api_token: token,
+    };
+  }
   const sessionPath = getSessionPath();
   const content = await Deno.readTextFile(sessionPath);
-  const sessionData = SessionSchema.safeParse(JSON.parse(content)).data;
-  return getToken()
-    ? {
-      workspace: decodeJwt(getToken()).aud as string,
-      ...sessionData ?? {},
-      api_token: getToken(),
-    }
-    : sessionData ?? null;
+  return SessionSchema.safeParse(JSON.parse(content)).data ?? null;
 }
 
 export async function deleteSession() {
