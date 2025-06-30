@@ -226,6 +226,23 @@ async function updateDatabase(
   return Mappers.toApp(app);
 }
 
+const MIME_TYPES: Record<string, string> = {
+  "js": "application/javascript+module",
+  "mjs": "application/javascript+module",
+  "ts": "application/javascript+module",
+  "json": "application/json",
+  "wasm": "application/wasm",
+  "css": "text/css",
+  "html": "text/html",
+  "txt": "text/plain",
+  "toml": "text/plain",
+};
+
+const getMimeType = (path: string): string => {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "txt";
+  return MIME_TYPES[ext] ?? "text/plain";
+};
+
 let created = false;
 const createNamespaceOnce = async (c: AppContext) => {
   if (created) return;
@@ -417,11 +434,14 @@ Important Notes:
     envVars: z.record(z.string(), z.string()).optional().describe(
       "An optional object of environment variables to be set on the worker",
     ),
+    bundle: z.boolean().optional().default(true).describe(
+      "If false, skip the bundler step and upload the files as-is. Default: true (bundle files)",
+    ),
   }),
-  handler: async ({ appSlug: _appSlug, files, envVars }, c) => {
+  handler: async ({ appSlug: _appSlug, files, envVars, bundle = true }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
 
-    // Convert array to record for bundler
+    // Convert array to record for bundler or direct upload
     const filesRecord = files.reduce((acc, file) => {
       acc[file.path] = file.content;
       return acc;
@@ -462,18 +482,25 @@ Important Notes:
     const workspace = c.workspace.value;
     const scriptSlug = appSlug;
 
-    // Bundle the files
-    const bundledScript = await bundler(filesRecord, entrypoint);
-
-    const fileObjects = {
-      [SCRIPT_FILE_NAME]: new File(
-        [bundledScript],
-        SCRIPT_FILE_NAME,
-        {
-          type: "application/javascript+module",
-        },
-      ),
-    };
+    let fileObjects: Record<string, File>;
+    if (bundle) {
+      // Bundle the files
+      const bundledScript = await bundler(filesRecord, entrypoint);
+      fileObjects = {
+        [SCRIPT_FILE_NAME]: new File(
+          [bundledScript],
+          SCRIPT_FILE_NAME,
+          { type: "application/javascript+module" },
+        ),
+      };
+    } else {
+      fileObjects = Object.fromEntries(
+        Object.entries(filesRecord).map(([path, content]) => [
+          path,
+          new File([content], path, { type: getMimeType(path) }),
+        ]),
+      );
+    }
 
     const appEnvVars = {
       DECO_CHAT_WORKSPACE: workspace,
@@ -490,7 +517,7 @@ Important Notes:
     const result = await deployToCloudflare(
       c,
       wranglerConfig,
-      SCRIPT_FILE_NAME,
+      bundle ? SCRIPT_FILE_NAME : entrypoint,
       fileObjects,
       { ...envVars, ...appEnvVars },
     );
