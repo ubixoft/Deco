@@ -127,7 +127,11 @@ function Page() {
               } as Record<string, string>}
             >
               <SidebarInset>
-                <PageLayout tabs={TABS} breadcrumb={<ChatHeader />} />
+                <PageLayout
+                  tabs={TABS}
+                  breadcrumb={<ChatHeader />}
+                  hideViewsButton
+                />
               </SidebarInset>
             </SidebarProvider>
           </ChatProvider>
