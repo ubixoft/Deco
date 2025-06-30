@@ -4,7 +4,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@deco/ui/components/form.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
@@ -82,13 +81,13 @@ function PromptTab() {
   return (
     <ScrollArea className="h-full w-full [&>div>div]:h-full">
       <Form {...form}>
-        <div className="h-full w-full p-6 mx-auto">
+        <div className="h-full w-full p-6 mx-auto @container">
           <form
             onSubmit={handleSubmit}
             className="flex flex-col gap-6 h-full"
           >
-            <div className="flex gap-3 w-full">
-              <div className="flex items-center gap-6 flex-1">
+            <div className="flex flex-col @[350px]:flex-row gap-3 w-full">
+              <div className="flex flex-col @[350px]:flex-row items-start @[350px]:items-center gap-6 flex-1">
                 <FormField
                   control={form.control}
                   name="avatar"
@@ -168,7 +167,7 @@ function PromptTab() {
                   />
                 </div>
               </div>
-              <div className="shrink-0">
+              <div className="shrink-0 w-full @[350px]:w-auto">
                 <FormField
                   name="model"
                   render={({ field }) => {
@@ -194,7 +193,6 @@ function PromptTab() {
               name="instructions"
               render={({ field }) => (
                 <FormItem className="flex flex-col h-full w-full">
-                  <FormLabel>Instructions</FormLabel>
                   <FormControl className="h-full">
                     <PromptInput
                       className="mt-2"
