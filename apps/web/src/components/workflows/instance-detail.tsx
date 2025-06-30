@@ -1,8 +1,4 @@
-import type {
-  WorkflowStatusResult,
-  WorkflowStep,
-  WorkflowStepAttempt,
-} from "@deco/sdk";
+import type { WorkflowStep, WorkflowStepAttempt } from "@deco/sdk";
 import { useWorkflowStatus } from "@deco/sdk";
 import { Badge } from "@deco/ui/components/badge.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
@@ -308,9 +304,7 @@ function StepCard(
 
 function InstanceDetailTab() {
   const { workflowName = "", instanceId = "" } = useParams();
-  const { data } = useWorkflowStatus(workflowName, instanceId) as {
-    data: WorkflowStatusResult;
-  };
+  const { data } = useWorkflowStatus(workflowName, instanceId);
 
   const status = data.status || "unknown";
   const badgeVariant = getStatusBadgeVariant(status);
