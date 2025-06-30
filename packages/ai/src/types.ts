@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import type { JSONSchema7 } from "@ai-sdk/provider";
 import type { Actor } from "@deco/actors";
-import type { GenerateOptions, StreamOptions } from "@deco/sdk/models";
+import type { GenerateOptions, StreamOptions, Toolset } from "@deco/sdk/models";
 import type { StorageThreadType } from "@mastra/core";
 import type {
   GenerateObjectResult,
@@ -9,9 +9,8 @@ import type {
   Message as AIMessage,
 } from "ai";
 import type { AgentMetadata } from "./agent.ts";
-
 export type { TriggerData } from "./triggers/trigger.ts";
-export type { GenerateOptions, StreamOptions };
+export type { GenerateOptions, StreamOptions, Toolset };
 
 /**
  * Represents a tool that can be used by an AI agent
