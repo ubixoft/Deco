@@ -2,6 +2,7 @@ import { useTeam, useTeams } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
+import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import {
   ResponsiveDropdown,
   ResponsiveDropdownContent,
@@ -10,7 +11,6 @@ import {
   ResponsiveDropdownTrigger,
 } from "@deco/ui/components/responsive-dropdown.tsx";
 import { SidebarMenuButton } from "@deco/ui/components/sidebar.tsx";
-import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { Suspense, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useUser } from "../../hooks/use-user.ts";
@@ -163,17 +163,62 @@ CurrentTeamDropdownOptions.Skeleton = () => (
   </div>
 );
 
+function TeamsToSwitch({ query }: { query: string }) {
+  const availableTeamsToSwitch = useUserTeams();
+
+  const filteredTeams = availableTeamsToSwitch
+    .filter((team) => team.label.toLowerCase().includes(query.toLowerCase()));
+
+  if (filteredTeams.length === 0) {
+    return (
+      <div className="text-sm text-center py-2 text-muted-foreground">
+        No teams found
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 h-36 overflow-y-auto">
+      <div className="flex flex-col gap-2 h-36 overflow-y-auto">
+        {filteredTeams.map((team) => (
+          <ResponsiveDropdownItem asChild key={team.slug}>
+            <Link
+              to={`/${team.slug}`}
+              className="w-full flex items-center gap-2 cursor-pointer"
+            >
+              <Avatar
+                className="w-6 h-6"
+                url={team.avatarUrl}
+                fallback={team.label}
+                objectFit="contain"
+              />
+              <span className="md:text-sm">
+                {team.label}
+              </span>
+            </Link>
+          </ResponsiveDropdownItem>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+TeamsToSwitch.Skeleton = () => (
+  <div className="h-36 flex flex-col gap-2 overflow-y-auto">
+    {Array.from({ length: 3 }).map((_, index) => (
+      <Skeleton
+        key={index}
+        className="h-9 w-full rounded-xl"
+      />
+    ))}
+  </div>
+);
+
 function SwitchTeam(
   { onRequestCreateTeam }: { onRequestCreateTeam: () => void },
 ) {
-  const availableTeamsToSwitch = useUserTeams();
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-
-  const filteredTeams = availableTeamsToSwitch
-    .filter((team) =>
-      team.label.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
@@ -218,34 +263,9 @@ function SwitchTeam(
         </div>
       )}
 
-      {filteredTeams.length > 0
-        ? (
-          <div className="flex flex-col gap-2 h-36 overflow-y-auto">
-            {filteredTeams.map((team) => (
-              <ResponsiveDropdownItem asChild key={team.slug}>
-                <Link
-                  to={`/${team.slug}`}
-                  className="w-full flex items-center gap-2 cursor-pointer"
-                >
-                  <Avatar
-                    className="w-6 h-6"
-                    url={team.avatarUrl}
-                    fallback={team.label}
-                    objectFit="contain"
-                  />
-                  <span className="md:text-sm">
-                    {team.label}
-                  </span>
-                </Link>
-              </ResponsiveDropdownItem>
-            ))}
-          </div>
-        )
-        : (
-          <div className="text-sm text-center py-2 text-muted-foreground">
-            No teams found
-          </div>
-        )}
+      <Suspense fallback={<TeamsToSwitch.Skeleton />}>
+        <TeamsToSwitch query={searchQuery} />
+      </Suspense>
 
       {showSearch && (
         <div className="p-2 md:hidden">
@@ -298,17 +318,9 @@ export function TeamSelector() {
             />
           </Suspense>
           <ResponsiveDropdownSeparator />
-          <Suspense
-            fallback={
-              <div className="h-full flex items-center justify-center">
-                <Spinner size="xs" />
-              </div>
-            }
-          >
-            <SwitchTeam
-              onRequestCreateTeam={() => setIsCreateDialogOpen(true)}
-            />
-          </Suspense>
+          <SwitchTeam
+            onRequestCreateTeam={() => setIsCreateDialogOpen(true)}
+          />
         </ResponsiveDropdownContent>
       </ResponsiveDropdown>
       <CreateTeamDialog

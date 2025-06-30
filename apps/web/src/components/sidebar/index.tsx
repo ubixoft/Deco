@@ -3,8 +3,6 @@ import {
   type Thread,
   useAgents,
   useDeleteThread,
-  useIntegrations,
-  useMarketplaceIntegrations,
   useThreads,
   useUpdateThreadTitle,
   WELL_KNOWN_AGENT_IDS,
@@ -397,18 +395,6 @@ function SidebarThreadList(
   ));
 }
 
-function SidebarThreadsSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      {Array.from({ length: 20 }).map((_, index) => (
-        <div key={index} className="w-full h-10 px-2">
-          <Skeleton className="h-full bg-sidebar-accent rounded-sm" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function SidebarThreads() {
   const user = useUser();
   const { data: agents } = useAgents();
@@ -469,16 +455,15 @@ function SidebarThreads() {
   );
 }
 
-function PrefetchIntegrations() {
-  useIntegrations();
-  useMarketplaceIntegrations();
-  return null;
-}
-
-function PrefetchAgents() {
-  useAgents();
-  return null;
-}
+SidebarThreads.Skeleton = () => (
+  <div className="flex flex-col gap-4">
+    {Array.from({ length: 20 }).map((_, index) => (
+      <div key={index} className="w-full h-10 px-2">
+        <Skeleton className="h-full bg-sidebar-accent rounded-sm" />
+      </div>
+    ))}
+  </div>
+);
 
 export function AppSidebar() {
   const { state, toggleSidebar, isMobile } = useSidebar();
@@ -490,11 +475,6 @@ export function AppSidebar() {
   return (
     <Sidebar variant="sidebar">
       <SidebarHeader />
-
-      <Suspense fallback={null}>
-        <PrefetchIntegrations />
-        <PrefetchAgents />
-      </Suspense>
 
       <SidebarContent className="flex flex-col h-full overflow-x-hidden">
         <div className="flex flex-col h-full">
@@ -568,7 +548,7 @@ export function AppSidebar() {
             <>
               <SidebarSeparator className="!w-[224px]" />
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <Suspense fallback={<SidebarThreadsSkeleton />}>
+                <Suspense fallback={<SidebarThreads.Skeleton />}>
                   <SidebarThreads />
                 </Suspense>
               </div>
