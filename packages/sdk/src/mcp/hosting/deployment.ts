@@ -64,6 +64,7 @@ export interface WranglerConfig {
   durable_objects?: {
     bindings?: { name: string; class_name: string }[];
   };
+  hyperdrive?: { binding: string; id: string; localConnectionString: string }[];
   d1_databases?: {
     database_name: string;
     database_id?: string;
@@ -152,6 +153,7 @@ export async function deployToCloudflare(
     compatibility_date,
     vars,
     kv_namespaces,
+    hyperdrive,
     deco,
     ai,
     browser,
@@ -202,6 +204,12 @@ export async function deployToCloudflare(
       type: "d1" as const,
       name: d1.binding,
       id: d1.database_id!,
+    })) ?? [],
+    ...hyperdrive?.map((hd) => ({
+      type: "hyperdrive" as const,
+      name: hd.binding,
+      id: hd.id,
+      localConnectionString: hd.localConnectionString,
     })) ?? [],
   ];
 
