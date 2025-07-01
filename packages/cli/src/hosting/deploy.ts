@@ -41,6 +41,7 @@ export const deploy = async (
   for await (
     const entry of walk(cwd, {
       includeDirs: false,
+      skip: [/node_modules/, /\.git/, /\.DS_Store/],
       exts: [
         ".ts",
         ".mjs",
