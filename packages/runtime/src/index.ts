@@ -20,6 +20,7 @@ export interface DefaultEnv {
   DECO_CHAT_API_TOKEN?: string;
   DECO_CHAT_MEMORY_DB_URL?: string;
   DECO_CHAT_MEMORY_DB_AUTH_TOKEN?: string;
+  DECO_CHAT_MEMORY: LibSQLStore;
   [key: string]: unknown;
 }
 
