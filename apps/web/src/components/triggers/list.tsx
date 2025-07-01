@@ -20,12 +20,12 @@ import { TriggerToggle } from "./trigger-toggle.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { useAgents } from "@deco/sdk";
+import { useViewMode } from "@deco/ui/hooks/use-view-mode.ts";
 
 const SORTABLE_KEYS = ["title", "type", "agent", "author"] as const;
 
 type SortKey = typeof SORTABLE_KEYS[number];
 type SortDirection = "asc" | "desc";
-type ViewMode = "table" | "cards";
 
 function ListTriggersSkeleton() {
   return (
@@ -106,7 +106,7 @@ export function ListTriggers() {
 function ListTriggersSuspended() {
   const { data, isLoading } = useListTriggers();
   const [search, setSearch] = useState("");
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [viewMode, setViewMode] = useViewMode("triggers");
 
   const triggers = (data?.triggers || []) as z.infer<
     typeof TriggerOutputSchema
