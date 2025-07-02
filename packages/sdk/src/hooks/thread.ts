@@ -9,11 +9,11 @@ import {
 } from "@tanstack/react-query";
 import type { UIMessage } from "ai";
 import { useCallback, useEffect } from "react";
-import { WELL_KNOWN_AGENT_IDS } from "../constants.ts";
 import {
   getThread,
   getThreadMessages,
   listThreads,
+  type Thread,
   type ThreadFilterOptions,
   type ThreadList,
   updateThreadMetadata,
@@ -21,6 +21,10 @@ import {
 } from "../crud/thread.ts";
 import { KEYS } from "./api.ts";
 import { useSDK } from "./store.tsx";
+import { MCPClient } from "../fetcher.ts";
+
+// Minimum delay to prevent UI flickering during title generation
+const TITLE_GENERATION_MIN_DELAY_MS = 2000;
 
 /** Hook for fetching thread details */
 export const useThread = (threadId: string) => {
@@ -65,6 +69,45 @@ export const useThreads = (partialOptions: ThreadFilterOptions = {}) => {
     ...partialOptions,
   };
   const key = KEYS.THREADS(workspace, options);
+  const updateThreadTitle = useUpdateThreadTitle();
+
+  const generateThreadTitle = useCallback(
+    async (
+      { firstMessage: _firstMessage, threadId }: {
+        firstMessage: string;
+        threadId: string;
+      },
+    ) => {
+      const [result] = await Promise.all([
+        MCPClient
+          .forWorkspace(workspace)
+          .AI_GENERATE({
+            // This can break if the workspace disabled 4.1-nano.
+            // TODO: Implement something like a model price/quality/speed hinting system.
+            model: "openai:gpt-4.1-nano",
+            messages: [{
+              role: "user",
+              content:
+                `Generate a title for the thread that started with the following user message:
+                <Rule>Make it short and concise</Rule>
+                <Rule>Make it a single sentence</Rule>
+                <Rule>Keep the same language as the user message</Rule>
+                <Rule>Return ONLY THE TITLE! NO OTHER TEXT!</Rule>
+
+                <UserMessage>
+                  ${_firstMessage}
+                </UserMessage>`,
+            }],
+          }),
+        // ensure at least 2 seconds delay to avoid UI flickering.
+        new Promise((resolve) =>
+          setTimeout(resolve, TITLE_GENERATION_MIN_DELAY_MS)
+        ),
+      ]);
+      updateThreadTitle.mutate({ threadId, title: result.text, stream: true });
+    },
+    [updateThreadTitle, workspace],
+  );
 
   const effect = useCallback(
     ({ messages, threadId, agentId }: {
@@ -76,7 +119,7 @@ export const useThreads = (partialOptions: ThreadFilterOptions = {}) => {
       client.setQueryData<Awaited<ReturnType<typeof listThreads>>>(
         key,
         (oldData) => {
-          const exists = oldData?.threads.find((thread) =>
+          const exists = oldData?.threads.find((thread: Thread) =>
             thread.id === threadId
           );
 
@@ -84,9 +127,11 @@ export const useThreads = (partialOptions: ThreadFilterOptions = {}) => {
             return oldData;
           }
 
-          const newTitle = typeof messages[0]?.content === "string"
+          const temporaryTitle = typeof messages[0]?.content === "string"
             ? messages[0].content.slice(0, 20)
             : "New chat";
+
+          generateThreadTitle({ firstMessage: messages[0].content, threadId });
 
           const updated = {
             pagination: {
@@ -100,7 +145,7 @@ export const useThreads = (partialOptions: ThreadFilterOptions = {}) => {
               ...(oldData?.threads ?? []),
               {
                 id: threadId,
-                title: newTitle,
+                title: temporaryTitle,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 resourceId: agentId,
@@ -109,22 +154,11 @@ export const useThreads = (partialOptions: ThreadFilterOptions = {}) => {
             ],
           };
 
-          // When uniqueyById, we should remove the agentId from the thread metadata
-          if (
-            options.uniqueByAgentId && !(agentId in WELL_KNOWN_AGENT_IDS)
-          ) {
-            updated.threads = updated.threads.filter(
-              (thread, index) =>
-                thread.metadata?.agentId !== agentId ||
-                index === updated.threads.length - 1,
-            );
-          }
-
           return updated;
         },
       );
     },
-    [client, key, options.uniqueByAgentId],
+    [client, key],
   );
 
   useMessagesSentEffect(effect);
@@ -135,37 +169,86 @@ export const useThreads = (partialOptions: ThreadFilterOptions = {}) => {
   });
 };
 
-export const useUpdateThreadTitle = (threadId: string) => {
+export interface UpdateThreadTitleParams {
+  threadId: string;
+  title: string;
+  stream?: boolean;
+}
+
+export const useUpdateThreadTitle = () => {
   const { workspace } = useSDK();
   const client = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newTitle: string) => {
-      return await updateThreadTitle(workspace, threadId, newTitle);
+    mutationFn: async ({ threadId, title }: UpdateThreadTitleParams) => {
+      return await updateThreadTitle(workspace, threadId, title);
     },
-    onMutate: async (newTitle: string) => {
+    onMutate: async ({ threadId, title, stream }: UpdateThreadTitleParams) => {
       // Cancel all threads queries to prevent race conditions
       await client.cancelQueries({
         queryKey: KEYS.THREADS(workspace),
       });
 
-      // Optimistically update all threads queries that contain this thread
-      client.setQueriesData(
-        { queryKey: KEYS.THREADS(workspace) },
-        (oldData: ThreadList | undefined) => {
-          if (!oldData?.threads) return oldData;
+      if (stream) {
+        // Animate title character by character
+        let currentIndex = 0;
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-          return {
-            ...oldData,
-            threads: oldData.threads.map((thread) =>
-              thread.id === threadId ? { ...thread, title: newTitle } : thread
-            ),
-          };
-        },
-      );
+        const animateTitle = () => {
+          if (currentIndex <= title.length) {
+            const partialTitle = title.slice(0, currentIndex);
+
+            client.setQueriesData(
+              { queryKey: KEYS.THREADS(workspace) },
+              (oldData: ThreadList | undefined) => {
+                if (!oldData?.threads) return oldData;
+
+                return {
+                  ...oldData,
+                  threads: oldData.threads.map((thread) =>
+                    thread.id === threadId
+                      ? { ...thread, title: partialTitle }
+                      : thread
+                  ),
+                };
+              },
+            );
+
+            currentIndex++;
+            if (currentIndex <= title.length) {
+              timeoutId = setTimeout(animateTitle, 20);
+            }
+          }
+        };
+
+        // Start animation
+        animateTitle();
+
+        // Return cleanup function
+        return () => {
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
+        };
+      } else {
+        // Optimistically update all threads queries that contain this thread
+        client.setQueriesData(
+          { queryKey: KEYS.THREADS(workspace) },
+          (oldData: ThreadList | undefined) => {
+            if (!oldData?.threads) return oldData;
+
+            return {
+              ...oldData,
+              threads: oldData.threads.map((thread) =>
+                thread.id === threadId ? { ...thread, title } : thread
+              ),
+            };
+          },
+        );
+      }
     },
     // deno-lint-ignore no-explicit-any
-    onError: (_: any, __: any, context: any) => {
+    onError: (_: any, __: UpdateThreadTitleParams, context: any) => {
       // If the mutation fails, restore all previous queries data
       if (context?.previousQueriesData) {
         context.previousQueriesData.forEach(
@@ -175,7 +258,7 @@ export const useUpdateThreadTitle = (threadId: string) => {
         );
       }
     },
-    onSettled: () => {
+    onSettled: (_, __, { threadId }: UpdateThreadTitleParams) => {
       // Always refetch after error or success to ensure data is in sync
       client.invalidateQueries({ queryKey: KEYS.THREAD(workspace, threadId) });
       client.invalidateQueries({
