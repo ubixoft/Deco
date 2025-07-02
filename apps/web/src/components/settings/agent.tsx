@@ -34,7 +34,7 @@ import { useAgentSettingsForm } from "../agent/edit.tsx";
 import { ModelSelector } from "../chat/model-selector.tsx";
 import { AgentAvatar } from "../common/avatar/index.tsx";
 import { useCurrentTeam } from "../sidebar/team-selector.tsx";
-import { Channels } from "./channels.tsx";
+// import { Channels } from "./channels.tsx";
 
 const AVATAR_FILE_PATH = "assets/avatars";
 
@@ -399,7 +399,7 @@ function SettingsTab() {
             />
 
             <div className="border-t pt-6">
-              <Channels />
+              {/* <Channels /> */}
             </div>
           </form>
         </div>
