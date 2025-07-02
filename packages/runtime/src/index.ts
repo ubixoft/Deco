@@ -5,22 +5,24 @@ import type {
   ScheduledController,
 } from "@cloudflare/workers-types";
 import { createIntegrationBinding, workspaceClient } from "./bindings.ts";
-import { MCPClient } from "./mcp.ts";
+import { createMCPServer, type CreateMCPServerOptions } from "./mastra.ts";
+import { MCPClient, type QueryResult } from "./mcp.ts";
 export {
   createMCPFetchStub,
   type CreateStubAPIOptions,
   type ToolBinder,
 } from "./mcp.ts";
 
-import { LibSQLStore } from "@mastra/libsql";
-
 export interface DefaultEnv {
+  DECO_CHAT_API_URL?: string;
   DECO_CHAT_WORKSPACE: string;
   DECO_CHAT_BINDINGS: string;
   DECO_CHAT_API_TOKEN?: string;
-  DECO_CHAT_MEMORY_DB_URL?: string;
-  DECO_CHAT_MEMORY_DB_AUTH_TOKEN?: string;
-  DECO_CHAT_MEMORY: LibSQLStore;
+  DECO_CHAT_WORKSPACE_DB: {
+    query: (
+      params: { sql: string; params: string[] },
+    ) => Promise<{ result: QueryResult[] }>;
+  };
   [key: string]: unknown;
 }
 
@@ -55,7 +57,7 @@ export const WorkersMCPBindings = {
 
 export interface UserDefaultExport<
   TUserEnv = Record<string, unknown>,
-> {
+> extends CreateMCPServerOptions {
   queue?: (
     batch: MessageBatch,
     env: TUserEnv,
@@ -97,12 +99,17 @@ const creatorByType: CreatorByType = {
 };
 
 const withDefaultBindings = (env: DefaultEnv) => {
+  const client = workspaceClient(env);
   env["DECO_CHAT_API"] = MCPClient;
-  env["DECO_CHAT_WORKSPACE_API"] = workspaceClient(env);
-  env["DECO_CHAT_MEMORY"] = new LibSQLStore({
-    url: env.DECO_CHAT_MEMORY_DB_URL ?? ":memory:",
-    authToken: env.DECO_CHAT_MEMORY_DB_AUTH_TOKEN,
-  });
+  env["DECO_CHAT_WORKSPACE_API"] = client;
+  env["DECO_CHAT_WORKSPACE_DB"] = {
+    query: ({ sql, params }) => {
+      return client.DATABASES_RUN_SQL({
+        sql,
+        params,
+      });
+    },
+  };
 };
 
 export const withBindings = <TEnv>(_env: TEnv): TEnv => {
@@ -124,6 +131,7 @@ export const withBindings = <TEnv>(_env: TEnv): TEnv => {
 export const withRuntime = <TEnv>(
   userFns: UserDefaultExport<TEnv>,
 ): UserDefaultExport<TEnv> => {
+  const server = createMCPServer(userFns);
   return {
     ...userFns,
     ...userFns.email
@@ -148,13 +156,14 @@ export const withRuntime = <TEnv>(
         },
       }
       : {},
-    ...(userFns.fetch
-      ? {
-        fetch: (req: Request, env: TEnv, ctx: ExecutionContext) => {
-          return userFns.fetch!(req, withBindings(env), ctx);
-        },
+    fetch: (req: Request, env: TEnv, ctx: ExecutionContext) => {
+      const url = new URL(req.url);
+      if (url.pathname === "/mcp") {
+        return server(req, env, ctx);
       }
-      : {}),
+      return userFns.fetch?.(req, withBindings(env), ctx) ||
+        new Response("Not found", { status: 404 });
+    },
     ...userFns.queue
       ? {
         queue: (batch: MessageBatch, env: TEnv, ctx: ExecutionContext) => {

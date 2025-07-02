@@ -4,44 +4,8 @@ import { type AppContext, getEnv } from "../context.ts";
 import { assertsDomainOwnership } from "./custom-domains.ts";
 import { polyfill } from "./fs-polyfill.ts";
 import { isDoBinding, migrationDiff } from "./migrations.ts";
-import { WorkspaceMemory } from "../../memory/memory.ts";
-import type { SettingGetResponse } from "cloudflare/resources/workers-for-platforms/dispatch/namespaces/scripts";
 
 const METADATA_FILE_NAME = "metadata.json";
-async function memoryDatabase(c: AppContext) {
-  assertHasWorkspace(c);
-  return await WorkspaceMemory.ref({
-    workspace: c.workspace.value,
-    tursoAdminToken: c.envVars.TURSO_ADMIN_TOKEN,
-    tursoOrganization: c.envVars.TURSO_ORGANIZATION,
-  });
-}
-
-const DECO_CHAT_MEMORY_DB_URL = "DECO_CHAT_MEMORY_DB_URL";
-const DECO_CHAT_MEMORY_DB_AUTH_TOKEN = "DECO_CHAT_MEMORY_DB_AUTH_TOKEN";
-
-async function memoryBindings(
-  c: AppContext,
-  bindings: SettingGetResponse["bindings"],
-): Promise<Record<string, string>> {
-  const found: Record<string, boolean> = {};
-  for (const binding of bindings ?? []) {
-    if (
-      binding.type === "secret_text"
-    ) {
-      found[binding.name] = true;
-    }
-  }
-  if (found[DECO_CHAT_MEMORY_DB_URL] && found[DECO_CHAT_MEMORY_DB_AUTH_TOKEN]) {
-    return {};
-  }
-  const { url, authToken } = await memoryDatabase(c);
-  return {
-    [DECO_CHAT_MEMORY_DB_URL]: url,
-    [DECO_CHAT_MEMORY_DB_AUTH_TOKEN]: authToken,
-  };
-}
-
 export interface MigrationBase {
   tag: string;
 }
@@ -207,48 +171,10 @@ export async function deployToCloudflare(
 ): Promise<DeployResult> {
   assertHasWorkspace(c);
   const env = getEnv(c);
-  let envVars = {
+  const envVars = {
     ..._envVars,
     ...vars,
   };
-  const wranglerBindings = [
-    ...kv_namespaces?.map((kv) => ({
-      type: "kv_namespace" as const,
-      name: kv.binding,
-      namespace_id: kv.id,
-    })) ?? [],
-    ...ai ? [{ type: "ai" as const, name: ai.binding }] : [],
-    ...browser ? [{ type: "browser" as const, name: browser.binding }] : [],
-    ...durable_objects?.bindings?.map((binding) => ({
-      type: "durable_object_namespace" as const,
-      name: binding.name,
-      class_name: binding.class_name,
-    })) ?? [],
-    ...queues?.producers?.map((producer) => ({
-      type: "queue" as const,
-      queue_name: producer.queue,
-      name: producer.binding,
-    })) ?? [],
-    ...workflows?.map((workflow) => ({
-      type: "workflow" as const,
-      name: workflow.binding,
-      workflow_name: workflow.name,
-      class_name: workflow.class_name,
-      script_name: workflow.script_name,
-    })) ?? [],
-    ...d1_databases?.map((d1) => ({
-      type: "d1" as const,
-      name: d1.binding,
-      id: d1.database_id!,
-    })) ?? [],
-    ...hyperdrive?.map((hd) => ({
-      type: "hyperdrive" as const,
-      name: hd.binding,
-      id: hd.id,
-      localConnectionString: hd.localConnectionString,
-    })) ?? [],
-  ];
-
   const zoneId = env.CF_ZONE_ID;
   if (!zoneId) {
     throw new Error("CF_ZONE_ID is not set");
@@ -290,17 +216,48 @@ export async function deployToCloudflare(
       bindings: [],
     }));
 
-  const memoryBindingsEnvVars = await memoryBindings(c, bindings);
-
-  envVars = {
-    ...envVars,
-    ...memoryBindingsEnvVars,
-  };
-
   const doMigrations = migrationDiff(
     migrations ?? [],
     (bindings ?? []).filter(isDoBinding),
   );
+
+  const wranglerBindings = [
+    ...kv_namespaces?.map((kv) => ({
+      type: "kv_namespace" as const,
+      name: kv.binding,
+      namespace_id: kv.id,
+    })) ?? [],
+    ...ai ? [{ type: "ai" as const, name: ai.binding }] : [],
+    ...browser ? [{ type: "browser" as const, name: browser.binding }] : [],
+    ...durable_objects?.bindings?.map((binding) => ({
+      type: "durable_object_namespace" as const,
+      name: binding.name,
+      class_name: binding.class_name,
+    })) ?? [],
+    ...queues?.producers?.map((producer) => ({
+      type: "queue" as const,
+      queue_name: producer.queue,
+      name: producer.binding,
+    })) ?? [],
+    ...workflows?.map((workflow) => ({
+      type: "workflow" as const,
+      name: workflow.binding,
+      workflow_name: workflow.name,
+      class_name: workflow.class_name,
+      script_name: workflow.script_name,
+    })) ?? [],
+    ...d1_databases?.map((d1) => ({
+      type: "d1" as const,
+      name: d1.binding,
+      id: d1.database_id!,
+    })) ?? [],
+    ...hyperdrive?.map((hd) => ({
+      type: "hyperdrive" as const,
+      name: hd.binding,
+      id: hd.id,
+      localConnectionString: hd.localConnectionString,
+    })) ?? [],
+  ];
 
   const metadata = {
     main_module: mainModule,
