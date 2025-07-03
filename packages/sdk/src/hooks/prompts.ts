@@ -8,6 +8,7 @@ import {
   type CreatePromptInput,
   deletePrompt,
   getPrompt,
+  getPromptVersions,
   listPrompts,
   searchPrompts,
   updatePrompt,
@@ -74,6 +75,9 @@ export function useUpdatePrompt() {
       client.invalidateQueries({
         queryKey: KEYS.PROMPTS(workspace).slice(0, 2),
       });
+      client.invalidateQueries({
+        queryKey: KEYS.PROMPT_VERSIONS(workspace, result.id),
+      });
       client.setQueryData(["prompt", result.id], result);
     },
   });
@@ -104,5 +108,18 @@ export function useSearchPrompts(
       searchPrompts(workspace, { query, limit, offset }, { signal }),
     retry: (failureCount, error) =>
       error instanceof InternalServerError && failureCount < 2,
+  });
+}
+
+export function usePromptVersions(
+  id: string,
+  limit: number = 10,
+  offset: number = 0,
+) {
+  const { workspace } = useSDK();
+  return useSuspenseQuery({
+    queryKey: KEYS.PROMPT_VERSIONS(workspace, id),
+    queryFn: ({ signal }) =>
+      getPromptVersions(workspace, { id, limit, offset }, { signal }),
   });
 }

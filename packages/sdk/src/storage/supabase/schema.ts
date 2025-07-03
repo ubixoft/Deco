@@ -711,6 +711,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      deco_chat_prompts_versions: {
+        Row: {
+          content: string | null;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          version_name: string | null;
+          name: string | null;
+          prompt_id: string;
+        };
+        Insert: {
+          content?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          version_name?: string | null;
+          name?: string | null;
+          prompt_id: string;
+        };
+        Update: {
+          content?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          version_name?: string | null;
+          name?: string | null;
+          prompt_id?: string;
+        };
+        Relationships: [];
+      };
       deco_chat_trigger_runs: {
         Row: {
           id: string;

@@ -128,6 +128,11 @@ export const KEYS = {
     limit,
     offset,
   ],
+  PROMPT_VERSIONS: (workspace: Workspace, id: string) => [
+    "prompt-versions",
+    workspace,
+    id,
+  ],
   WHATSAPP_USER: (workspace: Workspace, phone: string) => [
     "whatsapp-user",
     workspace,

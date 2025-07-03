@@ -18,34 +18,26 @@ import {
   AlertDialogTitle,
 } from "@deco/ui/components/alert-dialog.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
-import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@deco/ui/components/tooltip.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useBlocker, useParams } from "react-router";
 import { trackEvent } from "../../../hooks/analytics.ts";
-import { ChatInput } from "../../chat/chat-input.tsx";
-import { ChatMessages } from "../../chat/chat-messages.tsx";
 import { ChatProvider } from "../../chat/context.tsx";
 import type { Tab } from "../../dock/index.tsx";
+import { togglePanel } from "../../dock/index.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../../layout.tsx";
 import { Context } from "./context.ts";
 import { DetailForm } from "./form.tsx";
-
-function MainChat() {
-  return (
-    <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1 min-h-0">
-        <ChatMessages />
-      </ScrollArea>
-      <div className="p-2">
-        <ChatInput />
-      </div>
-    </div>
-  );
-}
+import HistoryTab from "./history.tsx";
 
 const FORM_TAB: Record<string, Tab> = {
   form: {
@@ -56,12 +48,12 @@ const FORM_TAB: Record<string, Tab> = {
 };
 
 const TABS: Record<string, Tab> = {
-  main: {
-    Component: MainChat,
-    title: "Chat",
-    initialOpen: "left",
-  },
   ...FORM_TAB,
+  history: {
+    Component: HistoryTab,
+    title: "History",
+    initialOpen: false,
+  },
 };
 
 export default function Page() {
@@ -83,15 +75,22 @@ export default function Page() {
   const { data: agent } = useAgent(agentId);
   const updateAgentCache = useUpdateAgentCache();
 
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt>(prompt);
+  const [promptVersion, setPromptVersion] = useState<string | null>(null);
+
   const form = useForm<Prompt>({
     resolver: zodResolver(PromptValidationSchema),
     defaultValues: {
-      id: prompt.id,
-      name: prompt.name,
-      description: prompt.description,
-      content: prompt.content,
+      id: selectedPrompt.id,
+      name: selectedPrompt.name,
+      description: selectedPrompt.description,
+      content: selectedPrompt.content,
     },
   });
+
+  useEffect(() => {
+    form.reset(selectedPrompt);
+  }, [selectedPrompt]);
 
   const updatePrompt = useUpdatePrompt();
   const isMutating = updatePrompt.isPending;
@@ -134,6 +133,17 @@ export default function Page() {
         data,
       });
     }
+  };
+
+  const handleRestoreVersion = async () => {
+    await updatePrompt.mutateAsync({
+      id: prompt.id,
+      data: {
+        name: selectedPrompt.name,
+        content: selectedPrompt.content,
+      },
+    });
+    setPromptVersion(null);
   };
 
   useEffect(() => {
@@ -179,49 +189,91 @@ export default function Page() {
         uiOptions={{ showEditAgent: false }}
       >
         <Context.Provider
-          value={{ form, prompt, onSubmit }}
+          value={{
+            form,
+            prompt: selectedPrompt,
+            setSelectedPrompt,
+            onSubmit,
+            promptVersion,
+            setPromptVersion,
+          }}
         >
           <PageLayout
             hideViewsButton
             tabs={prompt.readonly ? FORM_TAB : TABS}
             actionButtons={
-              <div
-                className={cn(
-                  "flex items-center gap-2",
-                  "transition-opacity",
-                  numberOfChanges > 0 ? "opacity-100" : "opacity-0",
-                )}
-              >
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="text-foreground"
-                  onClick={handleDiscard}
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        togglePanel({
+                          id: "history",
+                          component: "history",
+                          title: "History",
+                          position: { direction: "right" },
+                        });
+                      }}
+                    >
+                      <Icon name="history" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Version history
+                  </TooltipContent>
+                </Tooltip>
+                <div
+                  className={cn(
+                    promptVersion ? "opacity-100" : "opacity-0 w-0",
+                  )}
                 >
-                  Discard
-                </Button>
-                <Button
-                  className="bg-primary-light text-primary-dark hover:bg-primary-light/90 gap-2"
-                  disabled={!numberOfChanges ||
-                    prompt.readonly}
-                  onClick={() => {
-                    onSubmit(form.getValues());
-                  }}
+                  <Button
+                    variant="default"
+                    onClick={handleRestoreVersion}
+                  >
+                    Restore version
+                  </Button>
+                </div>
+                <div
+                  className={cn(
+                    "flex items-center gap-2",
+                    "transition-opacity",
+                    numberOfChanges > 0 ? "opacity-100" : "opacity-0 w-0",
+                  )}
                 >
-                  {isMutating
-                    ? (
-                      <>
-                        <Spinner size="xs" />
-                        <span>Saving...</span>
-                      </>
-                    )
-                    : (
-                      <span>
-                        Save {numberOfChanges}{" "}
-                        change{numberOfChanges > 1 ? "s" : ""}
-                      </span>
-                    )}
-                </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="text-foreground"
+                    onClick={handleDiscard}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    className="bg-primary-light text-primary-dark hover:bg-primary-light/90 gap-2"
+                    disabled={!numberOfChanges ||
+                      prompt.readonly}
+                    onClick={() => {
+                      onSubmit(form.getValues());
+                    }}
+                  >
+                    {isMutating
+                      ? (
+                        <>
+                          <Spinner size="xs" />
+                          <span>Saving...</span>
+                        </>
+                      )
+                      : (
+                        <span>
+                          Save {numberOfChanges}{" "}
+                          change{numberOfChanges > 1 ? "s" : ""}
+                        </span>
+                      )}
+                  </Button>
+                </div>
               </div>
             }
             breadcrumb={
