@@ -27,6 +27,7 @@ interface Props {
   placeholder?: string;
   className?: string;
   enableMentions?: boolean;
+  hideMentionsLabel?: boolean;
   excludeIds?: string[];
 }
 
@@ -40,6 +41,7 @@ export default function RichTextArea({
   placeholder,
   className,
   enableMentions = false,
+  hideMentionsLabel = false,
   excludeIds = [],
 }: Props) {
   const hadUserInteraction = useRef(false);
@@ -111,7 +113,7 @@ export default function RichTextArea({
 
   return (
     <div className="h-full flex flex-col">
-      {enableMentions && (
+      {enableMentions && !hideMentionsLabel && (
         <div className="rounded-full flex gap-1 bg-secondary text-muted-foreground w-fit items-center px-1.5 py-0.5 mb-2.5 select-none">
           <Icon name="info" size={10} />
           <p className="text-xs font-medium">
