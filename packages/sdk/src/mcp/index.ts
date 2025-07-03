@@ -155,6 +155,7 @@ export const WORKSPACE_TOOLS = [
 export const AGENT_TOOLS = [
   agentAPI.agentGenerateText,
   agentAPI.agentGenerateObject,
+  agentAPI.agentListen,
 ] as const;
 
 export const AI_TOOLS = [
