@@ -17,6 +17,8 @@ import {
   deployToCloudflare,
   type WranglerConfig,
 } from "./deployment.ts";
+import { MCPClient } from "../index.ts";
+import * as uuid from "uuid";
 
 const SCRIPT_FILE_NAME = "script.mjs";
 export const HOSTING_APPS_DOMAIN = ".deco.page";
@@ -543,6 +545,24 @@ Important Notes:
       wranglerConfig,
       filesRecord,
     );
+
+    const client = MCPClient.forContext(c);
+    const appUniqueInstallationId = `${workspace}-${scriptSlug}`;
+    await client.INTEGRATIONS_CREATE({
+      name: `App ${scriptSlug}`,
+      description:
+        `App ${scriptSlug} by deco workers for workspace ${workspace}`,
+      icon:
+        "https://assets.decocache.com/mcp/09e44283-f47d-4046-955f-816d227c626f/app.png",
+      ...wranglerConfig.deco?.integration,
+      id: uuid.v5(appUniqueInstallationId, uuid.v5.URL), // this ensures only one app will be installed per workspace
+      connection: {
+        type: "HTTP",
+        url: `${data.entrypoint}/mcp`,
+      },
+    }).catch((err) => {
+      console.error(err);
+    });
     return {
       entrypoint: data.entrypoint,
       id: data.id,
