@@ -92,8 +92,8 @@ const TranscribeAudioOutputSchema = z.object({
   message: z.string().describe("Status message about the transcription"),
 });
 
-export const TRANSCRIBE_AUDIO = createAgentTool({
-  name: "TRANSCRIBE_AUDIO",
+export const agentListen = createAgentTool({
+  name: "AGENT_LISTEN",
   description:
     "Transcribe audio content to text using OpenAI's Whisper model. " +
     "This tool accepts a URL to an audio file and returns the transcribed text. " +
