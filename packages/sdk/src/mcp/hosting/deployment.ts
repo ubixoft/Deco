@@ -222,6 +222,11 @@ export async function deployToCloudflare(
   );
 
   const wranglerBindings = [
+    ...durable_objects?.bindings?.map((binding) => ({
+      type: "durable_object_namespace" as const,
+      name: binding.name,
+      class_name: binding.class_name,
+    })) ?? [],
     ...kv_namespaces?.map((kv) => ({
       type: "kv_namespace" as const,
       name: kv.binding,
@@ -229,11 +234,6 @@ export async function deployToCloudflare(
     })) ?? [],
     ...ai ? [{ type: "ai" as const, name: ai.binding }] : [],
     ...browser ? [{ type: "browser" as const, name: browser.binding }] : [],
-    ...durable_objects?.bindings?.map((binding) => ({
-      type: "durable_object_namespace" as const,
-      name: binding.name,
-      class_name: binding.class_name,
-    })) ?? [],
     ...queues?.producers?.map((producer) => ({
       type: "queue" as const,
       queue_name: producer.queue,

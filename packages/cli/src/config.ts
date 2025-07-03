@@ -3,8 +3,8 @@
  * Config for Deco workers is stored in the wrangler.toml file, so
  * we're a superset of the wrangler config.
  */
-import { z } from "zod";
 import { parse, stringify } from "smol-toml";
+import { z } from "zod";
 import { readSession } from "./session.ts";
 
 export const CONFIG_FILE = "wrangler.toml";
@@ -29,6 +29,7 @@ const decoConfigSchema = z.object({
   }),
   bindings: z.array(DecoBindingSchema).optional().default([]),
   local: z.boolean().optional().default(false),
+  enable_workflows: z.boolean().optional().default(true),
 });
 
 let local: boolean;
@@ -43,6 +44,16 @@ export type Config = z.infer<typeof decoConfigSchema>;
 
 export interface WranglerConfig {
   [key: string]: unknown;
+  migrations?: {
+    tag: string;
+    new_classes: string[];
+  }[];
+  durable_objects?: {
+    bindings?: {
+      name: string;
+      class_name: string;
+    }[];
+  };
   name?: string;
   deco?: Partial<Config>;
 }
@@ -73,6 +84,42 @@ const readConfigFile = async () => {
     ...decoConfig,
     app: decoConfig.app ?? wranglerConfig.name,
   };
+};
+
+const DECO_CHAT_WORKFLOW_BINDING = {
+  name: "DECO_CHAT_WORKFLOW_DO",
+  class_name: "Workflow",
+};
+export const addWorkflowDO = async () => {
+  const wranglerConfig = await readWranglerConfig();
+  const configPath = getConfigFilePath(Deno.cwd()) ??
+    `${Deno.cwd()}/${CONFIG_FILE}`;
+  const currentDOs = wranglerConfig.durable_objects?.bindings ?? [];
+  const workflowsBindings = {
+    migrations: [
+      ...(wranglerConfig.migrations ?? []).filter((m) =>
+        m.new_classes.includes(DECO_CHAT_WORKFLOW_BINDING.class_name)
+      ),
+      {
+        tag: "v1",
+        new_classes: [DECO_CHAT_WORKFLOW_BINDING.class_name],
+      },
+    ],
+    durable_objects: {
+      bindings: [
+        ...currentDOs.filter((b) => b.name !== DECO_CHAT_WORKFLOW_BINDING.name),
+        DECO_CHAT_WORKFLOW_BINDING,
+      ],
+    },
+  };
+
+  await Deno.writeTextFile(
+    configPath,
+    stringify({
+      ...wranglerConfig,
+      ...(wranglerConfig.deco?.enable_workflows ? workflowsBindings : {}),
+    }),
+  );
 };
 
 /**
