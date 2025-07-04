@@ -185,9 +185,9 @@ async function updateDatabase(
     mappedRoutes.map((
       r,
     ) => [
-      routeKey(r),
-      r,
-    ]),
+        routeKey(r),
+        r,
+      ]),
   );
 
   // 3. Find routes to delete (in current, not in new)
@@ -258,7 +258,7 @@ const createNamespaceOnce = async (c: AppContext) => {
   await cf.workersForPlatforms.dispatch.namespaces.create({
     name: env.CF_DISPATCH_NAMESPACE,
     account_id: env.CF_ACCOUNT_ID,
-  }).catch(() => {});
+  }).catch(() => { });
 };
 
 // main.ts or main.mjs or main.js or main.cjs
@@ -276,18 +276,41 @@ const DECO_WORKER_RUNTIME_VERSION = "0.2.18";
 export const deployFiles = createTool({
   name: "HOSTING_APP_DEPLOY",
   description:
-    `Deploy multiple TypeScript files that use Deno as runtime for Cloudflare Workers. You must provide a wrangler.toml file matching the Workers for Platforms format. Use 'main_module' instead of 'main', and define bindings using the [[bindings]] array, where each binding is a table specifying its type and properties. To add custom Deco bindings, set type = "MCP" in a binding entry (these will be filtered and handled automatically).
+    `Deploy multiple TypeScript files that use Wrangler for bundling and deployment to Cloudflare Workers. You must provide a package.json file with the necessary dependencies and a wrangler.toml file matching the Workers for Platforms format. Use 'main_module' instead of 'main', and define bindings using the [[bindings]] array, where each binding is a table specifying its type and properties. To add custom Deco bindings, set type = "MCP" in a binding entry (these will be filtered and handled automatically).
 
 Common patterns:
-1. Use a deps.ts file to centralize dependencies:
-   // deps.ts
-   export { default as lodash } from "npm:lodash";
-   export { z } from "npm:zod";
-   export { createClient } from "npm:@supabase/supabase-js";
+1. Use a package.json file to manage dependencies:
+   // package.json
+   {
+     "name": "@deco/workers-example",
+     "private": true,
+     "version": "0.0.0",
+     "type": "module",
+     "scripts": {
+       "dev": "deco dev",
+       "gen": "deco gen > env.gen.ts",
+       "setup": "deno install -Ar -g -n deco jsr:@deco/cli -f",
+       "deploy": "wrangler deploy --dry-run --outdir ./dist && deco deploy ./dist"
+     },
+     "dependencies": {
+       "@cloudflare/workers-types": "^4.20250617.0",
+       "@deco/mcp": "npm:@jsr/deco__mcp@^0.5.6",
+       "@deco/workers-runtime": "npm:@jsr/deco__workers-runtime@^${DECO_WORKER_RUNTIME_VERSION}",
+       "@mastra/core": "0.0.0-support-d1-client-20250701191943",
+       "zod": "^3.25.67"
+     },
+     "devDependencies": {
+       "wrangler": "^4.13.2"
+     },
+     "engines": {
+       "node": ">=20.0.0"
+     }
+   }
 
-2. Import from deps.ts in your files:
+2. Import dependencies directly in your files:
    // main.ts
-   import { lodash, z, createClient } from "./deps.ts";
+   import { z } from "zod";
+   import { withRuntime } from "@deco/workers-runtime";
 
 3. Use wrangler.toml to configure your app:
    // wrangler.toml
@@ -337,16 +360,14 @@ Common patterns:
   name = "MY_BINDING"
   value = "INTEGRATION_ID"
 
-
    # You can add any supported binding type as per Workers for Platforms documentation.
 4. You should always surround the user fetch with the withRuntime function.
 
+import { withRuntime } from "@deco/workers-runtime";
 
-import { withRuntime } from "jsr:@deco/workers-runtime@${DECO_WORKER_RUNTIME_VERSION}";
-import { DeleteModelInput } from '../models/api';
 const { Workflow, ...workerAPIs } = withRuntime({
   fetch: async (request: Request, env: any) => {
-    return new Response("Hello from Deno on Cloudflare!");
+    return new Response("Hello from Cloudflare Workers!");
   }
 })
 export { Workflow };
@@ -358,15 +379,34 @@ For routes, only custom domains are supported. The user must point their DNS to 
 Example of files deployment:
 [
   {
+    "path": "package.json",
+    "content": \`{
+  "name": "@deco/workers-example",
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20250617.0",
+    "@deco/workers-runtime": "npm:@jsr/deco__workers-runtime@^0.2.18",
+    "@mastra/core": "0.0.0-support-d1-client-20250701191943",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "wrangler": "^4.13.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}\`
+  },
+  {
     "path": "main.ts",
     "content": \`
-      import { z } from "./deps.ts";
-      import { withRuntime } from "jsr:@deco/workers-runtime@${DECO_WORKER_RUNTIME_VERSION}";
-
+      import { z } from "zod";
+      import { withRuntime } from "@deco/workers-runtime";
 
       const { Workflow, ...workerAPIs } = withRuntime({
         fetch: async (request: Request, env: any) => {
-          return new Response("Hello from Deno on Cloudflare!");
+          return new Response("Hello from Cloudflare Workers!");
         }
       })
       export { Workflow };
@@ -374,61 +414,55 @@ Example of files deployment:
     \`
   },
   {
-    "path": "deps.ts",
-    "content": \`
-      export { z } from "npm:zod";
-    \`
-  },
-  {
     "path": "wrangler.toml",
     "content": \`
 name = "app-slug"
-   compatibility_date = "2025-06-17"
-   main_module = "main.ts"
-   kv_namespaces = [
-     { binding = "TODO", id = "06779da6940b431db6e566b4846d64db" }
-   ]
-   routes = [
-     { pattern = "my.example.com", custom_domain = true }
-   ]
+compatibility_date = "2025-06-17"
+main_module = "main.ts"
+kv_namespaces = [
+  { binding = "TODO", id = "06779da6940b431db6e566b4846d64db" }
+]
+routes = [
+  { pattern = "my.example.com", custom_domain = true }
+]
 
-   browser = { binding = "MYBROWSER" }
+browser = { binding = "MYBROWSER" }
 
-   [triggers]
-   # Schedule cron triggers:
-   crons = [ "*/3 * * * *", "0 15 1 * *", "59 23 LW * *" ]
+[triggers]
+# Schedule cron triggers:
+crons = [ "*/3 * * * *", "0 15 1 * *", "59 23 LW * *" ]
 
-   # This is required when using the Workflow class
-  [[durable_objects.bindings]]
-  name = "DECO_CHAT_WORKFLOW_DO"
-  class_name = "Workflow"
+# This is required when using the Workflow class
+[[durable_objects.bindings]]
+name = "DECO_CHAT_WORKFLOW_DO"
+class_name = "Workflow"
 
-  [[durable_objects.bindings]]
-  name = "MY_DURABLE_OBJECT"
-  class_name = "MyDurableObject"
+[[durable_objects.bindings]]
+name = "MY_DURABLE_OBJECT"
+class_name = "MyDurableObject"
 
-  # This is required when using the Workflow class
-  [[migrations]]
-  tag = "v1"
-  new_classes = ["Workflow", "MyDurableObject"]
+# This is required when using the Workflow class
+[[migrations]]
+tag = "v1"
+new_classes = ["Workflow", "MyDurableObject"]
 
-  [ai]
-  binding = "AI"
+[ai]
+binding = "AI"
 
-  [[queues.consumers]]
-  queue = "queues-web-crawler"
-  max_batch_timeout = 60
+[[queues.consumers]]
+queue = "queues-web-crawler"
+max_batch_timeout = 60
 
-  [[queues.producers]]
-  queue = "queues-web-crawler"
-  binding = "CRAWLER_QUEUE"
+[[queues.producers]]
+queue = "queues-web-crawler"
+binding = "CRAWLER_QUEUE"
 
-  [[deco.bindings]]
-  type = "MCP"
-  name = "MY_BINDING"
-  value = "INTEGRATION_ID"
-
-  }\`
+[[deco.bindings]]
+type = "MCP"
+name = "MY_BINDING"
+value = "INTEGRATION_ID"
+\`
+  }
 ]
 
 Important Notes:
@@ -437,16 +471,15 @@ Important Notes:
 - Token and workspace can be used to make authenticated requests to the Deco API under https://api.deco.chat
 - Always use Cloudflare Workers syntax with export default and proper fetch handler signature
 - When using template literals inside content strings, escape backticks with a backslash (\\) or use string concatenation (+)
-- Do not use Deno.* namespace functions
-- Use npm: or jsr: specifiers for dependencies
-- No package.json or deno.json needed
-- Dependencies are imported directly using npm: or jsr: specifiers`,
+- You must include a package.json file with the @deco/workers-runtime dependency
+- Dependencies are managed through npm packages in package.json, not npm: or jsr: specifiers
+- Wrangler will handle the bundling process using the dependencies defined in package.json`,
   inputSchema: z.object({
     appSlug: z.string().optional().describe(
       "The slug identifier for the app, if not provided, you should use the wrangler.toml file to determine the slug (using the name field).",
     ),
     files: z.array(FileSchema).describe(
-      "An array of files with their paths and contents. Must include main.ts as entrypoint",
+      "An array of files with their paths and contents. Must include main.ts as entrypoint and package.json for dependencies",
     ),
     envVars: z.record(z.string(), z.string()).optional().describe(
       "An optional object of environment variables to be set on the worker",
@@ -480,8 +513,7 @@ Important Notes:
     );
     if (!entrypoint) {
       throw new UserInputError(
-        `Entrypoint not found in files. Entrypoint must be one of: ${
-          [...new Set(entrypoints)].join(", ")
+        `Entrypoint not found in files. Entrypoint must be one of: ${[...new Set(entrypoints)].join(", ")
         }`,
       );
     }
