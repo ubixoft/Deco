@@ -1,4 +1,3 @@
-import { Agent } from "@mastra/core/agent";
 import { createLLMInstance, getLLMConfig } from "@deco/ai/agent/llm";
 import { convertToAIMessage } from "@deco/ai/agent/ai-message";
 import { z } from "zod";
@@ -16,7 +15,7 @@ import {
 import { InternalServerError, SupabaseLLMVault } from "../index.ts";
 import { getPlan } from "../wallet/api.ts";
 import type { Transaction } from "../wallet/client.ts";
-import type { LanguageModelUsage } from "ai";
+import { generateText, type LanguageModelUsage } from "ai";
 import type { Plan } from "../../plan.ts";
 
 const createLLMUsageTransaction = (opts: {
@@ -170,12 +169,6 @@ export const aiGenerate = createTool({
       envs: c.envVars as Record<string, string>,
     });
 
-    const tempAgent = new Agent({
-      name: "AI Gateway",
-      instructions: input.instructions || "You are a helpful AI assistant.",
-      model: llm,
-    });
-
     const aiMessages = await Promise.all(
       input.messages.map((msg) =>
         convertToAIMessage({
@@ -183,12 +176,13 @@ export const aiGenerate = createTool({
             ...msg,
             id: msg.id || crypto.randomUUID(),
           },
-          agent: tempAgent,
         })
       ),
     );
 
-    const result = await tempAgent.generate(aiMessages, {
+    const result = await generateText({
+      model: llm,
+      messages: aiMessages,
       maxTokens: input.maxTokens,
     });
 

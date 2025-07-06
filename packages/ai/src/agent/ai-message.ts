@@ -8,9 +8,12 @@ export async function convertToAIMessage({
   agent,
 }: {
   message: AIMessage;
-  agent: MastraAgent;
+  agent?: MastraAgent;
 }): Promise<Message> {
   if (isAudioMessage(message)) {
+    if (!agent) {
+      throw new Error("Agent is required for audio messages");
+    }
     const transcription = await transcribeBase64Audio({
       audio: message.audioBase64,
       agent,
