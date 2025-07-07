@@ -414,9 +414,6 @@ export function GeneralSettings() {
       <div className="container h-full max-w-7xl text-foreground">
         <div className="h-full overflow-auto py-20 md:px-[120px]">
           <div className="flex flex-col gap-6 w-full">
-            <div className="w-full hidden md:block">
-              <h2 className="text-2xl">General</h2>
-            </div>
             <div className="max-w-2xl mx-auto space-y-8">
               <Form {...form}>
                 <form
@@ -437,12 +434,14 @@ export function GeneralSettings() {
                               onClick={() => fileInputRef.current?.click()}
                             >
                               <Avatar
+                                shape="square"
                                 fallback={currentTeamName}
                                 url={localAvatarUrl || avatarUrl}
                                 objectFit="contain"
-                                className="w-24 h-24 border border-border group-hover:opacity-50 transition-opacity rounded-xl p-1"
+                                size="2xl"
+                                className="group-hover:opacity-50 transition-opacity"
                               />
-                              <div className="absolute top-0 left-0 w-24 h-24 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute top-0 left-0 w-20 h-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Icon
                                   name="upload"
                                   size={32}

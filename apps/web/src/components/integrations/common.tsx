@@ -1,10 +1,7 @@
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { cn } from "@deco/ui/lib/utils.ts";
-import { useFile } from "@deco/sdk";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
-import { Avatar } from "../common/avatar/index.tsx";
+import { IntegrationAvatar } from "../common/avatar/integration.tsx";
 import { Suspense } from "react";
-import { isFilePath } from "../../utils/path.ts";
 import {
   Tooltip,
   TooltipContent,
@@ -14,65 +11,23 @@ import { Badge } from "@deco/ui/components/badge.tsx";
 
 export interface IntegrationIconProps {
   icon?: string;
+  name?: string;
   className?: string;
+  size?: "xs" | "sm" | "base" | "lg" | "xl" | "2xl" | "3xl";
 }
 
-export function IntegrationIcon({ icon, className }: IntegrationIconProps) {
-  const fallback = (
-    <Icon name="conversion_path" className="text-muted-foreground" />
-  );
-
-  const size = "w-16 h-16";
-  const rounded = "rounded-xl";
-
+export function IntegrationIcon(
+  { icon, name, className, size = "base" }: IntegrationIconProps,
+) {
   return (
-    <Suspense
-      fallback={
-        <Skeleton
-          className={cn(rounded, size, "border border-border", className)}
-        />
-      }
-    >
-      <div
-        className={cn(
-          rounded,
-          size,
-          "relative flex items-center justify-center overflow-hidden border border-border",
-          className,
-        )}
-      >
-        {icon && isFilePath(icon)
-          ? <FileAvatar path={icon} fallback={fallback} />
-          : icon
-          ? (
-            <Avatar
-              url={icon}
-              fallback={fallback}
-              fallbackClassName="!bg-transparent"
-              className={cn("w-full h-full rounded-lg", className)}
-              objectFit="contain"
-            />
-          )
-          : fallback}
-      </div>
+    <Suspense fallback={<Skeleton className={className} />}>
+      <IntegrationAvatar
+        url={icon}
+        size={size}
+        fallback={name}
+        className={className}
+      />
     </Suspense>
-  );
-}
-
-function FileAvatar({ path, fallback }: {
-  path: string;
-  fallback: React.ReactNode;
-}) {
-  const { data: fileUrl } = useFile(path);
-
-  return (
-    <Avatar
-      url={typeof fileUrl === "string" ? fileUrl : undefined}
-      fallback={fallback}
-      fallbackClassName="!bg-transparent"
-      className={cn("w-full h-full", "rounded-lg")}
-      objectFit="contain"
-    />
   );
 }
 

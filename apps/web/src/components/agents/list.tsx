@@ -48,7 +48,7 @@ import { useLocalStorage } from "../../hooks/use-local-storage.ts";
 import { useNavigateWorkspace } from "../../hooks/use-navigate-workspace.ts";
 import { getPublicChatLink } from "../agent/chats.tsx";
 import { AgentVisibility } from "../common/agent-visibility.tsx";
-import { AgentAvatar, Avatar } from "../common/avatar/index.tsx";
+import { AgentAvatar } from "../common/avatar/agent.tsx";
 import { EmptyState } from "../common/empty-state.tsx";
 import { ListPageHeader } from "../common/list-page-header.tsx";
 import { Table } from "../common/table/index.tsx";
@@ -102,7 +102,7 @@ function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
     return null;
   }
 
-  const icon = integration.icon || "icon://conversion_path";
+  const icon = integration.icon || "icon://linked_services";
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -115,10 +115,11 @@ function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
           }}
           asChild
         >
-          <div className="w-8 h-8 flex items-center justify-center border border-input rounded-lg overflow-hidden">
+          <div className="w-8 h-8 flex items-center justify-center">
             <IntegrationIcon
               icon={icon}
-              className="h-full w-full border-none rounded-none"
+              size="xs"
+              name={integration.name}
             />
           </div>
         </TooltipTrigger>
@@ -137,7 +138,7 @@ function IntegrationBadges({ agent, max }: { agent: Agent; max?: number }) {
     .slice(0, max ?? Infinity);
 
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div className="flex gap-0 flex-wrap">
       {integrations.map(([toolSetId]) => (
         <ErrorBoundary key={toolSetId} fallback={null}>
           <Suspense fallback={null}>
@@ -275,13 +276,11 @@ function Card({ agent }: { agent: Agent }) {
       <CardContent className="gap-4 flex flex-col flex-grow">
         <div className="flex flex-col gap-3 w-full">
           <div className="relative w-full">
-            <div className="h-12 w-12 flex justify-center overflow-hidden rounded-lg shadow-sm">
-              <AgentAvatar
-                name={agent.name}
-                avatar={agent.avatar}
-                className="h-full w-full rounded-lg"
-              />
-            </div>
+            <AgentAvatar
+              url={agent.avatar}
+              fallback={agent.name}
+              size="lg"
+            />
             <div
               className="absolute top-0 right-0"
               onClick={(e) => e.stopPropagation()}
@@ -349,10 +348,10 @@ function TableView({ agents }: {
       header: "Name",
       render: (agent: Agent) => (
         <div className="flex items-center gap-2">
-          <Avatar
+          <AgentAvatar
             url={agent.avatar}
             fallback={agent.name.substring(0, 2)}
-            className="h-8 w-8 rounded-lg"
+            size="sm"
           />
           <span className="font-medium">{agent.name}</span>
         </div>

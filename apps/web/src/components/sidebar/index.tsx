@@ -48,7 +48,7 @@ import { trackEvent } from "../../hooks/analytics.ts";
 import { useUser } from "../../hooks/use-user.ts";
 import { useWorkspaceLink } from "../../hooks/use-navigate-workspace.ts";
 import { useFocusChat } from "../agents/hooks.ts";
-import { AgentAvatar } from "../common/avatar/index.tsx";
+import { AgentAvatar } from "../common/avatar/agent.tsx";
 import { groupThreadsByDate } from "../threads/index.tsx";
 import { SidebarFooter } from "./footer.tsx";
 import { Header as SidebarHeader } from "./header.tsx";
@@ -290,7 +290,7 @@ function SidebarThreadItem(
               asChild
               isActive={isActive}
               tooltip={thread.title}
-              className="h-9 w-full pr-8"
+              className="h-9 w-full -ml-1 pr-8 gap-3"
             >
               {isEditing
                 ? (
@@ -319,23 +319,12 @@ function SidebarThreadItem(
                     to={buildThreadUrl(thread)}
                     onClick={() => onThreadClick(thread)}
                   >
-                    {agent
-                      ? (
-                        <AgentAvatar
-                          name={agent.name}
-                          avatar={agent.avatar}
-                          className="h-4 w-4 rounded-sm"
-                        />
-                      )
-                      : (
-                        <div className="h-4 w-4 min-w-4 rounded-sm bg-[#2A9D90] flex items-center justify-center">
-                          <Icon
-                            name="edit_square"
-                            className="text-white"
-                            size={12}
-                          />
-                        </div>
-                      )}
+                    <AgentAvatar
+                      url={agent?.avatar}
+                      fallback={agent?.name ?? WELL_KNOWN_AGENT_IDS.teamAgent}
+                      size="xs"
+                    />
+
                     <span className="truncate">
                       {thread.title}
                     </span>

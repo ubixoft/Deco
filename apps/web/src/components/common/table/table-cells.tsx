@@ -1,20 +1,17 @@
 import { useAgents, useTeamMembers, useTeams } from "@deco/sdk";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@deco/ui/components/avatar.tsx";
+import { WELL_KNOWN_AGENT_IDS } from "@deco/sdk/constants";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@deco/ui/components/tooltip.tsx";
+import { format } from "date-fns";
 import { useMemo } from "react";
 import { useParams } from "react-router";
-import { AgentAvatar } from "../avatar/index.tsx";
 import { useUser } from "../../../hooks/use-user.ts";
 import { IntegrationIcon } from "../../integrations/common.tsx";
-import { format } from "date-fns";
+import { AgentAvatar } from "../avatar/agent.tsx";
+import { UserAvatar } from "../avatar/user.tsx";
 
 interface AgentInfoProps {
   agentId?: string;
@@ -34,15 +31,19 @@ function AgentInfo({ agentId, className }: AgentInfoProps) {
         <div
           className={`flex items-center gap-2 min-w-[48px] ${className ?? ""}`}
         >
-          <div className="w-8 h-8">
-            <AgentAvatar
-              name={agent?.name ?? agentId ?? "Unknown"}
-              avatar={agent?.avatar}
-              className="rounded-lg"
-            />
-          </div>
+          <AgentAvatar
+            url={agent?.avatar}
+            fallback={agentId === WELL_KNOWN_AGENT_IDS.teamAgent
+              ? agentId
+              : agent?.name}
+            size="sm"
+          />
           <span className="truncate hidden md:inline">
-            {agent ? agent.name : agentId || "Unknown"}
+            {agentId === WELL_KNOWN_AGENT_IDS.teamAgent
+              ? "New chat"
+              : agent
+              ? agent.name
+              : "Deleted agent"}
           </span>
         </div>
       </TooltipTrigger>
@@ -98,12 +99,11 @@ function UserInfo({
         <div
           className={`flex items-center gap-2 min-w-[48px] ${className ?? ""}`}
         >
-          <Avatar>
-            <AvatarImage src={avatarUrl} alt={name} />
-            <AvatarFallback>
-              {name?.[0] ?? "?"}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            url={avatarUrl}
+            fallback={name}
+            size="sm"
+          />
           <div
             className={`flex-col items-start text-left leading-tight w-full ${
               showDetails ? "hidden md:flex" : "flex"
@@ -179,6 +179,7 @@ function IntegrationInfo(
       >
         <IntegrationIcon
           icon={integration.icon}
+          name={integration.name}
           className="h-10 w-10"
         />
         <span className="truncate hidden md:inline">{integration.name}</span>
@@ -188,9 +189,10 @@ function IntegrationInfo(
 
   return (
     <div className={`flex items-center gap-2 min-w-[48px] ${className ?? ""}`}>
-      <div className="w-8 h-8">
-        <IntegrationIcon className="rounded-sm h-8 w-8" />
-      </div>
+      <IntegrationIcon
+        name={integrationId || "Unknown"}
+        className="rounded-sm h-8 w-8"
+      />
       <span className="truncate hidden md:inline">
         {integrationId || "Unknown"}
       </span>

@@ -12,11 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@deco/ui/components/select.tsx";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@deco/ui/components/avatar.tsx";
+import { AgentAvatar } from "../common/avatar/agent.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import {
   DropdownMenu,
@@ -535,7 +531,7 @@ function ConnectionInstanceItem(
     >
       <IntegrationIcon
         icon={instance.icon}
-        className="h-10 w-10"
+        name={instance.name}
       />
       <div className="h-12 flex flex-col gap-1 flex-1 min-w-0">
         <h5 className="text-sm font-medium truncate">{instance.name}</h5>
@@ -545,13 +541,13 @@ function ConnectionInstanceItem(
       </div>
       <div className="flex items-center gap-[-8px] ml-2">
         {agentsUsedBy.map((agent) => (
-          <Avatar
+          <AgentAvatar
             key={agent.id}
             className="border-2 border-background -ml-2 first:ml-0"
-          >
-            <AvatarImage src={agent.avatar} alt={agent.name} />
-            <AvatarFallback>{agent.name || "Unknown agent"}</AvatarFallback>
-          </Avatar>
+            url={agent.avatar}
+            fallback={agent.name || "Unknown agent"}
+            size="base"
+          />
         ))}
         {extraCount > 0 && (
           <span className="ml-2 text-xs font-medium bg-muted rounded-full px-2 py-0.5">
@@ -625,7 +621,8 @@ function Overview({ data, appKey }: {
       <div className="flex items-center gap-4 h-12">
         <IntegrationIcon
           icon={data.info?.icon}
-          className="h-12 w-12"
+          name={data.info?.name}
+          size="lg"
         />
         <div className="h-12 flex flex-col gap-1">
           <h5 className="text-xl font-medium">{data.info?.name}</h5>
@@ -897,7 +894,9 @@ function ToolsInspector({ data, selectedConnectionId }: {
       <SelectItem key={instance.id} value={instance.id}>
         <IntegrationIcon
           icon={instance.icon}
-          className="w-8 h-8 flex-shrink-0"
+          name={instance.name}
+          size="xs"
+          className="flex-shrink-0"
         />
         {instance.name}
       </SelectItem>
@@ -1064,7 +1063,8 @@ export default function Page() {
                   <div className="flex items-center gap-2">
                     <IntegrationIcon
                       icon={info.icon}
-                      className="h-7 w-7"
+                      name={info.name}
+                      size="xs"
                     />
                     <span>{info.name}</span>
                   </div>
