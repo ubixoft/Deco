@@ -94,10 +94,13 @@ const AIGenerateInputSchema = z.object({
   model: z.string().optional().describe(
     "Model ID to use for generation (defaults to workspace default)",
   ),
-  instructions: z.string().optional().describe("System instructions/prompt"),
 
   maxTokens: z.number().default(8192).optional().describe(
     "Maximum number of tokens to generate",
+  ),
+
+  temperature: z.number().default(0.7).optional().describe(
+    "Temperature for the generation",
   ),
 
   tools: z.record(z.string(), z.array(z.string())).optional().describe(
@@ -184,6 +187,7 @@ export const aiGenerate = createTool({
       model: llm,
       messages: aiMessages,
       maxTokens: input.maxTokens,
+      temperature: input.temperature,
     });
 
     const plan = await getPlan(c);
