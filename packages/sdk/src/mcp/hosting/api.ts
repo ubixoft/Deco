@@ -551,8 +551,16 @@ Important Notes:
         ]),
       );
     }
-    const issuer = JwtIssuer.forSecret(c.envVars.ISSUER_JWT_SECRET);
-    const token = await issuer.create({
+    const keyPair = c.envVars.DECO_CHAT_API_JWT_PRIVATE_KEY &&
+        c.envVars.DECO_CHAT_API_JWT_PUBLIC_KEY
+      ? {
+        public: c.envVars.DECO_CHAT_API_JWT_PUBLIC_KEY,
+        private: c.envVars.DECO_CHAT_API_JWT_PRIVATE_KEY,
+      }
+      : undefined;
+
+    const issuer = await JwtIssuer.forKeyPair(keyPair);
+    const token = await issuer.issue({
       sub: `app:${scriptSlug}`,
       aud: workspace,
     });
@@ -561,6 +569,7 @@ Important Notes:
       DECO_CHAT_WORKSPACE: workspace,
       DECO_CHAT_SCRIPT_SLUG: scriptSlug,
       DECO_CHAT_API_TOKEN: token,
+      DECO_CHAT_API_JWT_PUBLIC_KEY: keyPair?.public,
     };
 
     await Promise.all(

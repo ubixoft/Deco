@@ -142,6 +142,7 @@ export const WORKSPACE_TOOLS = [
   promptsAPI.searchPrompts,
   promptsAPI.getPromptVersions,
   promptsAPI.renamePromptVersion,
+  apiKeysAPI.checkAccess,
   apiKeysAPI.listApiKeys,
   apiKeysAPI.createApiKey,
   apiKeysAPI.getApiKey,

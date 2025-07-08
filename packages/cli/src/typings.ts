@@ -9,7 +9,7 @@ interface Options {
 }
 
 function slugify(name: string) {
-  return name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+  return name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
 /**
@@ -226,6 +226,7 @@ export const genEnv = async ({ workspace, local, bindings }: Options) => {
 ${tsTypes}
   export interface Env {
     DECO_CHAT_WORKSPACE: string;
+    DECO_CHAT_API_JWT_PUBLIC_KEY: string;
     ${
     props.filter((p) => p !== null).map(([propName, tools]) => {
       return `${propName}: {
