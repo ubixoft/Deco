@@ -17,6 +17,7 @@ export {
 } from "./mcp.ts";
 
 export interface DefaultEnv {
+  DECO_CHAT_SCRIPT_SLUG: string;
   DECO_CHAT_API_URL?: string;
   DECO_CHAT_WORKSPACE: string;
   DECO_CHAT_API_JWT_PUBLIC_KEY: string;
