@@ -75,7 +75,9 @@ type Capability =
   | "file-upload"
   | "web-search";
 
-// First one is the default model for agents, so choose wisely.
+/**
+ * First one is the default model for agents, so choose wisely.
+ */
 export const WELL_KNOWN_MODELS: Model[] = [
   {
     id: "openai:gpt-4.1-mini",
@@ -165,7 +167,9 @@ export const WELL_KNOWN_MODELS: Model[] = [
 export const DEFAULT_MODEL = WELL_KNOWN_MODELS[0];
 
 export function isWellKnownModel(modelId: string): boolean {
-  return WELL_KNOWN_MODELS.some((m) => m.id === modelId);
+  return WELL_KNOWN_MODELS.some((m) =>
+    m.id === modelId || m.legacyId === modelId
+  );
 }
 
 /**
