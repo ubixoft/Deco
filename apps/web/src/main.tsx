@@ -1,4 +1,5 @@
 import "./polyfills.ts";
+import { scan } from "react-scan";
 
 import {
   ForbiddenError,
@@ -18,6 +19,13 @@ import {
 } from "react-router";
 import { EmptyState } from "./components/common/empty-state.tsx";
 import { useWorkspaceLink } from "./hooks/use-navigate-workspace.ts";
+
+const enableReactScan = (!import.meta.env.VITE_ENABLE_REACT_SCAN ||
+  import.meta.env.VITE_ENABLE_REACT_SCAN === "true") &&
+  import.meta.env.MODE === "development";
+scan({
+  enabled: enableReactScan,
+});
 
 type LazyComp<P> = Promise<{
   default: React.ComponentType<P>;
