@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { AgentSchema } from "./agent.ts";
 
 /**
  * Schema for tool call validation
@@ -20,44 +19,75 @@ export const PromptSchema = z.object({
 /**
  * Schema for cron trigger validation
  */
-export const CronTriggerSchema = z.object({
+export const CronBaseTriggerSchema = z.object({
   title: z.string().describe("The title of the trigger"),
   description: z.string().optional().describe(
     "The description of the trigger",
   ),
   cronExp: z.string(),
-  prompt: PromptSchema,
   type: z.literal("cron"),
+});
+
+/**
+ * Schema for cron trigger validation
+ */
+export const CronTriggerPromptAgentSchema = CronBaseTriggerSchema.extend({
+  agentId: z.string().describe("The agent ID to use for the trigger"),
+  prompt: PromptSchema,
   url: z.string().describe("The URL of the webhook").optional(),
-  bindingId: z.string().optional().describe(
-    "The id of the binding to use for the cron trigger",
+});
+
+export const CallToolSchema = z.object({
+  integrationId: z.string().describe("The integration ID"),
+  toolName: z.string().describe("The tool name"),
+  arguments: z.record(z.string(), z.unknown()).describe(
+    "The arguments to pass to the tool",
+  ).optional(),
+});
+export type CallTool = z.infer<typeof CallToolSchema>;
+
+export const CronTriggerCallToolSchema = CronBaseTriggerSchema.extend({
+  callTool: CallToolSchema,
+});
+
+export const CronTriggerSchema = z.union([
+  CronTriggerPromptAgentSchema,
+  CronTriggerCallToolSchema,
+]);
+
+export const WebhookBaseTriggerSchema = z.object({
+  title: z.string().describe("The title of the trigger"),
+  description: z.string().optional().describe(
+    "The description of the trigger",
+  ),
+  type: z.literal("webhook"),
+  url: z.string().optional().describe("The URL of the webhook"),
+  passphrase: z.string().optional().describe("The passphrase for the webhook"),
+  whatsappEnabled: z.boolean().optional().describe(
+    "Whether the webhook is enabled for WhatsApp",
   ),
 });
 
 /**
  * Schema for webhook trigger validation
  */
-export const WebhookTriggerSchema = z.object({
-  title: z.string().describe("The title of the trigger"),
-  description: z.string().optional().describe(
-    "The description of the trigger",
-  ),
-  type: z.literal("webhook"),
-  passphrase: z.string().optional().describe("The passphrase for the webhook"),
-  outputTool: z.string().optional(),
+export const WebhookTriggerAgentSchema = WebhookBaseTriggerSchema.extend({
+  agentId: z.string().describe("The agent ID to use for the trigger"),
   schema: z.record(z.string(), z.unknown()).optional().describe(
     "The JSONSchema of the returning of the webhook.\n\n" +
       "By default this webhook returns the LLM generate text response.\n\n" +
       "If a JSONSchema is specified, it returns a JSON with the specified schema.\n\n",
   ),
-  whatsappEnabled: z.boolean().optional().describe(
-    "Whether the webhook is enabled for WhatsApp",
-  ),
-  url: z.string().describe("The URL of the webhook").optional(),
-  bindingId: z.string().optional().describe(
-    "The id of the binding to use for the webhook",
-  ),
 });
+
+export const WebhookTriggerCallToolSchema = WebhookBaseTriggerSchema.extend({
+  callTool: CallToolSchema,
+});
+
+export const WebhookTriggerSchema = z.union([
+  WebhookTriggerAgentSchema,
+  WebhookTriggerCallToolSchema,
+]);
 
 export const WebhookTriggerOutputSchema = z.object({
   title: z.string().describe("The title of the trigger"),
@@ -66,7 +96,6 @@ export const WebhookTriggerOutputSchema = z.object({
   ),
   type: z.literal("webhook"),
   passphrase: z.string().optional().describe("The passphrase for the webhook"),
-  outputTool: z.string().optional(),
   schema: z.record(z.string(), z.unknown()).optional().describe(
     "The JSONSchema of the returning of the webhook.\n\n" +
       "By default this webhook returns the LLM generate text response.\n\n" +
@@ -104,8 +133,7 @@ export const DeleteTriggerInputSchema = z.object({
  * Output schema for trigger deletion results
  */
 export const DeleteTriggerOutputSchema = z.object({
-  triggerId: z.string().describe("The trigger ID"),
-  agentId: z.string().describe("The agent ID"),
+  id: z.string().describe("The trigger ID"),
 });
 
 export const TriggerSchema = z.union([
@@ -133,7 +161,7 @@ export const GetWebhookTriggerUrlOutputSchema = z.object({
 export const TriggerOutputSchema = z.object({
   id: z.string().describe("The trigger ID"),
   type: z.enum(["cron", "webhook"]),
-  agent: AgentSchema.pick({ id: true }),
+  data: TriggerSchema,
   createdAt: z.string().describe("The creation date"),
   updatedAt: z.string().describe("The update date"),
   user: z.object({
@@ -146,7 +174,6 @@ export const TriggerOutputSchema = z.object({
   }),
   active: z.boolean().optional().describe("The trigger status"),
   workspace: z.string().describe("The workspace ID"),
-  data: TriggerSchema,
 });
 
 export const CreateTriggerOutputSchema = TriggerOutputSchema.describe(
@@ -164,3 +191,59 @@ export const CreateWebhookTriggerOutputSchema = z.object({
   id: z.string(),
   url: z.string().optional().describe("The URL of the webhook"),
 });
+
+/**
+ * Type alias for trigger output - use this instead of z.infer<typeof TriggerOutputSchema>
+ */
+export type TriggerOutput = z.infer<typeof TriggerOutputSchema>;
+
+/**
+ * Type alias for list triggers output - use this instead of z.infer<typeof ListTriggersOutputSchema>
+ */
+export type ListTriggersOutput = z.infer<typeof ListTriggersOutputSchema>;
+
+/**
+ * Type alias for create trigger output - use this instead of z.infer<typeof CreateTriggerOutputSchema>
+ */
+export type CreateTriggerOutput = z.infer<typeof CreateTriggerOutputSchema>;
+
+/**
+ * Type alias for delete trigger output - use this instead of z.infer<typeof DeleteTriggerOutputSchema>
+ */
+export type DeleteTriggerOutput = z.infer<typeof DeleteTriggerOutputSchema>;
+
+/**
+ * Type alias for get webhook trigger URL output - use this instead of z.infer<typeof GetWebhookTriggerUrlOutputSchema>
+ */
+export type GetWebhookTriggerUrlOutput = z.infer<
+  typeof GetWebhookTriggerUrlOutputSchema
+>;
+
+/**
+ * Type alias for trigger schema - use this instead of z.infer<typeof TriggerSchema>
+ */
+export type Trigger = z.infer<typeof TriggerSchema>;
+
+/**
+ * Type alias for cron trigger prompt agent schema - use this instead of z.infer<typeof CronTriggerPromptAgentSchema>
+ */
+export type CronTriggerPromptAgent = z.infer<
+  typeof CronTriggerPromptAgentSchema
+>;
+
+/**
+ * Type alias for cron trigger call tool schema - use this instead of z.infer<typeof CronTriggerCallToolSchema>
+ */
+export type CronTriggerCallTool = z.infer<
+  typeof CronTriggerCallToolSchema
+>;
+
+/**
+ * Type alias for webhook trigger agent schema - use this instead of z.infer<typeof WebhookTriggerAgentSchema>
+ */
+export type WebhookTriggerAgent = z.infer<
+  typeof WebhookTriggerAgentSchema
+>;
+
+export type WebhookTrigger = z.infer<typeof WebhookTriggerSchema>;
+export type CronTrigger = z.infer<typeof CronTriggerSchema>;

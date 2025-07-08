@@ -1,9 +1,8 @@
 import { AIAgent } from "../agent.ts";
 import type { Message, StreamOptions } from "../types.ts";
-import { getWorkspaceFromAgentId } from "../utils/workspace.ts";
-import { handleOutputTool } from "./output-tool.ts";
+
 import type { TriggerData } from "./services.ts";
-import { threadOf } from "./tools.ts";
+
 import type { TriggerHooks } from "./trigger.ts";
 
 export interface WebhookArgs {
@@ -20,6 +19,15 @@ const isAIMessage = (m: unknown | Message): m is Message => {
 
 const isAIMessages = (m: unknown | Message[]): m is Message[] => {
   return Array.isArray(m) && m.every(isAIMessage);
+};
+
+const threadOf = (
+  data: TriggerData,
+  url?: URL,
+): { threadId: string | undefined; resourceId: string | undefined } => {
+  const resourceId = url?.searchParams.get("resourceId") ?? data.id;
+  const threadId = url?.searchParams.get("threadId") ?? crypto.randomUUID(); // generate a random threadId if resourceId exists.
+  return { threadId, resourceId };
 };
 
 const parseOptions: {
@@ -46,6 +54,13 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
         error: "Invalid passphrase",
       };
     }
+
+    if (("callTool" in data)) {
+      return await trigger._callTool(
+        data.callTool,
+        typeof args === "object" ? args as Record<string, unknown> ?? {} : {},
+      );
+    }
     const url = trigger.metadata?.reqUrl
       ? new URL(trigger.metadata.reqUrl)
       : undefined;
@@ -68,10 +83,7 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
     const agent = trigger.state
       .stub(AIAgent)
       .new(trigger.agentId)
-      .withMetadata({
-        threadId: threadId ?? undefined,
-        resourceId: resourceId ?? data.id ?? undefined,
-      });
+      .withMetadata({ threadId, resourceId });
 
     const messagesFromArgs = args && typeof args === "object" &&
         "messages" in args && isAIMessages(args.messages)
@@ -95,35 +107,18 @@ export const hooks: TriggerHooks<TriggerData & { type: "webhook" }> = {
         : []),
     ];
 
-    const outputTool = url?.searchParams.get("outputTool");
-    if (outputTool) {
-      const workspace = getWorkspaceFromAgentId(trigger.agentId);
-      return handleOutputTool({
-        outputTool,
-        agent,
-        messages,
-        trigger,
-        workspace,
-      });
-    }
-
+    const schema = "schema" in data && data.schema
+      ? data.schema
+      : (typeof args === "object" && args !== null &&
+          "schema" in args && typeof args.schema === "object"
+        ? args.schema
+        : undefined);
     if (
-      data.schema ||
-      (typeof args === "object" &&
-        args !== null &&
-        "schema" in args &&
-        typeof args.schema === "object")
+      schema
     ) {
-      // deno-lint-ignore no-explicit-any
-      const schema = data.schema || (args as { schema: any }).schema;
-      try {
-        const result = await agent
-          .generateObject(messages, schema)
-          .then((r) => r.object);
-        return result;
-      } catch (error) {
-        throw error;
-      }
+      return await agent
+        .generateObject(messages, schema)
+        .then((r) => r.object);
     }
 
     return useStream
