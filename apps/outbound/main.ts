@@ -82,11 +82,18 @@ export default {
       const issuer = await JwtIssuer.forKeyPair({
         public: env.DECO_CHAT_API_JWT_PUBLIC_KEY,
         private: env.DECO_CHAT_API_JWT_PRIVATE_KEY,
-      });
+      }).catch(() => null);
+      if (!issuer) {
+        return fetcher(req);
+      }
       const token = await issuer.issue({
         sub: `app:${DECO_CHAT_APP_ORIGIN}`,
         aud: data?.workspace,
-      });
+      }).catch(() => null);
+
+      if (!token) {
+        return fetcher(req);
+      }
 
       const reqHeaders = new Headers(req.headers);
       reqHeaders.set("Authorization", `Bearer ${token}`);
