@@ -1,12 +1,7 @@
 import { Command } from "@cliffy/command";
 import { Input } from "@cliffy/prompt";
 import denoJson from "./deno.json" with { type: "json" };
-import {
-  getConfig,
-  getMCPConfig,
-  setLocal,
-  writeConfigFile,
-} from "./src/config.ts";
+import { getConfig, setLocal, writeConfigFile } from "./src/config.ts";
 import { DECO_CHAT_API_LOCAL } from "./src/constants.ts";
 import { createCommand, listTemplates } from "./src/create.ts";
 import { deploy } from "./src/hosting/deploy.ts";
@@ -143,9 +138,12 @@ const dev = new Command()
   .action(async () => {
     await ensureDevEnvironment();
 
-    const config = await getConfig({});
-    const mcp = await getMCPConfig(config.workspace, config.app);
-    const mcpConfig = await promptMCPInstall(mcp, Deno.cwd());
+    const config = await getConfig().catch(() => ({
+      workspace: "default",
+      app: "my-app",
+    }));
+
+    const mcpConfig = await promptMCPInstall(config);
     if (mcpConfig) {
       await writeMCPConfig(mcpConfig.config, mcpConfig.configPath);
     }

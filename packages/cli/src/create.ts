@@ -1,12 +1,7 @@
 import { Input, Select } from "@cliffy/prompt";
 import { copy, ensureDir } from "@std/fs";
 import { join } from "@std/path";
-import {
-  type Config,
-  getConfig,
-  getMCPConfig,
-  writeConfigFile,
-} from "./config.ts";
+import { type Config, getConfig, writeConfigFile } from "./config.ts";
 import {
   promptMCPInstall,
   writeMCPConfig,
@@ -221,7 +216,7 @@ export async function createCommand(
     // Prompt user to install MCP configuration for IDE
     const mcpResult = workspace
       ? await promptMCPInstall(
-        await getMCPConfig(workspace, finalProjectName),
+        { workspace, app: finalProjectName },
         targetDir,
       )
       : null;
