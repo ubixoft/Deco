@@ -110,8 +110,8 @@ export const useAllUniqueWorkflows = () => {
   const { data, refetch, isRefetching } = useSuspenseQuery({
     queryKey: ["all-unique-workflows", workspace],
     queryFn: async ({ signal }) => {
-      // Fetch only the first page with 100 records to avoid infinite loop
-      const per_page = 100;
+      // Fetch only the first page with 50 records to avoid infinite loop
+      const per_page = 50;
       const result = await listWorkflows(workspace, 1, per_page, signal);
 
       return {
