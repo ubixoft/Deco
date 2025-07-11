@@ -127,7 +127,7 @@ export class LibSQLFactory {
     };
 
     const url =
-      `libsql://${uniqueDbName}-${this.opts.tursoOrganization}.turso.io`;
+      `libsql://${uniqueDbName}-${this.opts.tursoOrganization}.aws-us-east-1.turso.io`;
     const { authToken, created } = await this.turso.databases.get(uniqueDbName)
       .then(
         async () => {
