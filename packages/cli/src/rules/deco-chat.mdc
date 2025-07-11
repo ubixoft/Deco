@@ -190,6 +190,92 @@ const createMyWorkflow = (env: Env) => {
 )
 ```
 
+## 🔁 Looping with `.dountil`
+
+### What is `.dountil`?
+
+The `.dountil` operator allows you to **repeat a workflow step** (typically a polling or status-checking tool) until a specified condition is met. This is especially useful for workflows that need to wait for an asynchronous task to complete, such as polling an external API or a long-running browser automation.
+
+### How does it work?
+
+- You provide a step (created with `createStepFromTool`) that will be executed repeatedly.
+- You provide a predicate function that receives the **output of the repeated step** (as `inputData`) and returns `true` when the loop should stop.
+
+### Usage Pattern
+
+```typescript
+.then(scrapeStep)
+.dountil(
+  pollTaskStep,
+  async ({ inputData }) => {
+    // inputData is the output of pollTaskStep
+    return inputData.status === "finished";
+  }
+)
+.map(async ({ getStepResult }) => ({
+  // Use getStepResult(pollTaskStep) to access the final output
+  output: getStepResult(pollTaskStep).output,
+  prompt: getStepResult(pollTaskStep).prompt,
+  taskId: getStepResult(pollTaskStep).taskId,
+}))
+```
+
+#### Key Points
+
+- The **first argument** to `.dountil` is the step to repeat.
+- The **second argument** is an async predicate function that receives an object with `inputData`, which is the output of the repeated step.
+- The loop continues until the predicate returns `true`.
+- After `.dountil`, you can use `.map` and `getStepResult(pollTaskStep)` to access the final output.
+
+### Real-World Example
+
+Suppose you want to scrape a website, poll for the scraping task to finish, and then process the result:
+
+```typescript
+const pollTaskStep = createStepFromTool(pollTaskTool);
+
+return createWorkflow({
+  // ...
+})
+  .then(scrapeStep)
+  .dountil(
+    pollTaskStep,
+    async ({ inputData }) => {
+      // inputData is the output of pollTaskStep
+      return inputData.status === "finished";
+    }
+  )
+  .map(async ({ getStepResult }) => ({
+    // getStepResult(pollTaskStep) gives you the final poll result
+    output: getStepResult(pollTaskStep).output,
+    prompt: getStepResult(pollTaskStep).prompt,
+    taskId: getStepResult(pollTaskStep).taskId,
+  }))
+  // ... continue workflow
+```
+
+### Best Practices
+
+- Use `.dountil` for polling or waiting scenarios.
+- Always check the output (`inputData`) of your polling step for the completion condition.
+- Use `.map` and `getStepResult` after `.dountil` to extract the final result for downstream steps.
+
+---
+
+**Summary Table for `.dountil`:**
+
+| Parameter         | Description                                                      |
+|-------------------|------------------------------------------------------------------|
+| Step              | The step to repeat (e.g., polling tool)                         |
+| Predicate         | Function receiving `{ inputData }` (output of the step)          |
+| Loop Exit         | Predicate returns `true` when loop should stop                   |
+| Access Result     | Use `.map` and `getStepResult(step)` after `.dountil`            |
+
+---
+
+**In short:**  
+`.dountil(step, predicate)` repeats `step` until `predicate({ inputData })` returns `true`. Afterward, use `.map` and `getStepResult(step)` to access the final output.
+
 ## 🗺️ Data Transformation with `.map` and Accessing Previous Step Results
 
 The `.map` operator allows you to transform, enrich, or combine data between tool steps. Use `.map` to:
@@ -805,6 +891,11 @@ Remember the core principle: **Each workflow step should invoke only ONE tool, a
 
 - **Maintainability**: Clear separation of concerns
 - **Testability**: Each step can be tested independently
+- **Scalability**: Easy to modify and extend workflows
+- **Performance**: Optimal execution patterns
+
+Start simple, build incrementally, and leverage the power of deco.chat's integration ecosystem to create powerful automation workflows!
+
 - **Scalability**: Easy to modify and extend workflows
 - **Performance**: Optimal execution patterns
 
