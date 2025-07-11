@@ -190,6 +190,104 @@ const createMyWorkflow = (env: Env) => {
 )
 ```
 
+## 🗺️ Data Transformation with `.map` and Accessing Previous Step Results
+
+The `.map` operator allows you to transform, enrich, or combine data between tool steps. Use `.map` to:
+
+- Prepare or reformat data for the next tool
+- Combine results from multiple previous steps
+- Add custom logic or computed fields
+
+### Basic Usage of `.map`
+
+```typescript
+.then(fetchUserData)
+.map(({ inputData }) => ({
+  // Add a computed field
+  ...inputData,
+  isActive: inputData.status === "active",
+}))
+.then(processUser)
+```
+
+### Accessing Previous Step Results with `getStepResult`
+
+When you need to access the output of a specific previous step (not just the immediate last one), use the `getStepResult` function provided in the `.map` context.
+
+```typescript
+const stepA = createStepFromTool(toolA(env));
+const stepB = createStepFromTool(toolB(env));
+
+return createWorkflow({
+  // ...
+})
+  .then(stepA)
+  .then(stepB)
+  .map(({ inputData, getStepResult }) => {
+    const resultA = getStepResult(stepA);
+    const resultB = getStepResult(stepB);
+    return {
+      combined: `${resultA.value} + ${resultB.value}`,
+    };
+  })
+```
+
+- `getStepResult(step)` retrieves the output of any previous step.
+- This is especially useful when you need to merge or reference data from multiple steps.
+
+### Real-World Example
+
+In a workflow that summarizes a YouTube video, you might want to combine the video search result, transcript, and summary into a single output. Here’s how you can do it:
+
+```typescript
+const searchStep = createStepFromTool(createYouTubeSearchTool(env));
+const transcriptStep = createStepFromTool(createYouTubeTranscriptTool(env));
+const summarizeStep = createStepFromTool(createSummarizeTextTool(env));
+
+return createWorkflow({
+  id: "YOUTUBE_VIDEO_SUMMARY",
+  inputSchema: z.object({ query: z.string() }),
+  outputSchema: z.object({
+    videoId: z.string(),
+    title: z.string(),
+    description: z.string(),
+    transcript: z.string(),
+    summary: z.string(),
+  }),
+})
+  .then(searchStep)
+  .map(async ({ inputData }) => ({ videoId: inputData.videoId }))
+  .then(transcriptStep)
+  .map(async ({ inputData, getStepResult }) => {
+    const searchResult = getStepResult(searchStep);
+    return {
+      videoId: searchResult.videoId,
+      title: searchResult.title,
+      description: searchResult.description,
+      transcript: inputData.transcript,
+    };
+  })
+  .then(summarizeStep)
+  .map(async ({ inputData, getStepResult }) => {
+    const searchResult = getStepResult(searchStep);
+    const transcriptResult = getStepResult(transcriptStep);
+    return {
+      videoId: searchResult.videoId,
+      title: searchResult.title,
+      description: searchResult.description,
+      transcript: transcriptResult.transcript,
+      summary: inputData.summary,
+    };
+  })
+  .commit();
+```
+
+### Best Practices
+
+- Use `.map` for all data processing, not inside tool `execute` functions.
+- Use `getStepResult` to keep your workflow logic clear and maintainable.
+- Keep each step focused on a single responsibility and use `.map` to orchestrate data flow between steps.
+
 ## 🔌 Integration Usage Patterns
 
 ### AI Generation
