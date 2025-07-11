@@ -16,6 +16,7 @@ import { useParams } from "react-router";
 import type { Tab } from "../dock/index.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
 import WorkflowOverviewPage from "./workflow-overview.tsx";
+import { WorkflowFlowVisualization } from "./workflow-flow-visualization.tsx";
 
 function tryParseJson(str: unknown): unknown {
   if (typeof str !== "string") {
@@ -889,7 +890,7 @@ function StepCard({
 }
 
 // New component to render parallel steps with much better UI
-function ParallelStepsGroup({
+function _ParallelStepsGroup({
   steps,
   contextMap,
   workflowStatus,
@@ -1010,8 +1011,7 @@ function ParallelStepsGroup({
   );
 }
 
-// Component for individual steps with flow connection
-function StepWithFlow({
+function _StepWithFlow({
   step,
   contextMap,
   workflowStatus,
@@ -1085,12 +1085,12 @@ function InstanceDetailTab() {
   const processedSteps = processStepGraph(stepGraph);
   // Keep backwards compatibility for calculations
   const allSteps = flattenStepGraph(stepGraph);
-  const allStepIds = getAllStepIds(processedSteps);
+  const _allStepIds = getAllStepIds(processedSteps);
 
   // Map step IDs to run data
   const contextMap = context || {};
   // Find the last completed or running step index
-  let lastRunIdx = -1;
+  let _lastRunIdx = -1;
   for (let i = 0; i < allSteps.length; i++) {
     const step = allSteps[i];
     if (
@@ -1098,13 +1098,13 @@ function InstanceDetailTab() {
       (contextMap[step.id].output || contextMap[step.id].error ||
         contextMap[step.id].startedAt)
     ) {
-      lastRunIdx = i;
+      _lastRunIdx = i;
     }
   }
   // The next step to run is lastRunIdx + 1
 
   // Determine if workflow is done but there are steps left to run
-  const isWorkflowDone = status === "success" || status === "failed";
+  const _isWorkflowDone = status === "success" || status === "failed";
 
   // For duration, use the earliest startedAt and latest endedAt among steps
   const startedAts = Object.values(contextMap)
@@ -1209,63 +1209,12 @@ function InstanceDetailTab() {
           </Card>
           <h2 className="text-lg font-semibold mb-4">Steps</h2>
 
-          {/* Workflow flow visualization */}
-          <div className="relative">
-            {/* Start indicator */}
-            <div className="flex justify-center mb-4">
-              <div className="w-3 h-3 bg-success rounded-full border-2 border-white shadow-lg">
-              </div>
-            </div>
-
-            {processedSteps.length > 0
-              ? (
-                processedSteps.map((step, i) => {
-                  const isLast = i === processedSteps.length - 1;
-
-                  if (step.isParallel) {
-                    // Render parallel steps group with flow connections
-                    return (
-                      <ParallelStepsGroup
-                        key={`parallel-${i}`}
-                        steps={step.steps}
-                        contextMap={contextMap}
-                        workflowStatus={status}
-                        allStepIds={allStepIds}
-                        lastRunIdx={lastRunIdx}
-                        isWorkflowDone={isWorkflowDone}
-                      />
-                    );
-                  } else {
-                    // Render single step with flow connections
-                    return (
-                      <StepWithFlow
-                        key={step.id}
-                        step={step}
-                        contextMap={contextMap}
-                        workflowStatus={status}
-                        allStepIds={allStepIds}
-                        lastRunIdx={lastRunIdx}
-                        isWorkflowDone={isWorkflowDone}
-                        _isLast={isLast}
-                      />
-                    );
-                  }
-                })
-              )
-              : (
-                <div className="text-muted-foreground text-center py-8">
-                  No steps found.
-                </div>
-              )}
-
-            {/* End indicator */}
-            {processedSteps.length > 0 && (
-              <div className="flex justify-center mt-4">
-                <div className="w-3 h-3 bg-muted-foreground rounded-full border-2 border-white shadow-lg">
-                </div>
-              </div>
-            )}
-          </div>
+          {/* React Flow-based workflow visualization */}
+          <WorkflowFlowVisualization
+            processedSteps={processedSteps}
+            contextMap={contextMap}
+            workflowStatus={status}
+          />
         </div>
       </div>
     </ScrollArea>
