@@ -32,6 +32,7 @@ import { getGroups } from "../groups.ts";
 import {
   Binding,
   createToolGroup,
+  MCPClient,
   NotFoundError,
   WellKnownBindings,
 } from "../index.ts";
@@ -433,7 +434,9 @@ export const createIntegration = createIntegrationManagementTool({
       ...NEW_INTEGRATION_TEMPLATE,
       ...integration,
       workspace: c.workspace.value,
+      id: integration.id ? parseId(integration.id).uuid : undefined,
     };
+
     const { data, error } = "id" in payload && payload.id
       ? await c.db
         .from("deco_chat_integrations")
@@ -644,10 +647,39 @@ export const DECO_INTEGRATION_OAUTH_START = createIntegrationManagementTool({
     installId: z.string().describe(
       "The install id of the integration to start the OAuth flow for",
     ),
+    provider: z.string().optional().describe(
+      "The provider of the integration to start the OAuth flow for",
+    ),
   }),
-  handler: async ({ appName, returnUrl, installId }, c) => {
+  outputSchema: z.union([
+    z.object({
+      redirectUrl: z.string(),
+    }),
+    z.object({
+      stateSchema: z.unknown(),
+    }),
+  ]),
+  handler: async ({ appName, returnUrl, installId, provider }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c.tool.name, c);
+    // make a call to oauth_start which will return scopes and JSON Schema + redirect
+    if (provider === "marketplace") {
+      const app = await getRegistryApp.handler({ name: appName });
+      const oauth = await MCPClient.INTEGRATIONS_CALL_TOOL({
+        connection: app.connection,
+        params: {
+          name: "DECO_CHAT_OAUTH_START",
+          arguments: {
+            installId,
+            returnUrl,
+          },
+        },
+      }) as {
+        structuredContent: { redirectUrl: string } | { stateSchema: unknown };
+      };
+
+      return oauth.structuredContent;
+    }
 
     const url = new URL(`${DECO_REGISTRY_SERVER_URL}/oauth/start`);
     url.searchParams.set("installId", installId);
@@ -802,7 +834,7 @@ export const DECO_INTEGRATION_INSTALL = createIntegrationManagementTool({
         },
       };
     } else if (args.provider === MARKETPLACE_PROVIDER) {
-      const app = await getRegistryApp.handler({ id: args.id });
+      const app = await getRegistryApp.handler({ name: args.id });
       integration = {
         id: crypto.randomUUID(),
         name: `@${app.scopeName}/${app.name}`,

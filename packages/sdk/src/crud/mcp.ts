@@ -74,6 +74,17 @@ export const deleteIntegration = (workspace: string, mcpId: string) =>
   });
 
 /**
+ * Get a registry app
+ * @param workspace - The workspace
+ * @param params - Registry app parameters
+ * @returns The registry app
+ */
+export const getRegistryApp = (
+  workspace: string,
+  params: { name: string },
+) => MCPClient.forWorkspace(workspace).REGISTRY_GET_APP(params);
+
+/**
  * Validate an MCP against the Zod schema
  *
  * @param mcp - The MCP to validate

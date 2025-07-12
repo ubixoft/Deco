@@ -22,6 +22,12 @@ import { KEYS } from "./api.ts";
 import { listTools, type MCPTool } from "./index.ts";
 import { useSDK } from "./store.tsx";
 
+interface IntegrationToolsResult {
+  integration: Integration;
+  tools: MCPTool[];
+  success: boolean;
+}
+
 export const useCreateIntegration = () => {
   const client = useQueryClient();
   const { workspace } = useSDK();
@@ -208,11 +214,11 @@ export const useBindings = (binder: Binder) => {
 
     return integrationQueries
       .filter((query) => query.isSuccess && query.data)
-      .map((query) => query.data!)
-      .filter(({ tools }) =>
-        Binding(WellKnownBindings[binder]).isImplementedBy(tools)
+      .map((query) => query.data as IntegrationToolsResult)
+      .filter((result) =>
+        Binding(WellKnownBindings[binder]).isImplementedBy(result.tools)
       )
-      .map(({ integration }) => integration);
+      .map((result) => result.integration);
   }, [
     integrationQueries.length,
     integrationQueries.map((q) => q.isSuccess),
@@ -305,7 +311,15 @@ export const useInstallFromMarketplace = () => {
   const { workspace } = useSDK();
   const client = useQueryClient();
 
-  const mutation = useMutation({
+  const mutation = useMutation<
+    {
+      integration: Integration;
+      redirectUrl?: string | null;
+      stateSchema?: unknown;
+    },
+    Error,
+    { appName: string; returnUrl: string; provider: string }
+  >({
     mutationFn: async (
       { appName, provider, returnUrl }: {
         appName: string;
@@ -325,8 +339,8 @@ export const useInstallFromMarketplace = () => {
       let redirectUrl: string | null = null;
 
       if (
-        WELL_KNOWN_DECO_OAUTH_INTEGRATIONS.includes(appName.toLowerCase()) &&
-        provider === "deco"
+        (WELL_KNOWN_DECO_OAUTH_INTEGRATIONS.includes(appName.toLowerCase()) &&
+          provider === "deco") || provider === "marketplace"
       ) {
         const result = await MCPClient
           .forWorkspace(workspace)
@@ -334,11 +348,20 @@ export const useInstallFromMarketplace = () => {
             appName: appName,
             returnUrl,
             installId: integration.id.split(":").pop()!,
+            provider,
           });
 
-        redirectUrl = result?.redirectUrl;
-        if (!redirectUrl) {
-          throw new Error("No redirect URL found");
+        // Handle both return types: { redirectUrl } or { stateSchema }
+        if (result && "redirectUrl" in result) {
+          redirectUrl = result.redirectUrl;
+          if (!redirectUrl) {
+            throw new Error("No redirect URL found");
+          }
+        } else if (result && "stateSchema" in result) {
+          // Return integration with stateSchema for modal handling
+          return { integration, stateSchema: result.stateSchema };
+        } else {
+          throw new Error("Invalid OAuth response format");
         }
       }
 

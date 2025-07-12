@@ -295,7 +295,7 @@ Common patterns:
        "@cloudflare/workers-types": "^4.20250617.0",
        "@deco/mcp": "npm:@jsr/deco__mcp@^0.5.6",
        "@deco/workers-runtime": "npm:@jsr/deco__workers-runtime@^${DECO_WORKER_RUNTIME_VERSION}",
-       "@mastra/core": "0.0.0-support-d1-client-20250701191943",
+       "@mastra/core": "^0.10.12",
        "zod": "^3.25.67"
      },
      "devDependencies": {
@@ -386,7 +386,7 @@ Example of files deployment:
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250617.0",
     "@deco/workers-runtime": "npm:@jsr/deco__workers-runtime@^0.2.18",
-    "@mastra/core": "0.0.0-support-d1-client-20250701191943",
+    "@mastra/core": "^0.10.12",
     "zod": "^3.25.67"
   },
   "devDependencies": {
@@ -565,8 +565,12 @@ Important Notes:
       : undefined;
 
     const issuer = await JwtIssuer.forKeyPair(keyPair);
+    const appName = `@${
+      wranglerConfig?.scope ?? c.workspace.slug
+    }/${scriptSlug}`;
+
     const token = await issuer.issue({
-      sub: `app:${scriptSlug}`,
+      sub: `app:${appName}`,
       aud: workspace,
     });
 
@@ -575,6 +579,7 @@ Important Notes:
       DECO_CHAT_SCRIPT_SLUG: scriptSlug,
       DECO_CHAT_API_TOKEN: token,
       DECO_CHAT_API_JWT_PUBLIC_KEY: keyPair?.public,
+      DECO_CHAT_APP_NAME: appName,
     };
 
     await Promise.all(

@@ -17,14 +17,11 @@ import {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { z } from "zod";
-import { type DefaultEnv, withBindings } from "./index.ts";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import type { DefaultEnv } from "./index.ts";
 export { createWorkflow };
 
 export { cloneStep, cloneWorkflow } from "@mastra/core/workflows";
-
-// this is dynamically imported to avoid deno check errors
-// @ts-ignore: this is a valid import
-const { env } = await import("cloudflare:workers");
 
 const createRuntimeContext = (prev?: RuntimeContext<AppContext>) => {
   const runtimeContext = new RuntimeContext<AppContext>();
@@ -173,9 +170,17 @@ export function createStep<
   });
 }
 
-export interface CreateMCPServerOptions<Env = any> {
-  tools?: Array<(env: Env) => ReturnType<typeof createTool>>;
-  workflows?: Array<(env: Env) => ReturnType<typeof createWorkflow>>;
+export interface CreateMCPServerOptions<
+  Env = any,
+  TSchema extends z.ZodTypeAny = never,
+> {
+  oauth?: { state?: TSchema };
+  tools?: Array<
+    (env: Env & DefaultEnv<TSchema>) => ReturnType<typeof createTool>
+  >;
+  workflows?: Array<
+    (env: Env & DefaultEnv<TSchema>) => ReturnType<typeof createWorkflow>
+  >;
 }
 
 export type Fetch<TEnv = any> = (
@@ -203,25 +208,46 @@ const State = {
   ): R => asyncLocalStorage.run(ctx, f, ...args),
 };
 
-export const createMCPServer = <TEnv = any>(
-  options: CreateMCPServerOptions<TEnv>,
-): Fetch<TEnv> => {
-  let server: McpServer | null = null;
+const decoChatOAuthToolFor = (schema?: z.ZodTypeAny) => {
+  const jsonSchema = schema
+    ? zodToJsonSchema(schema)
+    : { type: "object", properties: {} };
+  return createTool({
+    id: "DECO_CHAT_OAUTH_START",
+    description: "OAuth for Deco Chat",
+    inputSchema: z.object({
+      returnUrl: z.string(),
+    }),
+    outputSchema: z.object({
+      stateSchema: z.any(),
+    }),
+    execute: () => {
+      return Promise.resolve({
+        stateSchema: jsonSchema,
+      });
+    },
+  });
+};
 
-  const createServer = () => {
+export const createMCPServer = <
+  TEnv = any,
+  TSchema extends z.ZodTypeAny = never,
+>(
+  options: CreateMCPServerOptions<TEnv, TSchema>,
+): Fetch<TEnv & DefaultEnv<TSchema>> => {
+  const createServer = (bindings: TEnv & DefaultEnv<TSchema>) => {
     const server = new McpServer(
       { name: "@deco/mcp-api", version: "1.0.0" },
       { capabilities: { tools: {} } },
     );
 
-    const bindings = withBindings<TEnv & DefaultEnv>(
-      env as unknown as TEnv & DefaultEnv,
-    );
-
-    const tools = options.tools?.map((tool) => tool(bindings));
+    const tools = options.tools?.map((tool) => tool(bindings)) ?? [];
     const workflows = options.workflows?.map((workflow) => workflow(bindings));
+    const oauthStateSchema = options.oauth?.state;
 
-    for (const tool of tools ?? []) {
+    tools.push(decoChatOAuthToolFor(oauthStateSchema));
+
+    for (const tool of tools) {
       server.registerTool(
         tool.id,
         {
@@ -272,6 +298,7 @@ export const createMCPServer = <TEnv = any>(
             workflowId: workflow.id,
             args,
             runId,
+            ctx: bindings.DECO_CHAT_REQUEST_CONTEXT,
           });
           return {
             structuredContent: { runId: result.runId },
@@ -295,6 +322,7 @@ export const createMCPServer = <TEnv = any>(
           using _ = await workflowDO.cancel({
             workflowId: workflow.id,
             runId,
+            ctx: bindings.DECO_CHAT_REQUEST_CONTEXT,
           });
 
           return {
@@ -325,6 +353,7 @@ export const createMCPServer = <TEnv = any>(
             runId,
             resumeData: args.resumeData,
             stepId: args.stepId,
+            ctx: bindings.DECO_CHAT_REQUEST_CONTEXT,
           });
 
           return {
@@ -338,7 +367,7 @@ export const createMCPServer = <TEnv = any>(
   };
 
   return async (req, env, ctx) => {
-    server ||= createServer();
+    const server = createServer(env);
     const transport = new HttpServerTransport();
 
     await server.connect(transport);

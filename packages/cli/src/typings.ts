@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { compile } from "json-schema-to-typescript";
+import { generateName } from "json-schema-to-typescript/dist/src/utils.js";
 import type { DecoBinding } from "./config.ts";
 import { createWorkspaceClient } from "./mcp.ts";
 interface Options {
@@ -22,7 +23,7 @@ export async function format(content: string): Promise<string> {
     args: ["fmt", "-"],
     stdin: "piped",
     stdout: "piped",
-    stderr: "null",
+    stderr: "piped", // Changed from "null" to capture errors
   });
 
   const proc = fmt.spawn();
@@ -36,10 +37,84 @@ export async function format(content: string): Promise<string> {
 
   await raw.pipeTo(proc.stdin);
   const out = await proc.output();
-  await proc.status;
+  const status = await proc.status;
+
+  // Check if the command failed and print errors
+  if (!status.success) {
+    return content;
+  }
 
   return new TextDecoder().decode(out.stdout);
 }
+
+// Shared list of reserved JavaScript keywords
+const RESERVED_KEYWORDS = [
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "export",
+  "extends",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "import",
+  "in",
+  "instanceof",
+  "let",
+  "new",
+  "return",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+  "enum",
+  "await",
+  "implements",
+  "interface",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "static",
+  "abstract",
+  "boolean",
+  "byte",
+  "char",
+  "double",
+  "final",
+  "float",
+  "goto",
+  "int",
+  "long",
+  "native",
+  "short",
+  "synchronized",
+  "throws",
+  "transient",
+  "volatile",
+  "null",
+  "true",
+  "false",
+  "undefined",
+  "NaN",
+  "Infinity",
+];
 
 function isValidJavaScriptPropertyName(name: string): boolean {
   // Check if it's a valid JavaScript identifier
@@ -52,76 +127,10 @@ function isValidJavaScriptPropertyName(name: string): boolean {
   }
 
   // Check for reserved keywords
-  const reservedKeywords = [
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "export",
-    "extends",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "import",
-    "in",
-    "instanceof",
-    "let",
-    "new",
-    "return",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
-    "yield",
-    "enum",
-    "await",
-    "implements",
-    "interface",
-    "package",
-    "private",
-    "protected",
-    "public",
-    "static",
-    "abstract",
-    "boolean",
-    "byte",
-    "char",
-    "double",
-    "final",
-    "float",
-    "goto",
-    "int",
-    "long",
-    "native",
-    "short",
-    "synchronized",
-    "throws",
-    "transient",
-    "volatile",
-    "null",
-    "true",
-    "false",
-    "undefined",
-    "NaN",
-    "Infinity",
-  ];
-
-  return !reservedKeywords.includes(name);
+  return !RESERVED_KEYWORDS.includes(name);
 }
+
+type KeyInfo = { type: string; key: string };
 const DEFAULT_BINDINGS: DecoBinding[] = [{
   name: "DECO_CHAT_WORKSPACE_API",
   integration_id: "i:workspace-management",
@@ -139,17 +148,31 @@ export const genEnv = async ({ workspace, local, bindings }: Options) => {
   let tsTypes = "";
   const props = await Promise.all(
     [...bindings, ...DEFAULT_BINDINGS].map(async (binding) => {
-      const integration = await client.callTool({
-        name: "INTEGRATIONS_GET",
-        arguments: {
-          id: binding.integration_id,
-        },
-      }) as { structuredContent: { connection: unknown } };
+      let connection: unknown;
+      let stateKey: KeyInfo | undefined;
+      if ("integration_id" in binding) {
+        const integration = await client.callTool({
+          name: "INTEGRATIONS_GET",
+          arguments: {
+            id: binding.integration_id,
+          },
+        }) as { structuredContent: { connection: unknown } };
+        connection = integration.structuredContent.connection;
+      } else {
+        stateKey = { type: binding.integration_name, key: binding.name };
+        const app = await client.callTool({
+          name: "REGISTRY_GET_APP",
+          arguments: {
+            name: binding.integration_name,
+          },
+        }) as { structuredContent: { connection: unknown } };
+        connection = app.structuredContent.connection;
+      }
 
       const tools = await apiClient.callTool({
         name: "INTEGRATIONS_LIST_TOOLS",
         arguments: {
-          connection: integration.structuredContent.connection,
+          connection,
         },
       }) as {
         structuredContent: {
@@ -166,10 +189,10 @@ export const genEnv = async ({ workspace, local, bindings }: Options) => {
 
       const compiledTools = await Promise.all(
         tools.structuredContent.tools
-          .filter((t) => isValidJavaScriptPropertyName(t.name))
           .map(async (t) => {
-            const inputName = `${t.name}Input`;
-            const outputName = `${t.name}Output`;
+            const jsName = generateName(t.name, new Set());
+            const inputName = `${jsName}Input`;
+            const outputName = `${jsName}Output`;
             const customName = (schema: any) => {
               let typeName = schema.title ?? schema.type;
               if (Array.isArray(typeName)) {
@@ -213,17 +236,42 @@ export const genEnv = async ({ workspace, local, bindings }: Options) => {
             ];
           }),
       );
+
       return [
         binding.name,
         compiledTools,
+        stateKey,
         // propName, toolName, inputType, outputType
-      ] as [string, [string, string, string | undefined][]];
+      ] as [
+        string,
+        [string, string, string | undefined][],
+        KeyInfo | undefined,
+      ];
     }),
   );
 
   return await format(`
     // deno-lint-ignore-file no-empty-interface
 ${tsTypes}
+   // this should be added to your package.json
+  import { z } from "zod";
+
+  export const StateSchema = z.object({
+    ${
+    props.filter((p) => p !== null && p[2] !== undefined).map((prop) => {
+      const [_, __, stateKey] = prop as [
+        string,
+        [string, string, string | undefined][],
+        KeyInfo | undefined,
+      ];
+      return `${stateKey!.key}: z.object({
+        value: z.string(),
+        __type: z.literal("${stateKey!.type}").default("${stateKey!.type}"),
+      })`;
+    }).join(",\n")
+  }
+  })
+
   export interface Env {
     DECO_CHAT_WORKSPACE: string;
     DECO_CHAT_API_JWT_PUBLIC_KEY: string;
@@ -233,7 +281,11 @@ ${tsTypes}
         ${
         tools.map(([toolName, inputName, outputName]) => {
           return `
-          ${toolName}: (input: ${inputName}) => Promise<${outputName ?? "any"}>;
+          ${
+            isValidJavaScriptPropertyName(toolName)
+              ? toolName
+              : [`"${toolName}"`]
+          }: (input: ${inputName}) => Promise<${outputName ?? "any"}>;
           `;
         }).join("")
       }
