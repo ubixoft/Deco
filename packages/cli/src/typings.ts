@@ -7,6 +7,7 @@ interface Options {
   workspace: string;
   local?: boolean;
   bindings: DecoBinding[];
+  selfUrl?: string;
 }
 
 function slugify(name: string) {
@@ -140,14 +141,22 @@ const DEFAULT_BINDINGS: DecoBinding[] = [{
   integration_id: "i:user-management",
   type: "mcp",
 }];
-export const genEnv = async ({ workspace, local, bindings }: Options) => {
+export const genEnv = async (
+  { workspace, local, bindings, selfUrl }: Options,
+) => {
   const client = await createWorkspaceClient({ workspace, local });
   const apiClient = await createWorkspaceClient({ local });
 
   const types = new Map<string, number>();
   let tsTypes = "";
   const props = await Promise.all(
-    [...bindings, ...DEFAULT_BINDINGS].map(async (binding) => {
+    [
+      ...bindings,
+      ...DEFAULT_BINDINGS,
+      ...selfUrl
+        ? [{ name: "SELF", type: "mcp", integration_url: selfUrl }]
+        : [],
+    ].map(async (binding) => {
       let connection: unknown;
       let stateKey: KeyInfo | undefined;
       if ("integration_id" in binding) {
@@ -158,7 +167,7 @@ export const genEnv = async ({ workspace, local, bindings }: Options) => {
           },
         }) as { structuredContent: { connection: unknown } };
         connection = integration.structuredContent.connection;
-      } else {
+      } else if ("integration_name" in binding) {
         stateKey = { type: binding.integration_name, key: binding.name };
         const app = await client.callTool({
           name: "REGISTRY_GET_APP",
@@ -167,6 +176,13 @@ export const genEnv = async ({ workspace, local, bindings }: Options) => {
           },
         }) as { structuredContent: { connection: unknown } };
         connection = app.structuredContent.connection;
+      } else if ("integration_url" in binding) {
+        connection = {
+          type: "HTTP",
+          url: binding.integration_url,
+        };
+      } else {
+        throw new Error(`Unknown binding type: ${binding}`);
       }
 
       const tools = await apiClient.callTool({

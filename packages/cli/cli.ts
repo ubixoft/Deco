@@ -183,12 +183,20 @@ const hosting = new Command()
 
 const gen = new Command()
   .description("Generate the environment that will be used to run the app.")
-  .action(async () => {
+  .option(
+    "-s, --self <url:string>",
+    "Useful to generate a SELF binding for own types based on local mcp server.",
+    {
+      required: false,
+    },
+  )
+  .action(async (options) => {
     const config = await getConfig({});
     const env = await genEnv({
       workspace: config.workspace,
       local: config.local,
       bindings: config.bindings,
+      selfUrl: options.self,
     });
     console.log(env);
   });
