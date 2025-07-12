@@ -7,6 +7,7 @@ import {
 } from "@deco/sdk/hooks";
 import type { Integration } from "@deco/sdk/models";
 import type { JSONSchema7 } from "json-schema";
+import { useWorkspaceLink } from "./use-navigate-workspace.ts";
 
 interface InstallState {
   isModalOpen: boolean;
@@ -23,6 +24,7 @@ export function useIntegrationInstallWithModal() {
     isModalOpen: false,
   });
 
+  const getLinkFor = useWorkspaceLink();
   const installMutation = useInstallFromMarketplace();
   const createIntegration = useCreateIntegration();
   const createAPIKey = useCreateAPIKey();
@@ -109,7 +111,8 @@ export function useIntegrationInstallWithModal() {
 
       // Step 4: Redirect to the connections page after a brief delay
       // This ensures all async operations are fully processed before redirect
-      const redirectPath = `/connection/unknown:::${installId}`;
+
+      const redirectPath = getLinkFor(`/connection/unknown:::${installId}`);
       globalThis.location.href = redirectPath;
     } catch (error) {
       console.error("Failed to complete setup:", error);
