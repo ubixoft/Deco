@@ -15,6 +15,7 @@ import {
   type Integration,
   IntegrationSchema,
   InternalServerError,
+  type MCPConnection,
   NEW_INTEGRATION_TEMPLATE,
   UserInputError,
   WellKnownMcpGroups,
@@ -662,41 +663,33 @@ export const DECO_INTEGRATION_OAUTH_START = createIntegrationManagementTool({
   handler: async ({ appName, returnUrl, installId, provider }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c.tool.name, c);
-    // make a call to oauth_start which will return scopes and JSON Schema + redirect
+    let connection: MCPConnection;
     if (provider === "marketplace") {
       const app = await getRegistryApp.handler({ name: appName });
-      const oauth = await MCPClient.INTEGRATIONS_CALL_TOOL({
-        connection: app.connection,
-        params: {
-          name: "DECO_CHAT_OAUTH_START",
-          arguments: {
-            installId,
-            returnUrl,
-          },
-        },
-      }) as {
-        structuredContent: { redirectUrl: string } | { stateSchema: unknown };
+      connection = app.connection;
+    } else {
+      connection = {
+        type: "HTTP",
+        url: new URL(`/apps/${appName}/mcp/messages`, DECO_REGISTRY_SERVER_URL)
+          .href,
+        token: installId,
       };
-
-      return oauth.structuredContent;
     }
+    const oauth = await MCPClient.INTEGRATIONS_CALL_TOOL({
+      connection,
+      params: {
+        name: "DECO_CHAT_OAUTH_START",
+        arguments: {
+          appName,
+          installId,
+          returnUrl,
+        },
+      },
+    }) as {
+      structuredContent: { redirectUrl: string } | { stateSchema: unknown };
+    };
 
-    const url = new URL(`${DECO_REGISTRY_SERVER_URL}/oauth/start`);
-    url.searchParams.set("installId", installId);
-    url.searchParams.set("appName", appName);
-    url.searchParams.set("returnUrl", returnUrl);
-
-    const response = await fetch(url.toString(), {
-      redirect: "manual",
-    });
-
-    const redirectUrl = response.headers.get("location");
-
-    if (!redirectUrl) {
-      throw new Error("No redirect URL found");
-    }
-
-    return { redirectUrl };
+    return oauth.structuredContent;
   },
 });
 
