@@ -3,7 +3,7 @@ type MCPClient<T> = {
   [K in keyof T]: T[K] extends (...args: any) => any ? (
       args: Parameters<T[K]>[0],
       init?: RequestInit,
-    ) => Promise<ReturnType<T[K]>>
+    ) => Promise<Awaited<ReturnType<T[K]>>>
     : never;
 };
 
