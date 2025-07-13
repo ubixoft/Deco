@@ -19,19 +19,18 @@ interface Template {
 const AVAILABLE_TEMPLATES: Template[] = [
   {
     name: "base",
-    description: "Build custom Tools and Workflows.",
+    description: "Minimal MCP server with Tools and Workflows.",
     repo: "deco-cx/chat",
     branch: "main",
     path: "packages/cli/template/base",
   },
-  // TODO: Add react-app template
-  //   {
-  //     name: "react-app",
-  //     description: "A React application template",
-  //     repo: "deco-cx/chat",
-  //     branch: "main",
-  //     path: "packages/cli/template/react-app"
-  //   },
+  {
+    name: "react-tailwind-views",
+    description:
+      "MCP Server with Tools, Workflows and React + Tailwind for Views.",
+    repo: "deco-cx/react-tailwind-views",
+    branch: "main",
+  },
 ];
 
 async function downloadTemplate(
