@@ -590,6 +590,7 @@ It's always handy to search for installed integrations with no query, since all 
     integrations: z.array(
       IntegrationSchema.omit({ connection: true }).and(z.object({
         provider: z.string(),
+        friendlyName: z.string().optional(),
       })),
     ).describe("The Integrations that match the query"),
   }),
@@ -607,6 +608,7 @@ It's always handy to search for installed integrations with no query, since all 
     const registryList = registry.apps.map((app) => ({
       id: app.id,
       name: `@${app.scopeName}/${app.name}`,
+      friendlyName: app.friendlyName,
       description: app.description,
       icon: app.icon,
       provider: MARKETPLACE_PROVIDER,
@@ -829,7 +831,7 @@ export const DECO_INTEGRATION_INSTALL = createIntegrationManagementTool({
       const app = await getRegistryApp.handler({ name: args.id });
       integration = {
         id: crypto.randomUUID(),
-        name: `@${app.scopeName}/${app.name}`,
+        name: app.friendlyName ?? `@${app.scopeName}/${app.name}`,
         description: app.description,
         icon: app.icon,
         connection: app.connection,

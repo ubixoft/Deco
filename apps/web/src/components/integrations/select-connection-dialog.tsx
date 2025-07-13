@@ -117,14 +117,14 @@ export function ConfirmMarketplaceInstallDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Connect to {integration.name}
+            Connect to {integration.friendlyName ?? integration.name}
           </DialogTitle>
           <DialogDescription>
             <div className="mt-4">
               <div className="grid grid-cols-[80px_1fr] items-start gap-4">
                 <IntegrationIcon
                   icon={integration?.icon}
-                  name={integration?.name}
+                  name={integration?.friendlyName ?? integration?.name}
                 />
                 <div>
                   <div className="text-sm text-muted-foreground">

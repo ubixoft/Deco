@@ -21,6 +21,7 @@ import { IntegrationIcon } from "./common.tsx";
 export interface MarketplaceIntegration
   extends Omit<Integration, "connection"> {
   provider: string;
+  friendlyName?: string;
 }
 
 interface ConnectIntegrationModalProps {
@@ -47,14 +48,14 @@ export function SetupIntegrationModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Connect to {integration?.name}
+            Connect to {integration?.friendlyName ?? integration?.name}
           </DialogTitle>
           <DialogDescription>
             <div className="mt-4">
               <div className="grid grid-cols-[80px_1fr] items-start gap-4">
                 <IntegrationIcon
                   icon={integration?.icon}
-                  name={integration?.name}
+                  name={integration?.friendlyName ?? integration?.name}
                 />
                 <div>
                   <div className="text-sm text-muted-foreground">
@@ -139,13 +140,13 @@ function CardsView(
               <div className="grid grid-cols-[min-content_1fr] gap-4">
                 <IntegrationIcon
                   icon={integration.icon}
-                  name={integration.name}
+                  name={integration.friendlyName ?? integration.name}
                   className="h-10 w-10"
                 />
                 <div className="grid grid-cols-1 gap-1">
                   <div className="flex items-start gap-1">
                     <div className="text-sm font-semibold truncate">
-                      {integration.name}
+                      {integration.friendlyName ?? integration.name}
                     </div>
                     {showVerifiedBadge && <VerifiedBadge />}
                   </div>
@@ -192,7 +193,8 @@ export function Marketplace({
       ? integrations.filter((integration: MarketplaceIntegration) =>
         integration.name.toLowerCase().includes(searchTerm) ||
         (integration.description?.toLowerCase() ?? "").includes(searchTerm) ||
-        integration.provider.toLowerCase().includes(searchTerm)
+        integration.provider.toLowerCase().includes(searchTerm) ||
+        (integration.friendlyName?.toLowerCase() ?? "").includes(searchTerm)
       )
       : integrations;
   }, [marketplace, filter]);

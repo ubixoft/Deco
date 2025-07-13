@@ -36,7 +36,8 @@ const SELECT_REGISTRY_APP_QUERY = `
   connection,
   created_at,
   updated_at,
-  unlisted
+  unlisted,
+  friendly_name
 ` as const;
 
 const SELECT_REGISTRY_APP_WITH_SCOPE_QUERY = `
@@ -73,6 +74,8 @@ const RegistryAppSchema = z.object({
   connection: MCPConnectionSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
+  unlisted: z.boolean(),
+  friendlyName: z.string().optional(),
 });
 
 export type RegistryScope = {
@@ -95,6 +98,7 @@ export type RegistryApp = {
   createdAt: string;
   updatedAt: string;
   unlisted: boolean;
+  friendlyName?: string;
 };
 
 const Mappers = {
@@ -124,6 +128,7 @@ const Mappers = {
       scopeId: data.scope_id,
       scopeName: data.deco_chat_registry_scopes.scope_name,
       name: data.name,
+      friendlyName: data.friendly_name ?? undefined,
       description: data.description ?? undefined,
       icon: data.icon ?? undefined,
       connection: data.connection as MCPConnection,
@@ -319,6 +324,7 @@ export const publishApp = createTool({
       "The scope to publish to (defaults to team slug, automatically claimed on first use)",
     ),
     name: z.string().describe("The name of the app"),
+    friendlyName: z.string().optional().describe("A friendly name for the app"),
     description: z.string().optional().describe("A description of the app"),
     icon: z.string().optional().describe("URL to an icon for the app"),
     connection: MCPConnectionSchema.describe(
@@ -330,7 +336,15 @@ export const publishApp = createTool({
   }),
   outputSchema: RegistryAppSchema,
   handler: async (
-    { scopeName: scope_name, name, description, icon, connection, unlisted },
+    {
+      scopeName: scope_name,
+      name,
+      description,
+      icon,
+      connection,
+      unlisted,
+      friendlyName,
+    },
     c,
   ) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
@@ -353,6 +367,7 @@ export const publishApp = createTool({
       .upsert({
         workspace,
         scope_id: scopeId,
+        friendly_name: friendlyName?.trim() || null,
         name: name.trim(),
         description: description?.trim() || null,
         icon: icon?.trim() || null,
