@@ -33,7 +33,7 @@ import { IntegrationOAuthModal } from "../integration-oauth-modal.tsx";
 export const isDecoIntegration = (integration: MarketplaceIntegration) =>
   integration.provider === "deco" ||
   (integration.provider === "marketplace" &&
-    integration.name.startsWith("@deco"));
+    integration.name.startsWith("@deco/"));
 
 export function ConfirmMarketplaceInstallDialog({
   integration,
