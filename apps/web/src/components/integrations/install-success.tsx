@@ -60,13 +60,12 @@ function ConnectionInstallSuccess() {
     const newName = name || `${existingIntegration.name} | ${account}` ||
       existingIntegration.name;
     const newDescription = account || existingIntegration.description;
+    if (existingIntegration.connection.type === "HTTP") {
+      existingIntegration.connection.token = installId;
+    }
 
     updateIntegration({
       ...existingIntegration,
-      connection: {
-        ...existingIntegration.connection,
-        token: installId,
-      },
       id: connectionId,
       name: newName,
       description: newDescription,
