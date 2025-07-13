@@ -34,6 +34,7 @@ import {
   useRemoveConnection,
 } from "./remove-connection.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
+import { PasswordInput } from "@deco/ui/components/password-input.tsx";
 import {
   Form,
   FormControl,
@@ -286,7 +287,7 @@ function ConfigureConnectionInstanceForm(
                         >
                           <Icon
                             name="upload"
-                            className="text-muted-foreground/70 text-xl"
+                            size={24}
                           />
                           <span className="text-xs text-muted-foreground/70 text-center px-1">
                             Select an icon
@@ -305,7 +306,7 @@ function ConfigureConnectionInstanceForm(
               onClick={triggerFileInput}
               disabled={isUploading}
             >
-              <Icon name="upload" className="mr-2" />
+              <Icon name="upload" size={16} />
               Upload image
             </Button>
           </div>
@@ -392,7 +393,10 @@ function ConfigureConnectionInstanceForm(
                           optional
                         </span>
                         <FormControl>
-                          <Input placeholder="token" {...field} />
+                          <PasswordInput
+                            placeholder="token"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -445,7 +449,10 @@ function ConfigureConnectionInstanceForm(
                           optional
                         </span>
                         <FormControl>
-                          <Input placeholder="token" {...field} />
+                          <PasswordInput
+                            placeholder="token"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -699,7 +706,6 @@ function ParametersViewer({ tool }: Pick<ToolProps, "tool">) {
               <div key={param.name} className="flex items-center gap-2">
                 <Icon
                   name={param.type === "string" ? "text_fields" : "category"}
-                  className="flex-shrink-0"
                   size={16}
                 />
                 <span className="text-sm pl-1">
@@ -809,7 +815,7 @@ function Tool({ tool, connection }: ToolProps) {
       >
         <AccordionTrigger className="p-4 hover:no-underline cursor-pointer hover:bg-accent rounded-t-xl rounded-b-none">
           <div className="flex items-start gap-3 w-full text-left">
-            <Icon name="build" filled size={16} className="flex-shrink-0" />
+            <Icon name="build" filled size={16} />
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="font-medium text-sm truncate">
                 {formatToolName(tool.name)}
@@ -983,7 +989,7 @@ function ToolsInspector({ data, selectedConnectionId }: {
                 </pre>
               </div>
               <Button onClick={() => tools.refetch()}>
-                <Icon name="refresh" className="mr-2" />
+                <Icon name="refresh" size={16} />
                 Refresh
               </Button>
             </div>
