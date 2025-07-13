@@ -236,7 +236,6 @@ export const getRegistryApp = createTool({
   }),
   outputSchema: RegistryAppSchema,
   handler: async (ctx, c) => {
-    console.log({ ctx });
     c.resourceAccess.grant(); // this method is public
     let data:
       | QueryResult<

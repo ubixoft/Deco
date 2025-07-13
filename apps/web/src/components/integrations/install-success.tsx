@@ -63,6 +63,10 @@ function ConnectionInstallSuccess() {
 
     updateIntegration({
       ...existingIntegration,
+      connection: {
+        ...existingIntegration.connection,
+        token: installId,
+      },
       id: connectionId,
       name: newName,
       description: newDescription,

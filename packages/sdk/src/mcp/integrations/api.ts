@@ -680,7 +680,6 @@ export const DECO_INTEGRATION_OAUTH_START = createIntegrationManagementTool({
       params: {
         name: "DECO_CHAT_OAUTH_START",
         arguments: {
-          appName,
           installId,
           returnUrl,
         },
