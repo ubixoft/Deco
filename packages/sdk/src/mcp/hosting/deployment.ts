@@ -99,6 +99,7 @@ export interface WranglerConfig {
   //
   deco?: {
     integration?: {
+      friendlyName?: string;
       icon?: string;
       description?: string;
     };
