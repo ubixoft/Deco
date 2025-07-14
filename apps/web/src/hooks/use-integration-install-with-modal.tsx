@@ -11,6 +11,7 @@ import { useWorkspaceLink } from "./use-navigate-workspace.ts";
 
 interface InstallState {
   isModalOpen: boolean;
+  scopes?: string[];
   stateSchema?: JSONSchema7;
   integrationName?: string;
   integration?: Integration;
@@ -44,6 +45,7 @@ export function useIntegrationInstallWithModal() {
         setInstallState({
           isModalOpen: true,
           stateSchema: result.stateSchema as JSONSchema7,
+          scopes: result.scopes,
           integrationName: params.appName,
           integration: result.integration,
           appName: params.appName,
@@ -77,8 +79,12 @@ export function useIntegrationInstallWithModal() {
         },
         name: keyName,
         policies: [
-          { effect: "allow", resource: "INTEGRATIONS_GET" },
-          { effect: "allow", resource: "DATABASES_RUN_SQL" },
+          { effect: "allow" as const, resource: "INTEGRATIONS_GET" },
+          { effect: "allow" as const, resource: "DATABASES_RUN_SQL" },
+          ...(installState.scopes?.map((scope: string) => ({
+            effect: "allow" as const,
+            resource: scope,
+          })) ?? []),
         ],
       });
 
@@ -132,6 +138,7 @@ export function useIntegrationInstallWithModal() {
     modalState: {
       isOpen: installState.isModalOpen,
       schema: installState.stateSchema,
+      scopes: installState.scopes,
       integrationName: installState.integrationName,
       integration: installState.integration,
       onSubmit: handleModalSubmit,
