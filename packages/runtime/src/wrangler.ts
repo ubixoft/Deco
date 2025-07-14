@@ -112,6 +112,10 @@ export interface WranglerConfig {
   keep_assets?: boolean;
   //
   deco?: {
+    enable_workflows?: boolean;
+    workspace?: string;
+    app?: string;
+    local?: boolean;
     integration?: {
       friendlyName?: string;
       icon?: string;
