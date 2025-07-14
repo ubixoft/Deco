@@ -166,7 +166,7 @@ export function useIntegrationInstallWithModal() {
       // Step 3: Create integration with marketplace info and API token
       const integrationData = {
         id: installId,
-        name: marketplaceApp.name,
+        name: marketplaceApp.friendlyName ?? marketplaceApp.name,
         description: marketplaceApp.description,
         icon: marketplaceApp.icon,
         connection: {
