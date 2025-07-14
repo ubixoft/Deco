@@ -175,6 +175,7 @@ export function ConfirmMarketplaceInstallDialog({
           schema={modalState.schema}
           integrationName={modalState.integrationName || integration?.name ||
             "Integration"}
+          permissions={modalState.permissions || []}
           onSubmit={handleModalComplete}
           isLoading={modalState.isLoading}
         />

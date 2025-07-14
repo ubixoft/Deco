@@ -360,7 +360,11 @@ export const useInstallFromMarketplace = () => {
           }
         } else if (result && "stateSchema" in result) {
           // Return integration with stateSchema for modal handling
-          return { integration, stateSchema: result.stateSchema };
+          return {
+            integration,
+            stateSchema: result.stateSchema,
+            scopes: result.scopes,
+          };
         } else {
           throw new Error("Invalid OAuth response format");
         }
