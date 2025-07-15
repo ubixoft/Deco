@@ -255,8 +255,14 @@ function ArgumentsInput({ value, onChange, jsonSchema }: {
     }
   }, [jsonSchema, schemaForm]);
 
-  // If JSON schema is provided, render the schema form
-  if (jsonSchema) {
+  // Check if JSON schema is provided and has meaningful content
+  const hasValidSchema = jsonSchema &&
+    jsonSchema.type === "object" &&
+    jsonSchema.properties &&
+    Object.keys(jsonSchema.properties).length > 0;
+
+  // If JSON schema is provided with properties, render the schema form
+  if (hasValidSchema) {
     return (
       <div className="space-y-2">
         <JsonSchemaForm
