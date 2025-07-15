@@ -517,6 +517,7 @@ export type Database = {
           index_name: string | null;
           metadata: Json | null;
           path: string | null;
+          status: string | null;
           workspace: string;
         };
         Insert: {
@@ -527,6 +528,7 @@ export type Database = {
           index_name?: string | null;
           metadata?: Json | null;
           path?: string | null;
+          status?: string | null;
           workspace: string;
         };
         Update: {
@@ -537,6 +539,7 @@ export type Database = {
           index_name?: string | null;
           metadata?: Json | null;
           path?: string | null;
+          status?: string | null;
           workspace?: string;
         };
         Relationships: [];

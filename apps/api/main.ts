@@ -6,6 +6,7 @@ import { instrument } from "@deco/sdk/observability";
 import { getRuntimeKey } from "hono/adapter";
 import { default as app } from "./src/app.ts";
 import { email } from "./src/email.ts";
+import { KbFileProcessorWorkflow } from "./src/workflows/kb-file-processor-workflow.ts";
 
 const { env } = await import("cloudflare:workers");
 
@@ -84,3 +85,6 @@ export default {
     });
   },
 };
+
+// Export the workflow
+export { KbFileProcessorWorkflow };

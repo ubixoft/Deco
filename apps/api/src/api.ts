@@ -52,6 +52,7 @@ export const honoCtxToAppCtx = (c: Context<AppEnv>): AppContext => {
     policy: policyClient,
     authorization: authorizationClient,
     token: c.req.header("Authorization")?.replace("Bearer ", ""),
+    kbFileProcessor: c.env.KB_FILE_PROCESSOR,
     workspace: slug && root
       ? {
         root,
