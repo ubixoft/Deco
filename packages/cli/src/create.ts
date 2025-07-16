@@ -297,7 +297,7 @@ export async function createCommand(
     console.log(`\nNext steps:`);
     console.log(`  cd ${finalProjectName}`);
     console.log(`  npm install`);
-    console.log(`  deco dev`);
+    console.log(`  npm run dev`);
   } catch (error) {
     console.error(
       "❌ Failed to create project:",
