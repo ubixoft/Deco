@@ -2,9 +2,10 @@
 import { HttpServerTransport } from "@deco/mcp/http";
 import {
   createTool as mastraCreateTool,
-  type Tool,
+  Tool,
   type ToolAction,
   type ToolExecutionContext,
+  type Workflow,
 } from "@mastra/core";
 import { RuntimeContext } from "@mastra/core/di";
 import {
@@ -176,10 +177,16 @@ export interface CreateMCPServerOptions<
 > {
   oauth?: { state?: TSchema; scopes?: string[] };
   tools?: Array<
-    (env: Env & DefaultEnv<TSchema>) => ReturnType<typeof createTool>
+    (
+      env: Env & DefaultEnv<TSchema>,
+    ) => Promise<ReturnType<typeof createTool>> | ReturnType<typeof createTool>
   >;
   workflows?: Array<
-    (env: Env & DefaultEnv<TSchema>) => ReturnType<typeof createWorkflow>
+    (
+      env: Env & DefaultEnv<TSchema>,
+    ) => // this is a workaround to allow workflows to be thenables
+    | Promise<{ workflow: ReturnType<typeof createWorkflow> }>
+    | ReturnType<typeof createWorkflow>
   >;
 }
 
@@ -328,27 +335,49 @@ type MCPServer<TEnv = any, TSchema extends z.ZodTypeAny = never> = {
   callTool: CallTool<TEnv, TSchema>;
 };
 
+export const isWorkflow = (value: any): value is Workflow => {
+  return value && !(value instanceof Promise);
+};
+const isTool = (value: any): value is Tool => {
+  return value && value instanceof Tool;
+};
+
 export const createMCPServer = <
   TEnv = any,
   TSchema extends z.ZodTypeAny = never,
 >(
   options: CreateMCPServerOptions<TEnv, TSchema>,
 ): MCPServer<TEnv, TSchema> => {
-  const createServer = (bindings: TEnv & DefaultEnv<TSchema>) => {
+  const createServer = async (bindings: TEnv & DefaultEnv<TSchema>) => {
     const server = new McpServer(
       { name: "@deco/mcp-api", version: "1.0.0" },
       { capabilities: { tools: {} } },
     );
 
-    const tools = options.tools?.map((tool) => tool(bindings)) ?? [];
+    const tools = await Promise.all(
+      options.tools?.map(async (tool) => {
+        const toolResult = tool(bindings);
+        return isTool(toolResult) ? toolResult : await toolResult;
+      }) ?? [],
+    );
 
-    const workflows = options.workflows?.map((workflow) => workflow(bindings));
+    // since mastra workflows are thenables, we need to await and add as a prop
+    const workflows = await Promise.all(
+      options.workflows?.map(async (workflow) => {
+        const workflowResult = workflow(bindings);
+        if (isWorkflow(workflowResult)) {
+          return { workflow: workflowResult };
+        }
+
+        return await workflowResult;
+      }) ?? [],
+    ).then((w) => w.map((w) => w.workflow));
+
     const workflowTools =
       workflows?.map((workflow) => createWorkflowTools(workflow, bindings))
         .flat() ?? [];
 
     tools.push(...workflowTools);
-
     tools.push(decoChatOAuthToolFor<TSchema>(options.oauth));
 
     for (const tool of tools) {
@@ -386,7 +415,7 @@ export const createMCPServer = <
     env: TEnv & DefaultEnv<TSchema>,
     ctx: ExecutionContext,
   ) => {
-    const { server } = createServer(env);
+    const { server } = await createServer(env);
     const transport = new HttpServerTransport();
 
     await server.connect(transport);
@@ -400,14 +429,14 @@ export const createMCPServer = <
     return res;
   };
 
-  const callTool: CallTool<TEnv, TSchema> = ({
+  const callTool: CallTool<TEnv, TSchema> = async ({
     env,
     ctx,
     req,
     toolCallId,
     toolCallInput,
   }) => {
-    const { tools } = createServer(env);
+    const { tools } = await createServer(env);
     const tool = tools.find((t) => t.id === toolCallId);
     const execute = tool?.execute;
     if (!execute) {
