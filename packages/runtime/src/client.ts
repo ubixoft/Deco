@@ -2,7 +2,7 @@ export type MCPClient<T> = {
   // deno-lint-ignore no-explicit-any
   [K in keyof T]: T[K] extends (...args: any) => any ? (
       args: Parameters<T[K]>[0],
-      init?: RequestInit,
+      init?: CustomInit,
     ) => Promise<Awaited<ReturnType<T[K]>>>
     : never;
 };
