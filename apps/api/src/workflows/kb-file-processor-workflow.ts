@@ -1,11 +1,10 @@
-import type {
-  Workflow,
-  WorkflowEvent,
-  WorkflowStep,
-} from "@cloudflare/workers-types";
+import type { Workflow } from "@cloudflare/workers-types";
+import {
+  WorkflowEntrypoint,
+  type WorkflowEvent,
+  type WorkflowStep,
+} from "cloudflare:workers";
 import { type KbFileProcessorMessage, processBatch } from "@deco/sdk/workflows";
-
-const { WorkflowEntrypoint } = await import("cloudflare:workers");
 
 // Environment interface for workflow
 interface Env extends Record<string, unknown> {
@@ -30,11 +29,6 @@ export class KbFileProcessorWorkflow
     step: WorkflowStep,
   ) {
     const message = event.payload;
-    console.log(
-      `Workflow processing file: ${message.fileUrl}, batch: ${
-        message.batchPage || 0
-      }`,
-    );
 
     // Process the current batch
     const result = await step.do("process-batch", async () => {
