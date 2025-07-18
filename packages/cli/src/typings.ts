@@ -10,6 +10,24 @@ interface Options {
   selfUrl?: string;
 }
 
+// Sanitize description for safe use in JSDoc block comments
+const formatDescription = (desc: string | undefined) => {
+  if (!desc) return "";
+
+  return desc
+    // Escape */ sequences that would break the comment block
+    .replace(/\*\//g, "*\\/")
+    // Normalize line endings
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    // Split into lines and format each line
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => ` * ${line}`)
+    .join("\n");
+};
+
 function slugify(name: string) {
   return name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
@@ -192,7 +210,12 @@ export const genEnv = async (
         },
       }) as {
         structuredContent: {
-          tools: { name: string; inputSchema: any; outputSchema?: any }[];
+          tools: {
+            name: string;
+            inputSchema: any;
+            outputSchema?: any;
+            description?: string;
+          }[];
         };
       };
 
@@ -249,6 +272,7 @@ export const genEnv = async (
               t.name,
               inputName,
               outputTs ? outputName : undefined,
+              t.description,
             ];
           }),
       );
@@ -257,10 +281,10 @@ export const genEnv = async (
         binding.name,
         compiledTools,
         stateKey,
-        // propName, toolName, inputType, outputType
+        // propName, toolName, inputType, outputType, description
       ] as [
         string,
-        [string, string, string | undefined][],
+        [string, string, string | undefined, string | undefined][],
         KeyInfo | undefined,
       ];
     }),
@@ -289,7 +313,7 @@ ${tsTypes}
     props.filter((p) => p !== null && p[2] !== undefined).map((prop) => {
       const [_, __, stateKey] = prop as [
         string,
-        [string, string, string | undefined][],
+        [string, string, string | undefined, string | undefined][],
         KeyInfo | undefined,
       ];
       return `${stateKey!.key}: z.object({
@@ -307,8 +331,12 @@ ${tsTypes}
     props.filter((p) => p !== null).map(([propName, tools]) => {
       return `${propName}: Mcp<{
         ${
-        tools.map(([toolName, inputName, outputName]) => {
-          return `
+        tools.map(([toolName, inputName, outputName, description]) => {
+          const docComment = description
+            ? `/**\n${formatDescription(description)}\n */`
+            : "";
+
+          return `${docComment}
           ${
             isValidJavaScriptPropertyName(toolName)
               ? toolName
