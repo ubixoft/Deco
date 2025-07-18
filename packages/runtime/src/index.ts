@@ -136,8 +136,8 @@ export class UnauthorizedError extends Error {
   }
 }
 
-const AUTH_CALLBACK_ENDPOINT = "/auth/callback";
-
+const AUTH_CALLBACK_ENDPOINT = "/oauth/callback";
+const AUTH_START_ENDPOINT = "/oauth/start";
 const AUTHENTICATED = (user?: unknown) => () => {
   return user as User;
 };
@@ -216,6 +216,15 @@ export const withRuntime = <TEnv, TSchema extends z.ZodTypeAny = never>(
         appName: env.DECO_CHAT_APP_NAME,
       });
     }
+    if (url.pathname === AUTH_START_ENDPOINT) {
+      env.DECO_CHAT_REQUEST_CONTEXT.ensureAuthenticated();
+      const redirectTo = new URL(
+        "/",
+        url,
+      );
+      const next = url.searchParams.get("next");
+      return Response.redirect(next ?? redirectTo, 302);
+    }
     if (url.pathname === "/mcp") {
       return server.fetch(req, withBindings(env, getReqToken(req)), ctx);
     }
@@ -261,13 +270,19 @@ export const withRuntime = <TEnv, TSchema extends z.ZodTypeAny = never>(
       } catch (e) {
         if (e instanceof UnauthorizedError) {
           const referer = req.headers.get("referer");
-          e.redirectTo.searchParams.set(
-            "state",
-            StateParser.stringify({
-              next: referer ?? req.url,
-            }),
-          );
-          return Response.redirect(e.redirectTo, 302);
+          const isBrowser = typeof referer === "string" &&
+            req.headers.get("user-agent") != null;
+          if (isBrowser) {
+            const url = new URL(req.url);
+            e.redirectTo.searchParams.set(
+              "state",
+              StateParser.stringify({
+                next: url.searchParams.get("next") ?? referer ?? req.url,
+              }),
+            );
+            return Response.redirect(e.redirectTo, 302);
+          }
+          return new Response(null, { status: 401 });
         }
         throw e;
       }
