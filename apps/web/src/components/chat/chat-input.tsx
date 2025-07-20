@@ -167,16 +167,13 @@ ChatInput.UI = (
     }
   }, [isLoading]);
 
-  const isMobile = typeof window !== "undefined" &&
-    ("ontouchstart" in window ||
-      navigator.userAgent.toLowerCase().includes("mobile"));
+  const isMobile = typeof window !== "undefined" && (
+    "ontouchstart" in window ||
+    navigator.userAgent.toLowerCase().includes("mobile")
+  );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === "Enter") {
-      if (e.shiftKey || isMobile) {
-        return; // Allow new lines with Shift+Enter or return key (mobile devices)
-      }
-
+    if (e.key === "Enter" && !e.shiftKey && !isMobile) {
       if (!isLoading && (input.trim() || uploadedFiles.length > 0)) {
         e.preventDefault();
         const formEvent = new Event("submit", {
@@ -338,6 +335,7 @@ ChatInput.UI = (
                   placeholder="Type a message..."
                   className="border border-b-0 placeholder:text-muted-foreground resize-none focus-visible:ring-0"
                   disabled={isLoading || disabled}
+                  allowNewLine={isMobile}
                 />
               </div>
 
