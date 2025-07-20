@@ -140,6 +140,9 @@ export const readFile = createTool({
       "Seconds until URL expires (default: 60)",
     ),
   }),
+  outputSchema: z.object({
+    url: z.string().describe("The URL to read the file from"),
+  }),
   handler: async ({ path, expiresIn = 180 }, c) => {
     assertHasWorkspace(c);
     const bucketName = getWorkspaceBucketName(c.workspace.value);
