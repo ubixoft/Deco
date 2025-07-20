@@ -167,10 +167,14 @@ ChatInput.UI = (
     }
   }, [isLoading]);
 
+  const isMobile = typeof window !== "undefined" &&
+    ("ontouchstart" in window ||
+      navigator.userAgent.toLowerCase().includes("mobile"));
+
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter") {
-      if (e.shiftKey) {
-        return; // Allow new lines with Shift+Enter
+      if (e.shiftKey || isMobile) {
+        return; // Allow new lines with Shift+Enter or return key (mobile devices)
       }
 
       if (!isLoading && (input.trim() || uploadedFiles.length > 0)) {
