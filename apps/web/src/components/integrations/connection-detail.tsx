@@ -27,7 +27,7 @@ import {
   useToolCall,
   useTools,
 } from "@deco/sdk";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   RemoveConnectionAlert,
@@ -887,10 +887,18 @@ function ToolsInspector({ data, selectedConnectionId }: {
   selectedConnectionId?: string;
 }) {
   const [search, setSearch] = useState("");
-  const [selectedIntegration, setSelectedIntegration] = useState<
-    Integration | null
-  >(data.instances[0] ?? null);
+  const [selectedIntegrationId, setSelectedIntegrationId] = useState<
+    string | null
+  >(
+    data.instances[0]?.id ?? null,
+  );
   const toolsRef = useRef<HTMLDivElement>(null);
+
+  const selectedIntegration = useMemo(() => {
+    return data.instances.find((i) => i.id === selectedIntegrationId) ??
+      data.instances[0] ?? null;
+  }, [data.instances, selectedIntegrationId]);
+
   const connection = selectedIntegration?.connection;
   const tools = useTools(connection as MCPConnection);
 
@@ -912,21 +920,16 @@ function ToolsInspector({ data, selectedConnectionId }: {
   // Update selected integration when selectedConnectionId changes
   useEffect(() => {
     if (selectedConnectionId) {
-      const instance = data.instances.find((i) =>
-        i.id === selectedConnectionId
-      );
-      if (instance) {
-        setSelectedIntegration(instance);
-        // Scroll to tools section
-        setTimeout(() => {
-          toolsRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        }, 100);
-      }
+      setSelectedIntegrationId(selectedConnectionId);
+      // Scroll to tools section
+      setTimeout(() => {
+        toolsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
     }
-  }, [selectedConnectionId, data.instances]);
+  }, [selectedConnectionId]);
 
   const filteredTools = tools.data.tools.filter((tool) =>
     tool.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -943,10 +946,7 @@ function ToolsInspector({ data, selectedConnectionId }: {
         <Select
           value={selectedIntegration?.id}
           onValueChange={(value) => {
-            const instance = data.instances.find((i) =>
-              i.id === value
-            );
-            setSelectedIntegration(instance ?? null);
+            setSelectedIntegrationId(value);
           }}
         >
           <SelectTrigger className="max-w-[300px] w-full">
@@ -962,7 +962,8 @@ function ToolsInspector({ data, selectedConnectionId }: {
         <Input
           placeholder="Search tools..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch(e.target.value)}
           className="max-w-xs"
         />
       </div>
@@ -988,7 +989,10 @@ function ToolsInspector({ data, selectedConnectionId }: {
                   Error: {tools.error?.message || 'Unknown error occurred'}
                 </pre>
               </div>
-              <Button onClick={() => tools.refetch()}>
+              <Button
+                onClick={() =>
+                  tools.refetch()}
+              >
                 <Icon name="refresh" size={16} />
                 Refresh
               </Button>
