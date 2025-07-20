@@ -205,6 +205,9 @@ export const writeFile = createTool({
       "Metadata to be added to the file",
     ),
   }),
+  outputSchema: z.object({
+    url: z.string().describe("The URL to upload the file to"),
+  }),
   handler: async ({ path, expiresIn = 60, contentType, metadata }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
     assertHasWorkspace(c);
