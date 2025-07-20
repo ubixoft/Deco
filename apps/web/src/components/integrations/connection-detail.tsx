@@ -975,29 +975,50 @@ function ToolsInspector({ data, selectedConnectionId }: {
             ))
           )
           : tools.isError
-          ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <img
-                src="/img/error-state-connection-tools.svg"
-                className="h-64 mb-4"
-              />
-              <h3 className="text-2xl font-semibold text-foreground mb-2">
-                Unable to list connection tools
-              </h3>
-              <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-lg text-left mb-4">
-                <pre className="text-xs text-destructive whitespace-pre-wrap break-words">
-                  Error: {tools.error?.message || 'Unknown error occurred'}
-                </pre>
+          ? ("url" in connection && connection.url.includes("example.com"))
+            ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center">
+                  <Icon
+                    name="tune"
+                    size={24}
+                    className="text-muted-foreground"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-foreground">
+                    Configuration Required
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    This connection needs to be configured before tools can be
+                    tested. Please update the connection details above.
+                  </p>
+                </div>
               </div>
-              <Button
-                onClick={() =>
-                  tools.refetch()}
-              >
-                <Icon name="refresh" size={16} />
-                Refresh
-              </Button>
-            </div>
-          )
+            )
+            : (
+              <div className="flex flex-col items-center justify-center p-8 text-center">
+                <img
+                  src="/img/error-state-connection-tools.svg"
+                  className="h-64 mb-4"
+                />
+                <h3 className="text-2xl font-semibold text-foreground mb-2">
+                  Unable to list connection tools
+                </h3>
+                <div className="p-3 bg-destructive/5 border border-destructive/20 rounded-lg text-left mb-4">
+                  <pre className="text-xs text-destructive whitespace-pre-wrap break-words">
+                  Error: {tools.error?.message || 'Unknown error occurred'}
+                  </pre>
+                </div>
+                <Button
+                  onClick={() =>
+                    tools.refetch()}
+                >
+                  <Icon name="refresh" size={16} />
+                  Refresh
+                </Button>
+              </div>
+            )
           : (
             filteredTools.map((tool) =>
               connection
