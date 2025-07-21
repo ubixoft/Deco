@@ -86,7 +86,7 @@ export function ConfirmMarketplaceInstallDialog({
           authorizeOauthUrl: result.redirectUrl,
         });
         setIntegration(null);
-      } else {
+      } else if (!result.stateSchema) {
         navigateWorkspace(
           `/connection/${integration.provider}:::${integration.name}`,
         );
