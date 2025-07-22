@@ -19,9 +19,13 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          cd docs
+          bun install
 
       - name: Deploy
-        run: bun run docs:deploy
+        run: |
+          cd docs
+          bun run deploy
         env:
           DECO_DEPLOY_TOKEN: ${{ secrets.DECO_DEPLOY_TOKEN }}
