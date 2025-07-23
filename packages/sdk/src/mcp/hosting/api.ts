@@ -817,7 +817,9 @@ export const listWorkflows = createTool({
       ...run,
       createdAt: run.createdAt?.getTime() ?? 0,
       updatedAt: run.updatedAt?.getTime(),
-      status: typeof snapshot === "string" ? snapshot : snapshot.status,
+      status: typeof snapshot === "string"
+        ? snapshot
+        : snapshot?.status ?? "unknown",
     }));
 
     return {
