@@ -143,7 +143,7 @@ function WorkflowStatsCard({ stats }: { stats: WorkflowStats }) {
           </div>
           <div className="text-center space-y-2">
             <div className="text-lg font-semibold">
-              {stats.firstRun
+              {stats.firstRun?.date
                 ? new Date(stats.firstRun.date).toLocaleDateString()
                 : "Never"}
             </div>
@@ -181,12 +181,12 @@ function WorkflowRunsTable({ runs, onRunClick }: {
           bVal = b.createdAt;
           break;
         case "updatedAt":
-          aVal = a.updatedAt;
-          bVal = b.updatedAt;
+          aVal = a.updatedAt || a.createdAt;
+          bVal = b.updatedAt || b.createdAt;
           break;
         default:
-          aVal = a.updatedAt;
-          bVal = b.updatedAt;
+          aVal = a.updatedAt || a.createdAt;
+          bVal = b.updatedAt || b.createdAt;
       }
 
       if (typeof aVal === "string" && typeof bVal === "string") {
@@ -237,7 +237,7 @@ function WorkflowRunsTable({ runs, onRunClick }: {
       header: "Updated",
       render: (run: WorkflowRun) => (
         <span className="text-sm">
-          {new Date(run.updatedAt).toLocaleString()}
+          {new Date(run.updatedAt || run.createdAt).toLocaleString()}
         </span>
       ),
       sortable: true,

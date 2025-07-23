@@ -90,7 +90,9 @@ export function transformToUniqueWorkflows(
   const result = Array.from(workflowMap.entries()).map(
     ([workflowName, workflowRuns]) => {
       // Sort runs by updatedAt (most recent first)
-      const sortedRuns = workflowRuns.sort((a, b) => b.updatedAt - a.updatedAt);
+      const sortedRuns = workflowRuns.sort((a, b) =>
+        (b.updatedAt || 0) - (a.updatedAt || 0)
+      );
       const lastRun = sortedRuns[0];
 
       // Calculate statistics - debug the status counting
@@ -120,13 +122,15 @@ export function transformToUniqueWorkflows(
       const firstCreated = Math.min(
         ...workflowRuns.map((run) => run.createdAt),
       );
-      const lastUpdated = Math.max(...workflowRuns.map((run) => run.updatedAt));
+      const lastUpdated = Math.max(
+        ...workflowRuns.map((run) => run.updatedAt || 0),
+      );
 
       const uniqueWorkflow = {
         name: workflowName,
         totalRuns: workflowRuns.length,
         lastRun: {
-          date: lastRun.updatedAt,
+          date: lastRun.updatedAt || lastRun.createdAt,
           status: lastRun.status,
           runId: lastRun.runId,
         },
@@ -166,7 +170,9 @@ export function calculateWorkflowStats(runs: WorkflowRun[]): WorkflowStats {
   const successRate = runs.length > 0 ? (successCount / runs.length) * 100 : 0;
 
   // Sort runs by updatedAt (most recent first)
-  const sortedByUpdated = [...runs].sort((a, b) => b.updatedAt - a.updatedAt);
+  const sortedByUpdated = [...runs].sort((a, b) =>
+    (b.updatedAt || 0) - (a.updatedAt || 0)
+  );
   const lastRun = sortedByUpdated[0];
 
   // Sort runs by createdAt (earliest first)
@@ -182,7 +188,7 @@ export function calculateWorkflowStats(runs: WorkflowRun[]): WorkflowStats {
     successRate: Math.round(successRate * 100) / 100, // Round to 2 decimal places
     lastRun: lastRun
       ? {
-        date: lastRun.updatedAt,
+        date: lastRun.updatedAt || lastRun.createdAt,
         status: lastRun.status,
         runId: lastRun.runId,
       }
@@ -248,8 +254,8 @@ export function sortUniqueWorkflows(
         bVal = b.totalRuns > 0 ? (b.successCount / b.totalRuns) : 0;
         break;
       case "lastRun":
-        aVal = a.lastRun.date;
-        bVal = b.lastRun.date;
+        aVal = a.lastRun.date || 0;
+        bVal = b.lastRun.date || 0;
         break;
       case "lastStatus":
         aVal = a.lastRun.status;

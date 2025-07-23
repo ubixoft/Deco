@@ -788,7 +788,7 @@ export const listWorkflows = createTool({
       workflowName: z.string(),
       runId: z.string(),
       createdAt: z.number(),
-      updatedAt: z.number(),
+      updatedAt: z.number().nullable().optional(),
       resourceId: z.string().nullable().optional(),
       status: z.string(),
     })).describe("The workflow list names"),
@@ -816,7 +816,7 @@ export const listWorkflows = createTool({
     const transformed = runs.map(({ snapshot, ...run }) => ({
       ...run,
       createdAt: run.createdAt.getTime(),
-      updatedAt: run.updatedAt.getTime(),
+      updatedAt: run.updatedAt?.getTime(),
       status: typeof snapshot === "string" ? snapshot : snapshot.status,
     }));
 

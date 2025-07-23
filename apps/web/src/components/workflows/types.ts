@@ -5,7 +5,7 @@ export interface WorkflowRun {
   workflowName: string;
   runId: string;
   createdAt: number;
-  updatedAt: number;
+  updatedAt?: number | null;
   resourceId: string | null;
   status: string;
 }
@@ -22,7 +22,7 @@ export interface UniqueWorkflow {
   successCount: number;
   errorCount: number;
   firstCreated: number;
-  lastUpdated: number;
+  lastUpdated?: number | null;
 }
 
 // Workflow statistics for the detail page
@@ -39,7 +39,7 @@ export interface WorkflowStats {
     runId: string;
   };
   firstRun?: {
-    date: number;
+    date?: number | null;
     runId: string;
   };
 }
