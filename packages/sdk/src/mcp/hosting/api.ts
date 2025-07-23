@@ -815,7 +815,7 @@ export const listWorkflows = createTool({
 
     const transformed = runs.map(({ snapshot, ...run }) => ({
       ...run,
-      createdAt: run.createdAt.getTime(),
+      createdAt: run.createdAt?.getTime() ?? 0,
       updatedAt: run.updatedAt?.getTime(),
       status: typeof snapshot === "string" ? snapshot : snapshot.status,
     }));
