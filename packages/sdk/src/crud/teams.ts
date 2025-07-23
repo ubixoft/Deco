@@ -1,5 +1,8 @@
 import { MCPClient } from "../fetcher.ts";
 import type { Theme } from "../theme.ts";
+import { View } from "../views.ts";
+import type { MCPConnection } from "../models/mcp.ts";
+import { WellKnownBindings } from "../mcp/bindings/index.ts";
 
 export interface Team {
   id: number;
@@ -10,6 +13,10 @@ export interface Team {
   created_at: string;
 }
 
+export interface TeamWithViews extends Team {
+  views: View[];
+}
+
 export const listTeams = (
   init?: RequestInit,
 ): Promise<Team[]> => MCPClient.TEAMS_LIST({}, init) as Promise<Team[]>;
@@ -17,7 +24,8 @@ export const listTeams = (
 export const getTeam = (
   slug: string,
   init?: RequestInit,
-): Promise<Team> => MCPClient.TEAMS_GET({ slug }, init) as Promise<Team>;
+): Promise<TeamWithViews> =>
+  MCPClient.TEAMS_GET({ slug }, init) as Promise<TeamWithViews>;
 
 export interface CreateTeamInput {
   name: string;
@@ -57,3 +65,50 @@ export const deleteTeam = (
   init?: RequestInit,
 ): Promise<{ success: boolean }> =>
   MCPClient.TEAMS_DELETE({ teamId }, init) as Promise<{ success: boolean }>;
+
+export interface AddViewInput {
+  view: {
+    id: string;
+    title: string;
+    icon: string;
+    type: "custom";
+    url: string;
+  };
+}
+
+export const addView = (
+  workspace: string,
+  input: AddViewInput,
+  init?: RequestInit,
+): Promise<View> =>
+  MCPClient.forWorkspace(workspace).TEAMS_ADD_VIEW(input, init) as Promise<
+    View
+  >;
+
+export interface RemoveViewInput {
+  viewId: string;
+}
+
+export const removeView = (
+  workspace: string,
+  input: RemoveViewInput,
+  init?: RequestInit,
+): Promise<{ success: boolean }> =>
+  MCPClient.forWorkspace(workspace).TEAMS_REMOVE_VIEW(input, init) as Promise<
+    { success: boolean }
+  >;
+
+export const listAvailableViewsForConnection = async (
+  connection: MCPConnection,
+) => {
+  try {
+    const client = MCPClient.forConnection<typeof WellKnownBindings["View"]>(
+      connection,
+    );
+    const result = await client.DECO_CHAT_VIEWS_LIST({});
+    return result;
+  } catch (error) {
+    console.error("Error listing available views for connection:", error);
+    return { views: [] };
+  }
+};

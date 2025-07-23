@@ -5,12 +5,17 @@ import {
   useSuspenseQuery,
 } from "@tanstack/react-query";
 import {
+  addView,
+  type AddViewInput,
   createTeam,
   type CreateTeamInput,
   deleteTeam,
   getTeam,
   getWorkspaceTheme,
+  listAvailableViewsForConnection,
   listTeams,
+  removeView,
+  type RemoveViewInput,
   updateTeam,
   type UpdateTeamInput,
 } from "../crud/teams.ts";
@@ -18,6 +23,7 @@ import { KEYS } from "./api.ts";
 import { InternalServerError } from "../errors.ts";
 import { DEFAULT_THEME } from "../theme.ts";
 import { useSDK } from "./store.tsx";
+import { MCPConnection } from "../models/index.ts";
 
 export const useTeams = () => {
   return useSuspenseQuery({
@@ -89,4 +95,55 @@ export function useWorkspaceTheme() {
       };
     },
   });
+}
+
+export function useAddView() {
+  const client = useQueryClient();
+  const { workspace } = useSDK();
+  const slug = workspace.split("/")[1] ?? "";
+
+  return useMutation({
+    mutationFn: (input: AddViewInput) => addView(workspace, input),
+    onSuccess: () => {
+      // Invalidate team data to refresh views
+      client.invalidateQueries({ queryKey: KEYS.TEAM(slug) });
+    },
+  });
+}
+
+export function useRemoveView() {
+  const client = useQueryClient();
+  const { workspace } = useSDK();
+  const slug = workspace.split("/")[1] ?? "";
+
+  return useMutation({
+    mutationFn: (input: RemoveViewInput) => removeView(workspace, input),
+    onSuccess: () => {
+      // Invalidate team data to refresh views
+      client.invalidateQueries({ queryKey: KEYS.TEAM(slug) });
+    },
+  });
+}
+
+export function useConnectionViews(
+  integration: { id: string; connection: MCPConnection } | null,
+) {
+  const { workspace } = useSDK();
+
+  const data = useQuery({
+    queryKey: KEYS.TEAM_VIEWS(workspace, integration?.id ?? "null"),
+    queryFn: async () => {
+      if (!integration) return { views: [] };
+      const result = await listAvailableViewsForConnection(
+        integration.connection,
+      ).catch((error) => {
+        console.error(error);
+        return { views: [] };
+      });
+
+      return result;
+    },
+  });
+
+  return data;
 }
