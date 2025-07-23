@@ -5500,7 +5500,7 @@ export interface Env {
      * "@cloudflare/workers-types": "^4.20250617.0",
      * "@deco/mcp": "npm:@jsr/deco__mcp@^0.5.6",
      * "@deco/workers-runtime": "npm:@jsr/deco__workers-runtime@^0.4.0",
-     * "@mastra/core": "^0.11.1",
+     * "@mastra/core": "0.10.12",
      * "zod": "^3.25.67"
      * },
      * "devDependencies": {
@@ -5575,7 +5575,7 @@ export interface Env {
      * "dependencies": {
      * "@cloudflare/workers-types": "^4.20250617.0",
      * "@deco/workers-runtime": "npm:@jsr/deco__workers-runtime@^0.2.18",
-     * "@mastra/core": "^0.11.1",
+     * "@mastra/core": "0.10.12",
      * "zod": "^3.25.67"
      * },
      * "devDependencies": {
