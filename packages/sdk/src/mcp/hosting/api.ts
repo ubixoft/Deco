@@ -813,6 +813,8 @@ export const listWorkflows = createTool({
       return { runs: [] };
     });
 
+    console.log({ runs });
+
     const transformed = runs.map(({ snapshot, ...run }) => ({
       ...run,
       createdAt: run.createdAt?.getTime() ?? 0,
