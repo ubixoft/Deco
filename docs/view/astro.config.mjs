@@ -8,6 +8,9 @@ import react from "@astrojs/react";
 
 // https://astro.build/config
 export default defineConfig({
+  redirects: {
+    "/": "/en/introduction",
+  },
   server: {
     port: 4000,
   },
