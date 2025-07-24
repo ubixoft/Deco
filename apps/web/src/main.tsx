@@ -312,6 +312,7 @@ const router = createBrowserRouter([
           { path: "trigger/:id", Component: TriggerDetails },
           { path: "settings/:tab", Component: Settings },
           { path: "settings", Component: Settings },
+          { path: "monitor/:tab", Component: Monitor },
           { path: "monitor", Component: Monitor },
           { path: "audits", Component: AuditList },
           { path: "audit/:id", Component: AuditDetail },

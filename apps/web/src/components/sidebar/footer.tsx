@@ -408,12 +408,12 @@ function TeamBalanceLabel() {
   return (
     <span className="text-[11px] text-muted-foreground pl-2 flex items-center gap-1">
       <Link
-        to={withWorkspaceLink("/settings/wallet")}
+        to={withWorkspaceLink("/monitor/billing")}
         className="hover:underline transition-colors truncate"
       >
         Team balance: {account.balance}
       </Link>
-      <Link to={withWorkspaceLink("/settings/wallet")} className="shrink-0">
+      <Link to={withWorkspaceLink("/monitor/billing")} className="shrink-0">
         <Button
           variant="special"
           size="sm"
