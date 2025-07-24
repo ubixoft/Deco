@@ -1,5 +1,6 @@
 import {
   getAgentsUsage,
+  getBillingHistory,
   getThreadsUsage,
   getWalletAccount,
   getWorkspacePlan,
@@ -39,6 +40,9 @@ export function useUsagePerAgent({
   return usage;
 }
 
+export type AgentUsage = Awaited<ReturnType<typeof useUsagePerAgent>>;
+export type AgentUsageItem = AgentUsage["items"][number];
+
 export function useUsagePerThread({
   range,
 }: {
@@ -52,6 +56,27 @@ export function useUsagePerThread({
 
   return usage;
 }
+
+export type ThreadUsage = Awaited<ReturnType<typeof useUsagePerThread>>;
+export type ThreadUsageItem = ThreadUsage["items"][number];
+
+export function useBillingHistory({
+  range,
+}: {
+  range: "day" | "week" | "month" | "year";
+}) {
+  const { workspace } = useSDK();
+  const { data: billingHistory } = useSuspenseQuery({
+    queryKey: KEYS.WALLET_BILLING_HISTORY(workspace, range),
+    queryFn: () => getBillingHistory(workspace, range),
+  });
+
+  return billingHistory;
+}
+
+export type BillingHistoryItem = Awaited<
+  ReturnType<typeof useBillingHistory>
+>["items"][number];
 
 export function usePlan() {
   const { workspace } = useSDK();

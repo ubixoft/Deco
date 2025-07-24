@@ -77,6 +77,14 @@ const ThreadsUsage = {
         total: MicroDollar.fromMicrodollarString(thread.total).display({
           showAllDecimals: true,
         }),
+        transactions: thread.transactions.map((transaction) => ({
+          id: transaction.id,
+          timestamp: transaction.timestamp,
+          amount: MicroDollar.fromMicrodollarString(transaction.amount)
+            .toDollars(),
+          agentId: transaction.agentId,
+          generatedBy: transaction.generatedBy,
+        })),
       })).filter(isNotNull),
     };
   },
@@ -106,6 +114,41 @@ const AgentsUsage = {
         id: item.id,
         label: item.label,
         total: MicroDollar.fromMicrodollarString(item.total).toDollars(),
+        transactions: item.transactions.map((transaction) => ({
+          id: transaction.id,
+          timestamp: transaction.timestamp,
+          amount: MicroDollar.fromMicrodollarString(transaction.amount)
+            .toDollars(),
+          agentId: transaction.agentId,
+          generatedBy: transaction.generatedBy,
+        })),
+      })),
+    };
+  },
+};
+
+const BillingHistory = {
+  fetch: async (
+    wallet: ClientOf<WalletAPI>,
+    workspace: string,
+    range: "day" | "week" | "month" | "year",
+  ) => {
+    const historyResponse = await wallet["GET /billing/history"]({
+      workspace: encodeURIComponent(workspace),
+      range,
+    });
+
+    if (!historyResponse.ok) {
+      throw new Error("Failed to fetch billing history");
+    }
+
+    return historyResponse.json();
+  },
+  format: (history: WalletAPI["GET /billing/history"]["response"]) => {
+    return {
+      items: history.items.map((item) => ({
+        ...item,
+        amount: MicroDollar.fromMicrodollarString(item.amount).display(),
       })),
     };
   },
@@ -122,6 +165,10 @@ export const getWalletAccount = createTool({
   name: "GET_WALLET_ACCOUNT",
   description: "Get the wallet account for the current tenant",
   inputSchema: z.object({}),
+  outputSchema: z.object({
+    balance: z.string(),
+    balanceExact: z.string(),
+  }),
   handler: async (_, c) => {
     assertHasWorkspace(c);
 
@@ -175,6 +222,21 @@ export const getAgentsUsage = createTool({
   inputSchema: z.object({
     range: z.enum(["day", "week", "month"]),
   }),
+  outputSchema: z.object({
+    total: z.string(),
+    items: z.array(z.object({
+      id: z.string(),
+      label: z.string(),
+      total: z.number(),
+      transactions: z.array(z.object({
+        id: z.string(),
+        timestamp: z.string(),
+        amount: z.number(),
+        agentId: z.string(),
+        generatedBy: z.string(),
+      })),
+    })),
+  }),
   handler: async ({ range }, c) => {
     assertHasWorkspace(c);
 
@@ -191,6 +253,37 @@ export const getAgentsUsage = createTool({
   },
 });
 
+export const getBillingHistory = createTool({
+  name: "GET_BILLING_HISTORY",
+  description: "Get the billing history for the current tenant's wallet",
+  inputSchema: z.object({
+    range: z.enum(["day", "week", "month", "year"]),
+  }),
+  outputSchema: z.object({
+    items: z.array(z.object({
+      id: z.string(),
+      amount: z.string(),
+      timestamp: z.string(),
+      type: z.string(),
+    })),
+  }),
+  handler: async ({ range }, c) => {
+    c.resourceAccess.grant();
+    assertHasWorkspace(c);
+
+    await assertWorkspaceResourceAccess(c.tool.name, c);
+
+    const wallet = getWalletClient(c);
+
+    const history = await BillingHistory.fetch(
+      wallet,
+      c.workspace.value,
+      range,
+    );
+    return BillingHistory.format(history);
+  },
+});
+
 export const createCheckoutSession = createTool({
   name: "CREATE_CHECKOUT_SESSION",
   description: "Create a checkout session for the current tenant's wallet",
@@ -198,6 +291,9 @@ export const createCheckoutSession = createTool({
     amountUSDCents: z.number(),
     successUrl: z.string(),
     cancelUrl: z.string(),
+  }),
+  outputSchema: z.object({
+    url: z.string(),
   }),
   handler: async ({ amountUSDCents, successUrl, cancelUrl }, ctx) => {
     assertHasWorkspace(ctx);
@@ -236,6 +332,9 @@ export const createWalletVoucher = createTool({
     amount: z.number().describe(
       "The amount of money to add to the voucher. Specified in USD dollars.",
     ),
+  }),
+  outputSchema: z.object({
+    id: z.string(),
   }),
   handler: async ({ amount }, c) => {
     assertHasWorkspace(c);
@@ -277,6 +376,9 @@ export const redeemWalletVoucher = createTool({
   description: "Redeem a voucher for the current tenant's wallet",
   inputSchema: z.object({
     voucher: z.string(),
+  }),
+  outputSchema: z.object({
+    voucherId: z.string(),
   }),
   handler: async ({ voucher }, c) => {
     assertHasWorkspace(c);

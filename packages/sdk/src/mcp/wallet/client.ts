@@ -310,6 +310,18 @@ export interface WalletAPI {
         id: string;
         label: string;
         total: string;
+        transactions: Array<{
+          id: string;
+          timestamp: string;
+          amount: string;
+          agentId: string;
+          generatedBy: string;
+          tokens: {
+            totalTokens: number;
+            promptTokens: number;
+            completionTokens: number;
+          };
+        }>;
       }[];
     };
   };
@@ -330,6 +342,32 @@ export interface WalletAPI {
           promptTokens: number;
           completionTokens: number;
         };
+        transactions: Array<{
+          id: string;
+          timestamp: string;
+          amount: string;
+          agentId: string;
+          generatedBy: string;
+          tokens: {
+            totalTokens: number;
+            promptTokens: number;
+            completionTokens: number;
+          };
+        }>;
+      }[];
+    };
+  };
+  "GET /billing/history": {
+    searchParams: {
+      workspace: string;
+      range: "day" | "week" | "month" | "year";
+    };
+    response: {
+      items: {
+        id: string;
+        amount: string;
+        timestamp: string;
+        type: TransactionType;
       }[];
     };
   };
