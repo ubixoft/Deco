@@ -16,9 +16,9 @@ prototype, develop, and deploy AI-powered applications.
 
 ## Why deco.chat?
 
-Our goal is simple: empower teams with Generative AI by giving builders
-the tools to create AI applications that scale beyond the initial demo and
-into the thousands of users, securely and cost-effectively.
+Our goal is simple: empower teams with Generative AI by giving builders the
+tools to create AI applications that scale beyond the initial demo and into the
+thousands of users, securely and cost-effectively.
 
 ## Core capabilities
 
