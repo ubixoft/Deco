@@ -23,11 +23,7 @@ export default defineConfig({
     },
   },
   integrations: [
-    mdx({
-      rehypePlugins: [
-        // rehype-mdx-code-props must run last according to docs
-      ],
-    }),
+    mdx(),
     react(),
   ],
   vite: {
@@ -35,5 +31,14 @@ export default defineConfig({
       // @ts-ignore: tailwindcss plugin type issue
       tailwindcss(),
     ],
+  },
+  markdown: {
+    shikiConfig: {
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+      defaultColor: "light",
+    },
   },
 });

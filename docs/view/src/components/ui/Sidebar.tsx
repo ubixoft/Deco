@@ -1,8 +1,54 @@
 import React, { useEffect, useState } from "react";
-import { Logo } from "./Logo.tsx";
-import { Button } from "./Button.tsx";
-import { Select } from "./Select.tsx";
-import { Icon } from "./Icon.tsx";
+import { Logo } from "../../components/atoms/Logo.tsx";
+import { Icon } from "../../components/atoms/Icon.tsx";
+import { LanguageSelector } from "./LanguageSelector.tsx";
+import { ThemeToggle } from "./ThemeToggle.tsx";
+
+// GitHub Stars Component
+function GitHubStars() {
+  const [stars, setStars] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStars = async () => {
+      try {
+        const response = await fetch(
+          "https://api.github.com/repos/deco-cx/chat",
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setStars(data.stargazers_count);
+        }
+      } catch (error) {
+        console.error("Failed to fetch GitHub stars:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStars();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-1 text-star">
+        <Icon name="Star" size={14} />
+        <span className="text-xs">...</span>
+      </div>
+    );
+  }
+
+  if (stars === null) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-star">
+      <Icon name="Star" size={14} />
+      <span className="text-xs">{stars.toLocaleString()}</span>
+    </div>
+  );
+}
 
 interface DocData {
   title?: string;
@@ -193,12 +239,12 @@ function TreeList(
         return (
           <React.Fragment key={node.id}>
             {needsSeparator && (
-              <li className="my-6">
-                <div className="h-px bg-sidebar-border" />
+              <li className="my-3">
+                <div className="h-px bg-border/50" />
               </li>
             )}
             {needsSectionTitle && (
-              <li className="mt-6 first:mt-0">
+              <li className="mt-3 first:mt-0">
                 <div className="px-3 py-2">
                   <h3 className="text-sm font-medium text-foreground">
                     {translations[`sidebar.section.${node.name}`] || node.name}
@@ -220,93 +266,6 @@ function TreeList(
         );
       })}
     </ul>
-  );
-}
-
-function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark" | "auto">("auto");
-
-  useEffect(() => {
-    // Get saved theme from localStorage or default to auto
-    const savedTheme =
-      localStorage.getItem("theme") as "light" | "dark" | "auto" || "auto";
-    setTheme(savedTheme);
-    // Don't apply theme here since the script in the head already does it
-  }, []);
-
-  const applyTheme = (newTheme: "light" | "dark" | "auto") => {
-    const html = document.documentElement;
-
-    if (newTheme === "auto") {
-      // Use system preference
-      const prefersDark =
-        globalThis.matchMedia("(prefers-color-scheme: dark)").matches;
-      html.setAttribute("data-theme", prefersDark ? "dark" : "light");
-    } else {
-      html.setAttribute("data-theme", newTheme);
-    }
-
-    localStorage.setItem("theme", newTheme);
-  };
-
-  const cycleTheme = () => {
-    const nextTheme = theme === "light"
-      ? "dark"
-      : theme === "dark"
-      ? "auto"
-      : "light";
-    setTheme(nextTheme);
-    applyTheme(nextTheme);
-  };
-
-  const getThemeIcon = () => {
-    switch (theme) {
-      case "light":
-        return "Sun";
-      case "dark":
-        return "Moon";
-      case "auto":
-        return "Monitor";
-      default:
-        return "Monitor";
-    }
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={cycleTheme}
-      className="h-8 w-8"
-    >
-      <Icon name={getThemeIcon()} size={16} />
-    </Button>
-  );
-}
-
-function LanguageSelect({ locale }: { locale: string }) {
-  const languageOptions = [
-    { value: "en", label: "English" },
-    { value: "pt-br", label: "Português" },
-  ];
-
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLocale = event.target.value;
-    // Navigate to the new locale URL
-    const currentPath = globalThis.location.pathname;
-    const pathWithoutLocale = currentPath.replace(/^\/[^\/]+/, "");
-    globalThis.location.href = `/${newLocale}${pathWithoutLocale}`;
-  };
-
-  return (
-    <Select
-      options={languageOptions}
-      value={locale}
-      icon="Languages"
-      className="w-full"
-      selectClassName="text-muted-foreground"
-      onChange={handleChange}
-    />
   );
 }
 
@@ -352,20 +311,20 @@ export default function Sidebar({ tree, locale, translations }: SidebarProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-app-background border-r border-border w-[19rem]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-8 py-4 shrink-0">
+    <div className="flex flex-col h-screen bg-app-background border-r border-border w-[19rem] lg:w-[19rem] w-full max-w-[19rem]">
+      {/* Header - hidden on mobile */}
+      <div className="hidden lg:flex items-center justify-between px-4 lg:px-8 py-4 shrink-0">
         <Logo width={67} height={28} />
         <ThemeToggle />
       </div>
 
-      {/* Language Select */}
-      <div className="px-8 py-4 shrink-0">
-        <LanguageSelect locale={locale} />
+      {/* Language Select - hidden on mobile */}
+      <div className="hidden lg:block px-4 lg:px-8 py-4 shrink-0">
+        <LanguageSelector locale={locale} />
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-8 py-4 min-h-0">
+      <div className="flex-1 overflow-y-auto px-4 lg:px-8 py-4 min-h-0">
         <TreeList
           tree={tree}
           treeState={treeState}
@@ -376,26 +335,34 @@ export default function Sidebar({ tree, locale, translations }: SidebarProps) {
       </div>
 
       {/* Footer */}
-      <div className="px-8 py-4 border-t border-border shrink-0">
+      <div className="px-4 lg:px-8 py-4 border-t border-border shrink-0">
         <div className="space-y-2">
           <a
-            href="/discord"
+            href="https://github.com/deco-cx/chat"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            <span className="flex-1 ">Discord community</span>
             <Icon
-              name="MoveUpRight"
+              name="Github"
               size={16}
               className="text-muted-foreground"
             />
+            <span className="flex-1">GitHub</span>
+            <GitHubStars />
           </a>
           <a
-            href="/get-started"
+            href="https://discord.gg/deco-cx"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            <span className="flex-1">Get started</span>
             <Icon
-              name="MoveUpRight"
+              name="MessageCircle"
+              size={16}
+              className="text-muted-foreground"
+            />
+            <span className="flex-1">Discord community</span>
+            <Icon
+              name="ArrowUpRight"
               size={16}
               className="text-muted-foreground"
             />
