@@ -10,7 +10,6 @@ import { useParams } from "react-router";
 import type { Tab } from "../dock/index.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
 import { WorkflowFlowVisualization } from "./workflow-flow-visualization.tsx";
-import WorkflowOverviewPage from "./workflow-overview.tsx";
 
 function tryParseJson(str: unknown): unknown {
   if (typeof str !== "string") {
@@ -608,14 +607,8 @@ const tabs: Record<string, Tab> = {
 };
 
 function WorkflowDetailPage() {
-  const { workflowName = "", instanceId } = useParams();
+  const { instanceId } = useParams();
 
-  // If there's no instanceId, show the workflow overview
-  if (!instanceId) {
-    return <WorkflowOverviewPage />;
-  }
-
-  // If there's an instanceId, show the instance detail
   return (
     <PageLayout
       hideViewsButton
@@ -624,10 +617,6 @@ function WorkflowDetailPage() {
         <DefaultBreadcrumb
           items={[
             { label: "Workflows", link: "/workflows" },
-            {
-              label: String(workflowName ?? ""),
-              link: `/workflows/${encodeURIComponent(workflowName)}`,
-            },
             {
               label: `Instance ${instanceId?.slice(0, 8)}...`,
             },
