@@ -207,6 +207,13 @@ const uploadWranglerAssets = async ({
   return jwt;
 };
 
+const DEFAULT_HEADERS_FILE = () =>
+  `# Default headers for static assets
+/*
+  Content-Security-Policy: frame-ancestors 'self' https://deco.chat/
+  X-Deco-Worker-Cdn: 1
+`;
+
 export async function deployToCloudflare({
   c,
   mainModule,
@@ -350,7 +357,11 @@ export async function deployToCloudflare({
       enabled: true,
     },
     migrations: doMigrations,
-    assets: {},
+    assets: {
+      config: {
+        _headers: DEFAULT_HEADERS_FILE(),
+      },
+    },
   };
 
   if (hasAssets) {
@@ -365,6 +376,7 @@ export async function deployToCloudflare({
       metadata.keep_bindings = wranglerAssetsConfig?.binding ? ["assets"] : [];
     } else {
       metadata.assets = {
+        ...metadata.assets,
         jwt,
       };
     }
