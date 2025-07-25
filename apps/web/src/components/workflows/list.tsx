@@ -273,13 +273,7 @@ function WorkflowRunsTab() {
           {sortedAndFilteredRuns.length === 0
             ? (
               <div className="flex flex-1 min-h-[700px] items-center justify-center">
-                <EmptyState
-                  icon="work"
-                  title="No workflow runs found"
-                  description={filter || selectedWorkflow !== "all"
-                    ? "No workflow runs match your search criteria."
-                    : "No workflow runs have been executed yet."}
-                />
+                <WorkflowEmptyState />
               </div>
             )
             : (
