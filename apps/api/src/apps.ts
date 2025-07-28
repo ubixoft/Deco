@@ -18,6 +18,7 @@ export const fetchScript = async (
   script: string,
   req: Request,
 ) => {
+  console.log("script", script);
   let dispatcher: typeof c.env.PROD_DISPATCHER;
   if ("PROD_DISPATCHER" in c.env) {
     dispatcher = c.env.PROD_DISPATCHER;
@@ -73,11 +74,13 @@ app.all("/*", async (c: Context<AppEnv>) => {
             "route_pattern",
             host,
           ).maybeSingle();
+
+        console.log("error querying database", error, data)
+        if ((error || !data) && locator) {
+          return locator.slug;
+        }
         if (error) {
           throw error;
-        }
-        if (!data && locator) {
-          return locator.slug;
         }
         const deployment = data?.deco_chat_hosting_apps_deployments;
         const slug = deployment?.deco_chat_hosting_apps?.slug;
