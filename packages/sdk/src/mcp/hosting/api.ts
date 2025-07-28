@@ -42,9 +42,9 @@ export const Entrypoint = {
   script: (domain: string): ScriptLocator | null => {
     if (domain.endsWith(HOSTING_APPS_DOMAIN)) {
       const slugWithDeploymentId = domain.split(HOSTING_APPS_DOMAIN)[0];
-      const [slug, deploymentId] = slugWithDeploymentId.split(DOUBLE_DASH);
+      const [_, deploymentId] = slugWithDeploymentId.split(DOUBLE_DASH);
       return {
-        slug: Entrypoint.id(slug, deploymentId),
+        slug: slugWithDeploymentId,
         isCanonical: deploymentId !== undefined,
       };
     }
