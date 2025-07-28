@@ -75,7 +75,7 @@ app.all("/*", async (c: Context<AppEnv>) => {
             host,
           ).maybeSingle();
 
-        console.log("error querying database", error, data)
+        console.log("error querying database", error, data);
         if ((error || !data) && locator) {
           return locator.slug;
         }
