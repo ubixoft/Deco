@@ -74,7 +74,7 @@ export const serializeError = (error: unknown): string => {
   }
 
   if (isHttpError(error) || isErrorLike(error)) {
-    return error.toString();
+    return error.message;
   }
 
   try {
