@@ -15,6 +15,10 @@ export class SWRCache<T> {
     this._cache = new WebCache<T>(cacheName, ttlSeconds);
   }
 
+  async delete(key: string) {
+    await this._cache.delete(key);
+  }
+
   /**
    * Returns cached value if available, otherwise runs fn().
    * Always revalidates in background and updates cache.

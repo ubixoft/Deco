@@ -59,6 +59,7 @@
     "./actors": "./src/actors/index.ts",
     "./cache": "./src/cache/index.ts",
     "./cache/swr": "./src/cache/swr.ts",
+    "./cache/routing": "./src/cache/routing.ts",
     "./common": "./src/common/index.ts",
     "./hosts": "./src/hosts.ts",
     "./path": "./src/path.ts",

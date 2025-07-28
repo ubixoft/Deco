@@ -257,41 +257,56 @@ async function updateDatabase(
     const customDomainRoutes = toInsert.filter((r) => r.custom_domain);
     const regularRoutes = toInsert.filter((r) => !r.custom_domain);
 
-    // For custom domains, update existing or insert new
-    for (const route of customDomainRoutes) {
-      const { data: existingRoute, error: checkError } = await c.db
+    // For custom domains, handle conflicts manually due to partial index
+    if (customDomainRoutes.length > 0) {
+      // First, get all existing custom domain routes that might conflict
+      const routePatterns = customDomainRoutes.map((r) => r.route_pattern);
+      const { data: existingRoutes, error: fetchError } = await c.db
         .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-        .select("id")
-        .eq("route_pattern", route.route_pattern)
+        .select("id, route_pattern")
         .eq("custom_domain", true)
-        .single();
+        .in("route_pattern", routePatterns);
 
-      if (checkError && checkError.code !== "PGRST116") { // PGRST116: Results contain 0 rows
-        throw checkError;
+      if (fetchError) throw fetchError;
+
+      // Create a map of existing routes
+      const existingRouteMap = new Map(
+        (existingRoutes ?? []).map((r) => [r.route_pattern, r.id]),
+      );
+
+      // Separate into updates and inserts
+      const toUpdate = customDomainRoutes.filter((r) =>
+        existingRouteMap.has(r.route_pattern)
+      );
+      const toInsertNew = customDomainRoutes.filter((r) =>
+        !existingRouteMap.has(r.route_pattern)
+      );
+
+      // Batch update existing routes
+      if (toUpdate.length > 0) {
+        const updatePromises = toUpdate.map((route) =>
+          c.db
+            .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+            .update({ deployment_id: deployment.id })
+            .eq("id", existingRouteMap.get(route.route_pattern)!)
+        );
+        await Promise.all(updatePromises);
       }
 
-      if (existingRoute) {
-        // Custom domain exists, update it to point to new deployment
-        const { error: updateError } = await c.db
-          .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-          .update({ deployment_id: deployment.id })
-          .eq("id", existingRoute.id);
-        if (updateError) throw updateError;
-      } else {
-        // Custom domain doesn't exist, insert it
+      // Batch insert new routes
+      if (toInsertNew.length > 0) {
         const { error: insertError } = await c.db
           .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-          .insert({
+          .insert(toInsertNew.map((r) => ({
             deployment_id: deployment.id,
-            route_pattern: route.route_pattern,
+            route_pattern: r.route_pattern,
             custom_domain: true,
-          });
+          })));
         if (insertError) throw insertError;
       }
     }
 
-    // For regular routes (non-custom domains), just insert them
-    // since there's no uniqueness constraint on these
+    // For regular routes (non-custom domains), just insert them in batch
     if (regularRoutes.length > 0) {
       const { error: insertError } = await c.db
         .from(DECO_CHAT_HOSTING_ROUTES_TABLE)

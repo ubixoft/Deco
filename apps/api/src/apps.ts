@@ -1,15 +1,10 @@
-import { SWRCache } from "@deco/sdk/cache/swr";
+import { domainSWRCache } from "@deco/sdk/cache/routing";
 import { Entrypoint } from "@deco/sdk/mcp";
 import { type Context, Hono } from "hono";
 import { APPS_DOMAIN_QS, appsDomainOf } from "./app.ts";
 import { withContextMiddleware } from "./middlewares/context.ts";
 import type { AppEnv } from "./utils/context.ts";
 
-const ONE_HOUR_SECONDS = 60 * 60;
-const domainSWRCache = new SWRCache<string | null>(
-  "domain-swr",
-  ONE_HOUR_SECONDS,
-);
 export type DispatcherFetch = typeof fetch;
 export const app = new Hono<AppEnv>();
 
