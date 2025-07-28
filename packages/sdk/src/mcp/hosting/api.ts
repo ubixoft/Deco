@@ -230,6 +230,7 @@ async function updateDatabase(
     (r: { route_pattern: string; custom_domain?: boolean }) =>
       !newRouteMap.has(routeKey(r)),
   );
+
   // 4. Find routes to insert (in new, not in current)
   const toInsert = mappedRoutes.filter(
     (r) =>
@@ -238,7 +239,7 @@ async function updateDatabase(
       ),
   );
 
-  // 5. Perform insertions and deletions in parallel
+  // 5. Perform deletions
   if (toDelete.length > 0) {
     const { data: _, error: deleteError } = await c.db
       .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
@@ -249,15 +250,58 @@ async function updateDatabase(
       );
     if (deleteError) throw deleteError;
   }
+
+  // 6. Handle route insertions/updates
   if (toInsert.length > 0) {
-    const { data: _, error: insertError } = await c.db
-      .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-      .insert(toInsert.map((r) => ({
-        deployment_id: deployment.id,
-        route_pattern: r.route_pattern,
-        custom_domain: r.custom_domain ?? false,
-      })));
-    if (insertError) throw insertError;
+    // Separate custom domains from regular routes
+    const customDomainRoutes = toInsert.filter((r) => r.custom_domain);
+    const regularRoutes = toInsert.filter((r) => !r.custom_domain);
+
+    // For custom domains, update existing or insert new
+    for (const route of customDomainRoutes) {
+      const { data: existingRoute, error: checkError } = await c.db
+        .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+        .select("id")
+        .eq("route_pattern", route.route_pattern)
+        .eq("custom_domain", true)
+        .single();
+
+      if (checkError && checkError.code !== "PGRST116") { // PGRST116: Results contain 0 rows
+        throw checkError;
+      }
+
+      if (existingRoute) {
+        // Custom domain exists, update it to point to new deployment
+        const { error: updateError } = await c.db
+          .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+          .update({ deployment_id: deployment.id })
+          .eq("id", existingRoute.id);
+        if (updateError) throw updateError;
+      } else {
+        // Custom domain doesn't exist, insert it
+        const { error: insertError } = await c.db
+          .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+          .insert({
+            deployment_id: deployment.id,
+            route_pattern: route.route_pattern,
+            custom_domain: true,
+          });
+        if (insertError) throw insertError;
+      }
+    }
+
+    // For regular routes (non-custom domains), just insert them
+    // since there's no uniqueness constraint on these
+    if (regularRoutes.length > 0) {
+      const { error: insertError } = await c.db
+        .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+        .insert(regularRoutes.map((r) => ({
+          deployment_id: deployment.id,
+          route_pattern: r.route_pattern,
+          custom_domain: false,
+        })));
+      if (insertError) throw insertError;
+    }
   }
 
   return Mappers.toApp(app);
