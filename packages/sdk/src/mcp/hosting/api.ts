@@ -239,31 +239,26 @@ async function updateDatabase(
   );
 
   // 5. Perform insertions and deletions in parallel
-  await Promise.all([
-    toDelete.length > 0
-      ? c.db
-        .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-        .delete()
-        .in(
-          "id",
-          toDelete.map((r: { id: string }) => r.id),
-        )
-      : Promise.resolve(),
-    toInsert.length > 0
-      ? c.db
-        .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
-        .upsert(
-          toInsert.map((route) => ({
-            deployment_id: deployment.id,
-            route_pattern: route.route_pattern,
-            custom_domain: route.custom_domain ?? false,
-          })),
-          {
-            onConflict: "route_pattern,custom_domain",
-          },
-        )
-      : Promise.resolve(),
-  ]);
+  if (toDelete.length > 0) {
+    const { data: _, error: deleteError } = await c.db
+      .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+      .delete()
+      .in(
+        "id",
+        toDelete.map((r: { id: string }) => r.id),
+      );
+    if (deleteError) throw deleteError;
+  }
+  if (toInsert.length > 0) {
+    const { data: _, error: insertError } = await c.db
+      .from(DECO_CHAT_HOSTING_ROUTES_TABLE)
+      .insert(toInsert.map((r) => ({
+        deployment_id: deployment.id,
+        route_pattern: r.route_pattern,
+        custom_domain: r.custom_domain ?? false,
+      })));
+    if (insertError) throw insertError;
+  }
 
   return Mappers.toApp(app);
 }
@@ -705,6 +700,7 @@ Important Notes:
       c,
       wranglerConfig,
       mainModule: bundle ? SCRIPT_FILE_NAME : entrypoint,
+      deploymentId,
       bundledCode,
       assets: assetFiles,
       _envVars: { ...envVars, ...appEnvVars },

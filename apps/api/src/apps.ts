@@ -18,7 +18,6 @@ export const fetchScript = async (
   script: string,
   req: Request,
 ) => {
-  console.log("script", script);
   let dispatcher: typeof c.env.PROD_DISPATCHER;
   if ("PROD_DISPATCHER" in c.env) {
     dispatcher = c.env.PROD_DISPATCHER;
@@ -75,7 +74,6 @@ app.all("/*", async (c: Context<AppEnv>) => {
             host,
           ).maybeSingle();
 
-        console.log("error querying database", error, data);
         if ((error || !data) && locator) {
           return locator.slug;
         }

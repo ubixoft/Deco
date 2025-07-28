@@ -6,7 +6,7 @@ import type {
 } from "cloudflare/resources/workers/scripts/scripts.mjs";
 import { assertHasWorkspace } from "../assertions.ts";
 import { type AppContext, getEnv } from "../context.ts";
-import { getMimeType, HOSTING_APPS_DOMAIN } from "./api.ts";
+import { Entrypoint, getMimeType, HOSTING_APPS_DOMAIN } from "./api.ts";
 import { assertsDomainOwnership } from "./custom-domains.ts";
 import { polyfill } from "./fs-polyfill.ts";
 import { isDoBinding, migrationDiff } from "./migrations.ts";
@@ -220,8 +220,9 @@ export async function deployToCloudflare({
   bundledCode,
   assets,
   _envVars,
+  deploymentId,
   wranglerConfig: {
-    name: scriptSlug,
+    name: wranglerName,
     compatibility_flags,
     compatibility_date,
     vars,
@@ -244,6 +245,7 @@ export async function deployToCloudflare({
   c: AppContext;
   wranglerConfig: WranglerConfig;
   mainModule: string;
+  deploymentId: string;
   bundledCode: Record<string, File>;
   assets: Record<string, string>;
   _envVars?: Record<string, string>;
@@ -259,10 +261,11 @@ export async function deployToCloudflare({
     throw new Error("CF_ZONE_ID is not set");
   }
 
+  const scriptSlug = Entrypoint.id(wranglerName, deploymentId);
   await Promise.all(
     (routes ?? []).map((route) =>
       route.custom_domain && !route.pattern.endsWith(HOSTING_APPS_DOMAIN) &&
-      assertsDomainOwnership(route.pattern, scriptSlug).then(() => {
+      assertsDomainOwnership(route.pattern, wranglerName).then(() => {
         if (!env.CF_ZONE_ID) {
           return;
         }
