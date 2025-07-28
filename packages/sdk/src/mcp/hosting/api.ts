@@ -44,7 +44,7 @@ export const Entrypoint = {
       const slugWithDeploymentId = domain.split(HOSTING_APPS_DOMAIN)[0];
       const [slug, deploymentId] = slugWithDeploymentId.split(DOUBLE_DASH);
       return {
-        slug: Entrypoint.host(slug, deploymentId),
+        slug: Entrypoint.id(slug, deploymentId),
         isCanonical: deploymentId !== undefined,
       };
     }
