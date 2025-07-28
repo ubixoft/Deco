@@ -68,7 +68,7 @@ export default {
       const { data, error } = await db
         .from("deco_chat_hosting_apps")
         .select("*")
-        .eq("slug", DECO_CHAT_APP_ORIGIN)
+        .eq("slug", DECO_CHAT_APP_ORIGIN.split("--")[0])
         .maybeSingle();
 
       if (error) {
