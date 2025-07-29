@@ -1053,151 +1053,186 @@ export const listWorkflowRuns = createTool({
     `;
     params.push(per_page.toString(), offset.toString());
 
-    const { result } = await c.cf.d1.database.query(dbId, {
-      account_id: c.envVars.CF_ACCOUNT_ID,
-      sql,
-      params,
-    });
+    try {
+      const { result } = await c.cf.d1.database.query(dbId, {
+        account_id: c.envVars.CF_ACCOUNT_ID,
+        sql,
+        params,
+      });
 
-    const transformed = result[0].results?.map((row: unknown) => {
-      const rowData = row as {
-        workflow_name: string;
-        run_id: string;
-        createdAt: string;
-        updatedAt: string | null;
-        snapshot: string;
+      const transformed = result[0].results?.map((row: unknown) => {
+        const rowData = row as {
+          workflow_name: string;
+          run_id: string;
+          createdAt: string;
+          updatedAt: string | null;
+          snapshot: string;
+        };
+
+        let snapshot: unknown;
+        try {
+          snapshot = JSON.parse(rowData.snapshot);
+        } catch {
+          snapshot = null;
+        }
+
+        return {
+          workflowName: rowData.workflow_name,
+          runId: rowData.run_id,
+          createdAt: new Date(rowData.createdAt).getTime(),
+          updatedAt: rowData.updatedAt
+            ? new Date(rowData.updatedAt).getTime()
+            : null,
+          status: extractStatusFromSnapshot(snapshot),
+        };
+      }) ?? [];
+
+      // TODO: Stats calculation commented out due to SQLite memory issues
+      // // Calculate stats using SQL aggregation to avoid memory issues
+      // const statsSql = `
+      //   WITH status_counts AS (
+      //     SELECT
+      //       COUNT(*) as total_runs,
+      //       SUM(CASE
+      //         WHEN JSON_EXTRACT(snapshot, '$.status') = 'success' OR
+      //              (typeof(snapshot) = 'text' AND snapshot = 'success')
+      //         THEN 1 ELSE 0 END) as success_count,
+      //       SUM(CASE
+      //         WHEN JSON_EXTRACT(snapshot, '$.status') IN ('error', 'failed') OR
+      //              (typeof(snapshot) = 'text' AND snapshot IN ('error', 'failed'))
+      //         THEN 1 ELSE 0 END) as error_count,
+      //       SUM(CASE
+      //         WHEN JSON_EXTRACT(snapshot, '$.status') = 'running' OR
+      //              (typeof(snapshot) = 'text' AND snapshot = 'running')
+      //         THEN 1 ELSE 0 END) as running_count
+      //     FROM mastra_workflow_snapshot
+      //     WHERE workflow_name = ?
+      //   ),
+      //   first_run AS (
+      //     SELECT createdAt, snapshot
+      //     FROM mastra_workflow_snapshot
+      //     WHERE workflow_name = ?
+      //     ORDER BY createdAt ASC
+      //     LIMIT 1
+      //   ),
+      //   last_run AS (
+      //     SELECT createdAt, snapshot
+      //     FROM mastra_workflow_snapshot
+      //     WHERE workflow_name = ?
+      //     ORDER BY createdAt DESC
+      //     LIMIT 1
+      //   )
+      //   SELECT
+      //     sc.total_runs,
+      //     sc.success_count,
+      //     sc.error_count,
+      //     sc.running_count,
+      //     (sc.total_runs - sc.success_count - sc.error_count - sc.running_count) as pending_count,
+      //     CASE WHEN sc.total_runs > 0 THEN (sc.success_count * 100.0 / sc.total_runs) ELSE 0 END as success_rate,
+      //     fr.createdAt as first_run_date,
+      //     fr.snapshot as first_run_snapshot,
+      //     lr.createdAt as last_run_date,
+      //     lr.snapshot as last_run_snapshot
+      //   FROM status_counts sc
+      //   LEFT JOIN first_run fr ON 1=1
+      //   LEFT JOIN last_run lr ON 1=1
+      // `;
+
+      // const { result: statsResult } = await c.cf.d1.database.query(dbId, {
+      //   account_id: c.envVars.CF_ACCOUNT_ID,
+      //   sql: statsSql,
+      //   params: [workflowName, workflowName, workflowName],
+      // });
+
+      // const statsRow = statsResult[0].results?.[0] as any;
+
+      // const extractStatusFromSnapshotString = (snapshot: string): string => {
+      //   if (!snapshot) return "unknown";
+      //   try {
+      //     const parsed = JSON.parse(snapshot);
+      //     return extractStatusFromSnapshot(parsed);
+      //   } catch {
+      //     return snapshot; // If it's already a string status
+      //   }
+      // };
+
+      // const stats = statsRow ? {
+      //   totalRuns: statsRow.total_runs || 0,
+      //   successCount: statsRow.success_count || 0,
+      //   errorCount: statsRow.error_count || 0,
+      //   runningCount: statsRow.running_count || 0,
+      //   pendingCount: statsRow.pending_count || 0,
+      //   successRate: statsRow.success_rate || 0,
+      //   firstRun: statsRow.first_run_date ? {
+      //     date: new Date(statsRow.first_run_date).getTime(),
+      //     status: extractStatusFromSnapshotString(statsRow.first_run_snapshot),
+      //   } : null,
+      //   lastRun: statsRow.last_run_date ? {
+      //     date: new Date(statsRow.last_run_date).getTime(),
+      //     status: extractStatusFromSnapshotString(statsRow.last_run_snapshot),
+      //   } : null,
+      // } : {
+      //   totalRuns: 0,
+      //   successCount: 0,
+      //   errorCount: 0,
+      //   runningCount: 0,
+      //   pendingCount: 0,
+      //   successRate: 0,
+      //   firstRun: null,
+      //   lastRun: null,
+      // };
+
+      // Provide default empty stats to avoid breaking the API contract
+      const stats = {
+        totalRuns: 0,
+        successCount: 0,
+        errorCount: 0,
+        runningCount: 0,
+        pendingCount: 0,
+        successRate: 0,
+        firstRun: null,
+        lastRun: null,
       };
-
-      let snapshot: unknown;
-      try {
-        snapshot = JSON.parse(rowData.snapshot);
-      } catch {
-        snapshot = null;
-      }
 
       return {
-        workflowName: rowData.workflow_name,
-        runId: rowData.run_id,
-        createdAt: new Date(rowData.createdAt).getTime(),
-        updatedAt: rowData.updatedAt
-          ? new Date(rowData.updatedAt).getTime()
-          : null,
-        status: extractStatusFromSnapshot(snapshot),
+        runs: transformed,
+        stats,
+        pagination: { page, per_page },
       };
-    }) ?? [];
+    } catch (error: unknown) {
+      // Handle the case where the mastra_workflow_snapshot table doesn't exist
+      // This can happen in new workspaces where workflows haven't been set up yet
+      if (
+        error && typeof error === "object" && "message" in error &&
+        typeof error.message === "string" &&
+        error.message.includes("no such table: mastra_workflow_snapshot")
+      ) {
+        console.warn(
+          "mastra_workflow_snapshot table not found, returning empty workflow runs",
+        );
 
-    // TODO: Stats calculation commented out due to SQLite memory issues
-    // // Calculate stats using SQL aggregation to avoid memory issues
-    // const statsSql = `
-    //   WITH status_counts AS (
-    //     SELECT
-    //       COUNT(*) as total_runs,
-    //       SUM(CASE
-    //         WHEN JSON_EXTRACT(snapshot, '$.status') = 'success' OR
-    //              (typeof(snapshot) = 'text' AND snapshot = 'success')
-    //         THEN 1 ELSE 0 END) as success_count,
-    //       SUM(CASE
-    //         WHEN JSON_EXTRACT(snapshot, '$.status') IN ('error', 'failed') OR
-    //              (typeof(snapshot) = 'text' AND snapshot IN ('error', 'failed'))
-    //         THEN 1 ELSE 0 END) as error_count,
-    //       SUM(CASE
-    //         WHEN JSON_EXTRACT(snapshot, '$.status') = 'running' OR
-    //              (typeof(snapshot) = 'text' AND snapshot = 'running')
-    //         THEN 1 ELSE 0 END) as running_count
-    //     FROM mastra_workflow_snapshot
-    //     WHERE workflow_name = ?
-    //   ),
-    //   first_run AS (
-    //     SELECT createdAt, snapshot
-    //     FROM mastra_workflow_snapshot
-    //     WHERE workflow_name = ?
-    //     ORDER BY createdAt ASC
-    //     LIMIT 1
-    //   ),
-    //   last_run AS (
-    //     SELECT createdAt, snapshot
-    //     FROM mastra_workflow_snapshot
-    //     WHERE workflow_name = ?
-    //     ORDER BY createdAt DESC
-    //     LIMIT 1
-    //   )
-    //   SELECT
-    //     sc.total_runs,
-    //     sc.success_count,
-    //     sc.error_count,
-    //     sc.running_count,
-    //     (sc.total_runs - sc.success_count - sc.error_count - sc.running_count) as pending_count,
-    //     CASE WHEN sc.total_runs > 0 THEN (sc.success_count * 100.0 / sc.total_runs) ELSE 0 END as success_rate,
-    //     fr.createdAt as first_run_date,
-    //     fr.snapshot as first_run_snapshot,
-    //     lr.createdAt as last_run_date,
-    //     lr.snapshot as last_run_snapshot
-    //   FROM status_counts sc
-    //   LEFT JOIN first_run fr ON 1=1
-    //   LEFT JOIN last_run lr ON 1=1
-    // `;
+        // Return empty results with default stats
+        const stats = {
+          totalRuns: 0,
+          successCount: 0,
+          errorCount: 0,
+          runningCount: 0,
+          pendingCount: 0,
+          successRate: 0,
+          firstRun: null,
+          lastRun: null,
+        };
 
-    // const { result: statsResult } = await c.cf.d1.database.query(dbId, {
-    //   account_id: c.envVars.CF_ACCOUNT_ID,
-    //   sql: statsSql,
-    //   params: [workflowName, workflowName, workflowName],
-    // });
+        return {
+          runs: [],
+          stats,
+          pagination: { page, per_page },
+        };
+      }
 
-    // const statsRow = statsResult[0].results?.[0] as any;
-
-    // const extractStatusFromSnapshotString = (snapshot: string): string => {
-    //   if (!snapshot) return "unknown";
-    //   try {
-    //     const parsed = JSON.parse(snapshot);
-    //     return extractStatusFromSnapshot(parsed);
-    //   } catch {
-    //     return snapshot; // If it's already a string status
-    //   }
-    // };
-
-    // const stats = statsRow ? {
-    //   totalRuns: statsRow.total_runs || 0,
-    //   successCount: statsRow.success_count || 0,
-    //   errorCount: statsRow.error_count || 0,
-    //   runningCount: statsRow.running_count || 0,
-    //   pendingCount: statsRow.pending_count || 0,
-    //   successRate: statsRow.success_rate || 0,
-    //   firstRun: statsRow.first_run_date ? {
-    //     date: new Date(statsRow.first_run_date).getTime(),
-    //     status: extractStatusFromSnapshotString(statsRow.first_run_snapshot),
-    //   } : null,
-    //   lastRun: statsRow.last_run_date ? {
-    //     date: new Date(statsRow.last_run_date).getTime(),
-    //     status: extractStatusFromSnapshotString(statsRow.last_run_snapshot),
-    //   } : null,
-    // } : {
-    //   totalRuns: 0,
-    //   successCount: 0,
-    //   errorCount: 0,
-    //   runningCount: 0,
-    //   pendingCount: 0,
-    //   successRate: 0,
-    //   firstRun: null,
-    //   lastRun: null,
-    // };
-
-    // Provide default empty stats to avoid breaking the API contract
-    const stats = {
-      totalRuns: 0,
-      successCount: 0,
-      errorCount: 0,
-      runningCount: 0,
-      pendingCount: 0,
-      successRate: 0,
-      firstRun: null,
-      lastRun: null,
-    };
-
-    return {
-      runs: transformed,
-      stats,
-      pagination: { page, per_page },
-    };
+      // Re-throw other errors
+      throw error;
+    }
   },
 });
 
@@ -1220,19 +1255,39 @@ export const listWorkflowNames = createTool({
       ORDER BY workflow_name ASC
     `;
 
-    const { result } = await c.cf.d1.database.query(dbId, {
-      account_id: c.envVars.CF_ACCOUNT_ID,
-      sql,
-    });
+    try {
+      const { result } = await c.cf.d1.database.query(dbId, {
+        account_id: c.envVars.CF_ACCOUNT_ID,
+        sql,
+      });
 
-    const workflowNames = result[0].results?.map((row: unknown) => {
-      const rowData = row as { workflow_name: string };
-      return rowData.workflow_name;
-    }) ?? [];
+      const workflowNames = result[0].results?.map((row: unknown) => {
+        const rowData = row as { workflow_name: string };
+        return rowData.workflow_name;
+      }) ?? [];
 
-    return {
-      workflowNames,
-    };
+      return {
+        workflowNames,
+      };
+    } catch (error: unknown) {
+      // Handle the case where the mastra_workflow_snapshot table doesn't exist
+      // This can happen in new workspaces where workflows haven't been set up yet
+      if (
+        error && typeof error === "object" && "message" in error &&
+        typeof error.message === "string" &&
+        error.message.includes("no such table: mastra_workflow_snapshot")
+      ) {
+        console.warn(
+          "mastra_workflow_snapshot table not found, returning empty workflow names",
+        );
+        return {
+          workflowNames: [],
+        };
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
   },
 });
 
