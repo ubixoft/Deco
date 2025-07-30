@@ -29,6 +29,7 @@ export interface JWTPrincipal extends JWTPayload {
 const usesD1FeatureFlag: Record<string, boolean> = {
   "/shared/livemode": true,
   "/shared/superfrete": true,
+  "/shared/libertas": true,
 };
 export type Principal =
   | UserPrincipal
@@ -48,7 +49,7 @@ export const workspaceDB = async (
           ...args,
           account_id: c.envVars.CF_ACCOUNT_ID,
         });
-        return { result, [Symbol.dispose]: () => {} };
+        return { result, [Symbol.dispose]: () => { } };
       },
     };
   }
@@ -87,8 +88,8 @@ export interface Vars {
   workspaceDO: DurableObjectNamespace<IWorkspaceDB & Rpc.DurableObjectBranded>;
   stub: <
     Constructor extends
-      | ActorConstructor<Trigger>
-      | ActorConstructor<AIAgent>,
+    | ActorConstructor<Trigger>
+    | ActorConstructor<AIAgent>,
   >(
     c: Constructor,
   ) => StubFactory<InstanceType<Constructor>>;
@@ -233,21 +234,21 @@ export const withMCPErrorHandling = <
   TInput = any,
   TReturn extends object | null | boolean = object,
 >(f: (props: TInput) => Promise<TReturn>) =>
-async (props: TInput) => {
-  try {
-    const result = await f(props);
+  async (props: TInput) => {
+    try {
+      const result = await f(props);
 
-    return {
-      isError: false,
-      structuredContent: result,
-    };
-  } catch (error) {
-    return {
-      isError: true,
-      content: [{ type: "text", text: serializeError(error) }],
-    };
-  }
-};
+      return {
+        isError: false,
+        structuredContent: result,
+      };
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: serializeError(error) }],
+      };
+    }
+  };
 
 type ToolName = string;
 type GroupName = string;
