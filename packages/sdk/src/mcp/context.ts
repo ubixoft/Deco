@@ -37,10 +37,12 @@ export type Principal =
 
 export const workspaceDB = async (
   c: AppContext,
-  d1 = false,
+  d1?: boolean,
 ): Promise<IWorkspaceDB> => {
   assertHasWorkspace(c);
-  d1 = usesD1FeatureFlag[c.workspace.value] || d1;
+  d1 = typeof d1 === "boolean"
+    ? d1
+    : usesD1FeatureFlag[c.workspace.value] || d1;
   if (d1) {
     const dbId = await getWorkspaceD1Database(c);
     return {
