@@ -1,9 +1,11 @@
-import { Confirm } from "@cliffy/prompt";
-import { walk } from "@std/fs";
-import { createWorkspaceClient } from "../mcp.ts";
-import { getCurrentEnvVars } from "../wrangler.ts";
-import { relative } from "@std/path/relative";
+import inquirer from "inquirer";
+import { promises as fs } from "fs";
+import { relative } from "path";
+import { walk } from "../../lib/fs.js";
+import { createWorkspaceClient } from "../../lib/mcp.js";
+import { getCurrentEnvVars } from "../../lib/wrangler.js";
 import { Buffer } from "node:buffer";
+import process from "node:process";
 
 function tryParseJson(text: string): Record<string, unknown> | null {
   try {
@@ -21,13 +23,13 @@ export type FileLike = {
 
 interface Options {
   cwd: string;
-  force?: boolean;
   workspace: string;
   app: string;
   local: boolean;
   skipConfirmation?: boolean;
   unlisted?: boolean;
   assetsDirectory?: string;
+  force?: boolean;
 }
 
 const WRANGLER_CONFIG_FILES = ["wrangler.toml", "wrangler.json"];
@@ -35,12 +37,12 @@ const WRANGLER_CONFIG_FILES = ["wrangler.toml", "wrangler.json"];
 export const deploy = async (
   {
     cwd,
-    force,
     workspace,
     app: appSlug,
     local,
     assetsDirectory,
     skipConfirmation,
+    force,
     unlisted = true,
   }: Options,
 ) => {
@@ -48,7 +50,7 @@ export const deploy = async (
 
   // Ensure the target directory exists
   try {
-    await Deno.stat(cwd);
+    await fs.stat(cwd);
   } catch {
     throw new Error("Target directory not found");
   }
@@ -62,31 +64,32 @@ export const deploy = async (
   // Recursively walk cwd/ and add all files
   for await (
     const entry of walk(cwd, {
+      includeFiles: true,
       includeDirs: false,
       skip: [
         /node_modules/,
         /\.git/,
         /\.DS_Store/,
         /\.env/,
-        /\.env.local/,
-        /\.dev.vars/,
+        /\.env\.local/,
+        /\.dev\.vars/,
       ],
       exts: [
-        ".ts",
-        ".mjs",
-        ".js",
-        ".cjs",
-        ".toml",
-        ".json",
-        ".css",
-        ".html",
-        ".txt",
-        ".wasm",
+        "ts",
+        "mjs",
+        "js",
+        "cjs",
+        "toml",
+        "json",
+        "css",
+        "html",
+        "txt",
+        "wasm",
       ],
     })
   ) {
     const realPath = relative(cwd, entry.path);
-    const content = await Deno.readTextFile(entry.path);
+    const content = await fs.readFile(entry.path, "utf-8");
     files.push({ path: realPath, content });
     if (realPath.endsWith(".ts")) {
       hasTsFile = true;
@@ -100,19 +103,20 @@ export const deploy = async (
   if (assetsDirectory) {
     for await (
       const entry of walk(assetsDirectory, {
+        includeFiles: true,
         includeDirs: false,
         skip: [
           /node_modules/,
           /\.git/,
           /\.DS_Store/,
           /\.env/,
-          /\.env.local/,
-          /\.dev.vars/,
+          /\.env\.local/,
+          /\.dev\.vars/,
         ],
       })
     ) {
       const realPath = relative(assetsDirectory, entry.path);
-      const content = await Deno.readFile(entry.path);
+      const content = await fs.readFile(entry.path);
       const base64Content = Buffer.from(content).toString("base64");
       files.push({ path: realPath, content: base64Content, asset: true });
     }
@@ -123,9 +127,9 @@ export const deploy = async (
   if (!foundWranglerConfigInWalk) {
     let found = false;
     for (const configFile of WRANGLER_CONFIG_FILES) {
-      const configPath = `${Deno.cwd()}/${configFile}`;
+      const configPath = `${process.cwd()}/${configFile}`;
       try {
-        const configContent = await Deno.readTextFile(configPath);
+        const configContent = await fs.readFile(configPath, "utf-8");
         files.push({ path: configFile, content: configContent });
         wranglerConfigStatus = `${configFile} ✅ (found in ${configPath})`;
         found = true;
@@ -143,7 +147,7 @@ export const deploy = async (
   }
 
   // 3. Load envVars from .dev.vars
-  const { envVars, envFilepath } = await getCurrentEnvVars(Deno.cwd());
+  const { envVars, envFilepath } = await getCurrentEnvVars(process.cwd());
   const envVarsStatus = `Loaded ${
     Object.keys(envVars).length
   } env vars from ${envFilepath}`;
@@ -165,35 +169,45 @@ export const deploy = async (
   console.log(`  ${wranglerConfigStatus}`);
 
   const confirmed = skipConfirmation ||
-    await Confirm.prompt("Proceed with deployment?");
+    (await inquirer.prompt([{
+      type: "confirm",
+      name: "proceed",
+      message: "Proceed with deployment?",
+      default: true,
+    }])).proceed;
+
   if (!confirmed) {
     console.log("❌ Deployment cancelled");
-    Deno.exit(0);
+    process.exit(0);
   }
 
   const client = await createWorkspaceClient({ workspace, local });
   const deploy = async (options: typeof manifest) => {
     const response = await client.callTool({
       name: "HOSTING_APP_DEPLOY",
-      arguments: options,
+      arguments: manifest,
     });
 
     if (response.isError && Array.isArray(response.content)) {
+      console.error("Error deploying: ", response);
+
       const errorText = response.content[0]?.text;
       const errorTextJson = tryParseJson(errorText ?? "");
-      if (errorTextJson?.name === "MCPBreakingChangeError") {
+      if (errorTextJson?.name === "MCPBreakingChangeError" && !force) {
         console.log("Looks like you have breaking changes in your app.");
         console.log(errorTextJson.message);
-        const confirmed = await Confirm.prompt(
-          "Would you like to retry with the --force flag?",
-        );
+        const confirmed = await inquirer.prompt([{
+          type: "confirm",
+          name: "proceed",
+          message: "Would you like to retry with the --force flag?",
+          default: true,
+        }]);
         if (!confirmed) {
-          Deno.exit(1);
+          process.exit(1);
         }
         return deploy({ ...options, force: true });
-      } else {
-        throw new Error(errorText ?? "Unknown error");
       }
+      throw new Error(errorTextJson ?? errorText ?? "Unknown error");
     }
     return response;
   };
