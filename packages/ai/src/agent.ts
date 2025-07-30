@@ -276,6 +276,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       user: metadata?.user!,
       isLocal: metadata?.user == null,
       stub: this.state.stub as AppContext["stub"],
+      workspaceDO: this.actorEnv.WORKSPACE_DB,
       cookie: metadata?.userCookie ?? undefined,
       workspace: fromWorkspaceString(this.workspace),
       resourceAccess: createResourceAccess(),

@@ -1,66 +1,12 @@
 import z from "zod";
-import { WebCache } from "../../cache/index.ts";
+import { workspaceDB } from "../context.ts";
 import {
-  type AppContext,
   assertHasWorkspace,
-  assertsNotNull,
   assertWorkspaceResourceAccess,
   createToolGroup,
 } from "../index.ts";
 
-const cache = new WebCache<string>(
-  "workspace-d1-database",
-  WebCache.MAX_SAFE_TTL,
-);
-const inMemoryCache = new Map<string, string>();
-
-export const getWorkspaceD1Database = async (
-  c: AppContext,
-): Promise<string> => {
-  assertHasWorkspace(c);
-  const cacheKey = `${c.workspace.value}-d1-database`;
-  const inMemory = inMemoryCache.get(cacheKey);
-  if (inMemory) {
-    return inMemory;
-  }
-  const cached = await cache.get(cacheKey);
-  if (cached) {
-    inMemoryCache.set(cacheKey, cached);
-    return cached;
-  }
-  const db = await assertsWorkspaceD1Database(c);
-  assertsNotNull(db.uuid);
-  inMemoryCache.set(cacheKey, db.uuid);
-  await cache.set(cacheKey, db.uuid);
-  return db.uuid;
-};
-const assertsWorkspaceD1Database = async (
-  c: AppContext,
-) => {
-  assertHasWorkspace(c);
-  const workspace = c.workspace.value;
-
-  // Slugify workspace name to meet D1 naming requirements (lowercase letters, numbers, underscores, hyphens)
-  const dbName = workspace.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
-
-  // List databases to check if it already exists
-  const databases = await c.cf.d1.database.list({
-    account_id: c.envVars.CF_ACCOUNT_ID,
-  });
-
-  const existingDb = databases.result?.find((db) => db.name === dbName);
-
-  if (existingDb) {
-    // Database already exists, return
-    return existingDb;
-  }
-
-  // Database doesn't exist, create it
-  return await c.cf.d1.database.create({
-    account_id: c.envVars.CF_ACCOUNT_ID,
-    name: dbName,
-  });
-};
+export { getWorkspaceD1Database } from "./d1.ts";
 
 const createTool = createToolGroup("Databases", {
   name: "Databases",
@@ -92,28 +38,38 @@ const QueryResult = z.object({
   results: z.array(z.unknown()).optional(),
   success: z.boolean().optional(),
 });
+export type QueryResult = z.infer<typeof QueryResult>;
+export const DatatabasesRunSqlInputSchema = z.object({
+  sql: z.string().describe("The SQL query to run"),
+  params: z.array(z.any()).describe(
+    "The parameters to pass to the SQL query",
+  ).optional(),
+});
+
+export type DatatabasesRunSqlInput = z.infer<
+  typeof DatatabasesRunSqlInputSchema
+>;
 
 export const runSql = createTool({
   name: "DATABASES_RUN_SQL",
   description: "Run a SQL query against the workspace database",
-  inputSchema: z.object({
-    sql: z.string().describe("The SQL query to run"),
-    params: z.array(z.any()).describe(
-      "The parameters to pass to the SQL query",
+  inputSchema: DatatabasesRunSqlInputSchema.extend({
+    _legacy: z.boolean().optional().describe(
+      "If true, the query will be run against the legacy database",
     ),
   }),
   outputSchema: z.object({
     result: z.array(QueryResult),
   }),
-  handler: async ({ sql, params }, c) => {
+  handler: async ({ sql, params, _legacy }, c) => {
+    assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c.tool.name, c);
-    const db = await getWorkspaceD1Database(c);
+    const db = await workspaceDB(c, _legacy);
 
-    const response = await c.cf.d1.database.query(db, {
-      account_id: c.envVars.CF_ACCOUNT_ID,
+    using responseDO = await db.exec({
       sql,
       params,
     });
-    return { result: response.result };
+    return { result: responseDO.result };
   },
 });

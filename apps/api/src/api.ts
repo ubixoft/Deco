@@ -52,6 +52,7 @@ export const honoCtxToAppCtx = (c: Context<AppEnv>): AppContext => {
     authorization: authorizationClient,
     token: c.req.header("Authorization")?.replace("Bearer ", ""),
     kbFileProcessor: c.env.KB_FILE_PROCESSOR,
+    workspaceDO: c.env.WORKSPACE_DB,
     workspace: slug && root
       ? {
         root,
@@ -331,8 +332,6 @@ app.get("/apps/oauth", (c) => {
 app.get("/health", (c: Context) => c.json({ status: "ok" }));
 
 app.onError((err, c) => {
-  console.error(err);
-
   return c.json(
     { error: err?.message ?? "Internal server error" },
     err instanceof HTTPException ? err.status : 500,

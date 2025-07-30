@@ -5,21 +5,25 @@ import { z } from "zod";
 import { JwtIssuer } from "../../auth/jwt.ts";
 import { purge } from "../../cache/routing.ts";
 import { NotFoundError, UserInputError } from "../../errors.ts";
+import { MCPConnection } from "../../models/index.ts";
 import type { Database } from "../../storage/index.ts";
 import {
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
   type WithTool,
 } from "../assertions.ts";
-import { type AppContext, createToolGroup, getEnv } from "../context.ts";
-import { getWorkspaceD1Database } from "../databases/api.ts";
+import {
+  type AppContext,
+  createToolGroup,
+  getEnv,
+  workspaceDB,
+} from "../context.ts";
 import { MCPClient } from "../index.ts";
 import { assertsNoMCPBreakingChanges } from "./assertions.ts";
 import { bundler } from "./bundler.ts";
 import { assertsDomainUniqueness } from "./custom-domains.ts";
 import { type DeployResult, deployToCloudflare } from "./deployment.ts";
 import type { WranglerConfig } from "./wrangler.ts";
-import { MCPConnection } from "../../models/index.ts";
 const uid = new ShortUniqueId({
   dictionary: "alphanum_lower",
   length: 10,
@@ -973,12 +977,15 @@ const OutputPaginationListSchema = z.object({
 });
 
 const getStore = async (c: WithTool<AppContext>) => {
-  const dbId = await getWorkspaceD1Database(c);
+  const db = await workspaceDB(c);
 
   return new D1Store({
-    accountId: c.envVars.CF_ACCOUNT_ID,
-    apiToken: c.envVars.CF_API_TOKEN,
-    databaseId: dbId,
+    client: {
+      query: async (args) => {
+        using response = await db.exec(args);
+        return response;
+      },
+    },
   });
 };
 
@@ -1034,7 +1041,7 @@ export const listWorkflowRuns = createTool({
     c,
   ) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
-    const dbId = await getWorkspaceD1Database(c);
+    const db = await workspaceDB(c);
 
     // Build dynamic SQL query with optional filters
     const conditions: string[] = [];
@@ -1075,8 +1082,7 @@ export const listWorkflowRuns = createTool({
     params.push(per_page.toString(), offset.toString());
 
     try {
-      const { result } = await c.cf.d1.database.query(dbId, {
-        account_id: c.envVars.CF_ACCOUNT_ID,
+      const { result } = await db.exec({
         sql,
         params,
       });
@@ -1268,7 +1274,7 @@ export const listWorkflowNames = createTool({
   }),
   handler: async (_, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
-    const dbId = await getWorkspaceD1Database(c);
+    const db = await workspaceDB(c);
 
     const sql = `
       SELECT DISTINCT workflow_name
@@ -1277,8 +1283,7 @@ export const listWorkflowNames = createTool({
     `;
 
     try {
-      const { result } = await c.cf.d1.database.query(dbId, {
-        account_id: c.envVars.CF_ACCOUNT_ID,
+      const { result } = await db.exec({
         sql,
       });
 
