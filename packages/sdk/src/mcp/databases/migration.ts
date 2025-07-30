@@ -6,81 +6,6 @@ import { createDatabaseTool } from "./tool.ts";
 
 export { getWorkspaceD1Database } from "./d1.ts";
 
-// Helper function to create a basic table schema without constraints
-function createBasicTableSchema(
-  originalSql: string,
-  tableName: string,
-): string {
-  // Extract the column definitions from the CREATE TABLE statement
-  const createTableMatch = originalSql.match(
-    /CREATE\s+TABLE\s+["`]?(\w+)["`]?\s*\((.*)\)/is,
-  );
-
-  if (!createTableMatch) {
-    // Fallback: use the original SQL if we can't parse it
-    return originalSql.replace(
-      /CREATE\s+TABLE\s+["`]?\w+["`]?/i,
-      `CREATE TABLE IF NOT EXISTS "${tableName}"`,
-    );
-  }
-
-  const columnDefinitions = createTableMatch[2];
-
-  // Split by commas, but be careful about nested parentheses
-  const columns: string[] = [];
-  let currentColumn = "";
-  let parenDepth = 0;
-  let inQuotes = false;
-  let quoteChar = "";
-
-  for (let i = 0; i < columnDefinitions.length; i++) {
-    const char = columnDefinitions[i];
-
-    if (!inQuotes && (char === '"' || char === "'" || char === "`")) {
-      inQuotes = true;
-      quoteChar = char;
-    } else if (inQuotes && char === quoteChar) {
-      inQuotes = false;
-      quoteChar = "";
-    } else if (!inQuotes) {
-      if (char === "(") parenDepth++;
-      else if (char === ")") parenDepth--;
-      else if (char === "," && parenDepth === 0) {
-        columns.push(currentColumn.trim());
-        currentColumn = "";
-        continue;
-      }
-    }
-
-    currentColumn += char;
-  }
-
-  if (currentColumn.trim()) {
-    columns.push(currentColumn.trim());
-  }
-
-  // Filter out constraints and keep only basic column definitions
-  const basicColumns = columns.filter((col) => {
-    const upperCol = col.toUpperCase();
-    return !upperCol.startsWith("FOREIGN KEY") &&
-      !upperCol.startsWith("PRIMARY KEY") &&
-      !upperCol.startsWith("UNIQUE") &&
-      !upperCol.startsWith("CHECK") &&
-      !upperCol.startsWith("CONSTRAINT");
-  }).map((col) => {
-    // Remove inline constraints from column definitions
-    return col
-      .replace(/\s+REFERENCES\s+[^,)]+/gi, "") // Remove REFERENCES
-      .replace(/\s+ON\s+(DELETE|UPDATE)\s+[^,)]+/gi, "") // Remove ON DELETE/UPDATE
-      .replace(/\s+CHECK\s*\([^)]+\)/gi, "") // Remove CHECK constraints
-      .trim();
-  });
-
-  return `CREATE TABLE IF NOT EXISTS "${tableName}" (${
-    basicColumns.join(", ")
-  })`;
-}
-
 export const migrate = createDatabaseTool({
   name: "DATABASES_MIGRATE",
   description: "Migrate data from legacy database to new database",
@@ -239,16 +164,61 @@ export const migrate = createDatabaseTool({
           }
 
           if (!tableExists) {
-            // Create table in new database with simplified schema (no constraints)
-            // Extract just the basic column definitions
-            const basicCreateSql = createBasicTableSchema(
-              createTableSql,
-              table.name,
-            );
-
+            // Create table using PRAGMA table_info for clean column definitions
             try {
+              // Get column information directly from the legacy database
+              using tableInfoResponse = await legacyDb.exec({
+                sql: `PRAGMA table_info("${table.name}")`,
+                params: [],
+              });
+
+              const tableInfo = tableInfoResponse.result[0]?.results as Array<{
+                cid: number;
+                name: string;
+                type: string;
+                notnull: number;
+                dflt_value: string | null;
+                pk: number;
+              }> || [];
+
+              if (tableInfo.length === 0) {
+                migratedTables.push({
+                  tableName: table.name,
+                  rowCount: 0,
+                  status: "error",
+                  error: "Cannot get table column information",
+                });
+                continue;
+              }
+
+              // Build clean CREATE TABLE statement from column info
+              const columnDefinitions = tableInfo.map((col) => {
+                let def = `"${col.name}" ${col.type || "TEXT"}`;
+                if (col.notnull && !col.pk) {
+                  def += " NOT NULL";
+                }
+                if (col.dflt_value !== null) {
+                  def += ` DEFAULT ${col.dflt_value}`;
+                }
+                return def;
+              });
+
+              // Add PRIMARY KEY if there are primary key columns
+              const pkColumns = tableInfo.filter((col) => col.pk > 0)
+                .sort((a, b) => a.pk - b.pk)
+                .map((col) => `"${col.name}"`);
+
+              if (pkColumns.length > 0) {
+                columnDefinitions.push(`PRIMARY KEY (${pkColumns.join(", ")})`);
+              }
+
+              const cleanCreateSql =
+                `CREATE TABLE IF NOT EXISTS "${table.name}" (${
+                  columnDefinitions.join(", ")
+                })`;
+
               using _ = await newDb.exec({
-                sql: basicCreateSql,
+                sql: cleanCreateSql,
                 params: [],
               });
             } catch (createError) {
