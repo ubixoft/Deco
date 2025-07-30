@@ -2,7 +2,7 @@
 import z from "zod";
 import { workspaceDB } from "../context.ts";
 import { assertHasWorkspace, assertWorkspaceResourceAccess } from "../index.ts";
-import { createDatabaseTool } from "./api.ts";
+import { createDatabaseTool } from "./tool.ts";
 
 export { getWorkspaceD1Database } from "./d1.ts";
 

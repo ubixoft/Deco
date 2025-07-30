@@ -1,20 +1,10 @@
 import z from "zod";
 import { workspaceDB } from "../context.ts";
-import {
-  assertHasWorkspace,
-  assertWorkspaceResourceAccess,
-  createToolGroup,
-} from "../index.ts";
+import { assertHasWorkspace, assertWorkspaceResourceAccess } from "../index.ts";
+import { createDatabaseTool } from "./tool.ts";
 
 export { getWorkspaceD1Database } from "./d1.ts";
 export { migrate } from "./migration.ts";
-
-export const createDatabaseTool = createToolGroup("Databases", {
-  name: "Databases",
-  description: "Query workspace database",
-  icon:
-    "https://assets.decocache.com/mcp/390f7756-ec01-47e4-bb31-9e7b18f6f56f/database.png",
-});
 
 const Timings = z.object({
   sql_duration_ms: z.number().optional(),
