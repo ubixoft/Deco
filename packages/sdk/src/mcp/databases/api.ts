@@ -7,8 +7,9 @@ import {
 } from "../index.ts";
 
 export { getWorkspaceD1Database } from "./d1.ts";
+export { migrate } from "./migration.ts";
 
-const createTool = createToolGroup("Databases", {
+export const createDatabaseTool = createToolGroup("Databases", {
   name: "Databases",
   description: "Query workspace database",
   icon:
@@ -50,7 +51,7 @@ export type DatatabasesRunSqlInput = z.infer<
   typeof DatatabasesRunSqlInputSchema
 >;
 
-export const runSql = createTool({
+export const runSql = createDatabaseTool({
   name: "DATABASES_RUN_SQL",
   description: "Run a SQL query against the workspace database",
   inputSchema: DatatabasesRunSqlInputSchema.extend({
