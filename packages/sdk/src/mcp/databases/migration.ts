@@ -156,7 +156,7 @@ export const migrate = createDatabaseTool({
         "_cf_KV",
         "_litestream_seq",
         "_litestream_lock",
-        ...(migrateWorkflows ? ["mastra_workflow_snapshot"] : []),
+        ...(!migrateWorkflows ? ["mastra_workflow_snapshot"] : []),
       ];
       const filteredTables = allTables.filter((table) =>
         !systemTablesToExclude.includes(table.name) &&
