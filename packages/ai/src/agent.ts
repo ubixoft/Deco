@@ -482,6 +482,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         // @ts-ignore: Mastra requires a logger, but we don't use it
         getLogger: () => undefined,
         getTelemetry: () => this.telemetry,
+        generateId: () => this._memory.generateId(),
       },
       voice: this.env.OPENAI_API_KEY
         ? createAgentOpenAIVoice({ apiKey: this.env.OPENAI_API_KEY })
@@ -512,6 +513,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         // @ts-ignore: Mastra requires a logger, but we don't use it
         getLogger: () => undefined,
         getTelemetry: () => this.telemetry,
+        generateId: () => this._memory.generateId(),
       },
     });
   }
