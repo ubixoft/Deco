@@ -1374,31 +1374,7 @@ export const getWorkflowStatus = createTool({
       ),
     workflowName: z.string(),
   }),
-  outputSchema: z.object({
-    workflowName: z.string(),
-    runId: z.string(),
-    createdAt: z.date(),
-    updatedAt: z.date(),
-    resourceId: z.string().nullable().optional(),
-    snapshot: z.union([
-      z.string(),
-      z.object({
-        status: z.string(),
-        result: z.any(),
-        context: z.record(
-          z.string(),
-          z.object({
-            payload: z.any(),
-            startedAt: z.number().optional(),
-            endedAt: z.number().optional(),
-            error: z.union([z.string(), z.instanceof(Error)]).optional(),
-            output: z.any().optional(),
-          }),
-        ),
-        serializedStepGraph: z.array(z.any()),
-      }),
-    ]),
-  }),
+  outputSchema: z.any(),
   handler: async ({ instanceId, workflowName }, c) => {
     await assertWorkspaceResourceAccess(c.tool.name, c);
     const store = await getStore(c);
