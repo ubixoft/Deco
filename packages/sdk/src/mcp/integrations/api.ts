@@ -906,7 +906,7 @@ export const DECO_INTEGRATION_INSTALL = createIntegrationManagementTool({
         );
 
         const id = parsed.installId ??
-          (parsed.data?.connection as { token?: string }).token ??
+          (parsed.data?.connection as { token?: string })?.token ??
           crypto.randomUUID();
 
         client.close();
