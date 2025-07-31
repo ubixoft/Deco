@@ -595,7 +595,7 @@ const searchMarketplaceIntegations = async (
     const result = await client.callTool(
       {
         name: "SEARCH",
-        arguments: { query },
+        arguments: { query, provider: "composio" }, // search for composio only since the other integrations are now indexed by registry
       },
       // @ts-expect-error should be fixed after this is merged: https://github.com/modelcontextprotocol/typescript-sdk/pull/528
       CallToolResultSchema,
