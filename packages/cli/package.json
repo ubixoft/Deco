@@ -31,7 +31,7 @@
     "postpublish": "echo 'Published deco-cli to npm registry!'"
   },
   "dependencies": {
-    "@deco-cx/warp-node": "0.3.9",
+    "@deco-cx/warp-node": "0.3.16",
     "@modelcontextprotocol/sdk": "1.11.4",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
