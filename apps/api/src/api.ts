@@ -184,6 +184,7 @@ app.use(logger());
 // Enable CORS for all routes on api.deco.chat and localhost
 app.use(cors({
   origin: (origin) => origin,
+  maxAge: 86400, // one day
   allowMethods: ["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowHeaders: [
     "Content-Type",
