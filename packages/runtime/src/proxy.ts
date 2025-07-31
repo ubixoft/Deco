@@ -72,9 +72,7 @@ async function makeApiCall(
     const err =
       options?.getErrorByStatusCode?.(response.status, message, traceDebugId) ??
       new Error(
-        `http error ${response.status} ${JSON.stringify(
-          config.payload,
-        )} ${config.toolName} ${message} ${traceDebugId}`,
+        `http error ${response.status} ${config.toolName} ${message} ${traceDebugId}`,
       );
 
     throw err;
