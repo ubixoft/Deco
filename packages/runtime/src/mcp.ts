@@ -1,11 +1,10 @@
 // deno-lint-ignore-file no-explicit-any
 import { env } from "cloudflare:workers";
 import { z } from "zod";
-import { convertJsonSchemaToZod } from "zod-from-json-schema";
-import type { z as zv4 } from "zod/v4";
 import type { MCPConnection } from "./connection.ts";
 import type { DefaultEnv } from "./index.ts";
 import { createMCPClientProxy } from "./proxy.ts";
+import { JSONSchemaToZod } from "@dmitryrechkin/json-schema-to-zod";
 
 export interface FetchOptions extends RequestInit {
   path?: string;
@@ -127,7 +126,7 @@ export type MCPConnectionProvider =
   | (() => Promise<MCPConnection>)
   | MCPConnection;
 
-export type JSONSchemaToZodConverter = (jsonSchema: any) => zv4.ZodTypeAny;
+export type JSONSchemaToZodConverter = (jsonSchema: any) => z.ZodTypeAny;
 export interface CreateStubAPIOptions {
   decoChatApiUrl?: string;
   workspace?: string;
@@ -147,7 +146,6 @@ export function createMCPFetchStub<TDefinition extends readonly ToolBinder[]>(
 ): MCPClientFetchStub<TDefinition> {
   return createMCPClientProxy<MCPClientFetchStub<TDefinition>>({
     ...options ?? {},
-    jsonSchemaToZod:
-      convertJsonSchemaToZod as unknown as JSONSchemaToZodConverter,
+    jsonSchemaToZod: (schema) => JSONSchemaToZod.convert(schema),
   });
 }
