@@ -87,9 +87,17 @@ export function ConfirmMarketplaceInstallDialog({
         });
         setIntegration(null);
       } else if (!result.stateSchema) {
-        navigateWorkspace(
-          `/connection/${integration.provider}:::${integration.name}`,
-        );
+        let link = `/connection/${integration.provider}:::${integration.name}`;
+        const isDecoApp = integration.name.startsWith("@deco/");
+        if (
+          result.redirectUrl === null &&
+          isDecoApp &&
+          integration.friendlyName
+        ) {
+          // special case for non oauth-apps
+          link = `/connection/deco:::${integration.friendlyName}`;
+        }
+        navigateWorkspace(link);
       }
     } catch (error) {
       trackEvent("integration_install", {

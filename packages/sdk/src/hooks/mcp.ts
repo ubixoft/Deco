@@ -361,9 +361,6 @@ export const useInstallFromMarketplace = () => {
         // Handle both return types: { redirectUrl } or { stateSchema }
         if (result && "redirectUrl" in result) {
           redirectUrl = result.redirectUrl;
-          if (!redirectUrl) {
-            throw new Error("No redirect URL found");
-          }
         } else if (result && "stateSchema" in result) {
           // Return integration with stateSchema for modal handling
           return {
