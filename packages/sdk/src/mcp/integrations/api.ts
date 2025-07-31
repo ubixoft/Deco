@@ -862,7 +862,7 @@ export const DECO_INTEGRATION_INSTALL = createIntegrationManagementTool({
 
     let integration: Integration;
     const virtual = virtualInstallableIntegrations().find((i) =>
-      i.id === args.id
+      i.id === args.id || i.id === args.appId
     );
     if (virtual) {
       const workspaceMcp = new URL(
