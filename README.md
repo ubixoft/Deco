@@ -9,7 +9,8 @@ prototype, develop, and deploy AI-powered applications.
 **Official docs:** https://docs.deco.page
 
 > [!TIP]
-> If you have questions or want to learn more, please join our discord community: https://deco.chat/discord
+> If you have questions or want to learn more, please join our discord
+> community: https://deco.chat/discord
 
 ## Who is it for?
 

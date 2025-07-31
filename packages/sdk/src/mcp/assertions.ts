@@ -93,6 +93,7 @@ export const assertWorkspaceResourceAccess = async (
       const { data, error } = await c.db.from("deco_chat_api_keys").select("*")
         .eq("id", id)
         .eq("enabled", true)
+        .eq("workspace", c.workspace.value)
         .maybeSingle();
       if (error) {
         throw new ForbiddenError(error.message);

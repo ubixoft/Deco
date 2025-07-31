@@ -630,7 +630,7 @@ export class AuthorizationClient {
         userOrPolicies,
         teamIdOrSlug,
       )
-      : userOrPolicies;
+      : (userOrPolicies ?? []);
 
     let hasAllowMatch = false;
 
