@@ -194,6 +194,10 @@ export const deploy = async ({
       if (errorTextJson?.name === "MCPBreakingChangeError" && !force) {
         console.log("Looks like you have breaking changes in your app.");
         console.log(errorTextJson.message);
+        if (skipConfirmation) {
+          console.error("Use --force (-f) to deploy with breaking changes");
+          process.exit(1);
+        }
         const confirmed = await inquirer.prompt([
           {
             type: "confirm",
