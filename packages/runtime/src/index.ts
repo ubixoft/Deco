@@ -136,6 +136,10 @@ const withDefaultBindings = (
     {},
     {
       get: (_, prop) => {
+        if (prop === "toJSON") {
+          return null;
+        }
+
         return async (args: unknown) => {
           return await server.callTool({
             toolCallId: prop as string,
