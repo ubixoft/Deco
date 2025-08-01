@@ -49,10 +49,8 @@ export const Workflow = (
   server: MCPServer<any, any>,
   workflows?: CreateMCPServerOptions["workflows"],
 ) => {
-  return class Workflow
-    extends DurableObject<DefaultEnv>
-    implements WorkflowDO
-  {
+  return class Workflow extends DurableObject<DefaultEnv>
+    implements WorkflowDO {
     constructor(
       public override ctx: DurableObjectState,
       public override env: DefaultEnv,
@@ -124,12 +122,20 @@ export const Workflow = (
           runId: this.ctx.id.name ?? runId,
         });
 
+        const promise = run.start({
+          inputData: args,
+          runtimeContext: createRuntimeContext(bindings, this.ctx),
+        });
+
         this.ctx.waitUntil(
-          run.start({
-            inputData: args,
-            runtimeContext: createRuntimeContext(bindings, this.ctx),
+          promise.then(() => {
+            console.debug("workflow", run.runId, "finished successfully");
+          }).catch((e) => {
+            console.error("workflow", run.runId, "finished with error", e);
+            throw e;
           }),
         );
+
         return {
           runId: run.runId,
         };
