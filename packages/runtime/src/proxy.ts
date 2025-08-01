@@ -27,6 +27,9 @@ interface ApiCallConfig {
   init?: RequestInit;
 }
 
+// Aligns well with the timeout of the MCP server
+const MAX_TIMEOUT = 60_000;
+
 /**
  * Generic function to make API calls to the deco.chat API
  */
@@ -41,9 +44,19 @@ async function makeApiCall(
     ? `${workspace}/tools/call/${config.toolName}`
     : `/tools/call/${config.toolName}`;
 
+  const abortController = new AbortController();
+  const timeout = setTimeout(
+    () =>
+      abortController.abort(
+        `Max timeout of ${MAX_TIMEOUT}ms reached for ${config.toolName}`,
+      ),
+    MAX_TIMEOUT,
+  );
+
   const response = await fetch(
     new URL(urlPath, options?.decoChatApiUrl ?? `https://api.deco.chat`),
     {
+      signal: abortController.signal,
       body: JSON.stringify(config.payload),
       method: "POST",
       credentials: "include",
@@ -66,6 +79,8 @@ async function makeApiCall(
     data: Record<string, unknown>;
     error: string | undefined;
   };
+
+  clearTimeout(timeout);
 
   if (!response.ok || error || data?.isError) {
     const message = error || serializeData(data) || "Internal Server Error";
