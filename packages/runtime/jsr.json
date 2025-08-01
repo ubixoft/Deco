@@ -1,6 +1,6 @@
 {
   "name": "@deco/workers-runtime",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "exports": {
     ".": "./src/index.ts",
     "./proxy": "./src/proxy.ts",

@@ -89,6 +89,9 @@ export function createMCPClientProxy<T extends Record<string, unknown>>(
 ): T {
   return new Proxy<T>({} as T, {
     get(_, name) {
+      if (name === "toJSON") {
+        return null;
+      }
       if (typeof name !== "string") {
         throw new Error("Name must be a string");
       }
