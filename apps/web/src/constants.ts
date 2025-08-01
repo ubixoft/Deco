@@ -12,6 +12,7 @@ export const ALLOWANCES = [
   "fullscreen",
   "geolocation",
   "payment",
+  "allow-downloads",
 ].join("; ");
 
 export const WELL_KNOWN_EMAIL_DOMAINS = new Set([
