@@ -1,7 +1,6 @@
 import type { Agent } from "@deco/sdk";
 import {
   useAgents,
-  useIntegration,
   useRemoveAgent,
   useSDK,
   WELL_KNOWN_AGENT_IDS,
@@ -27,25 +26,16 @@ import {
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@deco/ui/components/tooltip.tsx";
-import {
   createContext,
-  Suspense,
   useCallback,
   useContext,
   useMemo,
   useReducer,
   useState,
 } from "react";
-import { ErrorBoundary } from "../../error-boundary.tsx";
 import { trackEvent } from "../../hooks/analytics.ts";
 import { useCreateAgent } from "../../hooks/use-create-agent.ts";
 import { useLocalStorage } from "../../hooks/use-local-storage.ts";
-import { useNavigateWorkspace } from "../../hooks/use-navigate-workspace.ts";
 import { getPublicChatLink } from "../agent/chats.tsx";
 import { AgentVisibility } from "../common/agent-visibility.tsx";
 import { AgentAvatar } from "../common/avatar/agent.tsx";
@@ -53,10 +43,8 @@ import { EmptyState } from "../common/empty-state.tsx";
 import { ListPageHeader } from "../common/list-page-header.tsx";
 import { Table } from "../common/table/index.tsx";
 import type { Tab } from "../dock/index.tsx";
-import { IntegrationIcon } from "../integrations/common.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
 import { useFocusChat } from "./hooks.ts";
-import { AppKeys, getConnectionAppKey } from "../integrations/apps.ts";
 import { useViewMode } from "@deco/ui/hooks/use-view-mode.ts";
 
 export const useDuplicateAgent = (agent: Agent | null) => {
@@ -93,57 +81,6 @@ export const useDuplicateAgent = (agent: Agent | null) => {
 
   return { duplicate, duplicating };
 };
-
-function IntegrationMiniature({ toolSetId }: { toolSetId: string }) {
-  const { data: integration } = useIntegration(toolSetId);
-  const navigateWorkspace = useNavigateWorkspace();
-
-  if (!integration) {
-    return null;
-  }
-
-  const icon = integration.icon || "icon://linked_services";
-
-  return (
-    <TooltipProvider delayDuration={0}>
-      <Tooltip>
-        <TooltipTrigger
-          onClick={(e) => {
-            e.stopPropagation();
-            const appKey = AppKeys.build(getConnectionAppKey(integration));
-            navigateWorkspace(`/connection/${appKey}?edit=${integration.id}`);
-          }}
-          asChild
-        >
-          <div className="w-8 h-8 flex items-center justify-center">
-            <IntegrationIcon icon={icon} size="xs" name={integration.name} />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{integration.name}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function IntegrationBadges({ agent, max }: { agent: Agent; max?: number }) {
-  const integrations = Object.entries(agent.tools_set ?? {})
-    .filter(([_, tools]) => tools.length > 0)
-    .slice(0, max ?? Infinity);
-
-  return (
-    <div className="flex gap-0 flex-wrap">
-      {integrations.map(([toolSetId]) => (
-        <ErrorBoundary key={toolSetId} fallback={null}>
-          <Suspense fallback={null}>
-            <IntegrationMiniature toolSetId={toolSetId} />
-          </Suspense>
-        </ErrorBoundary>
-      ))}
-    </div>
-  );
-}
 
 const useCopyLink = (agentId: string) => {
   const { workspace } = useSDK();
@@ -283,7 +220,6 @@ function Card({ agent }: { agent: Agent }) {
               {agent.description || "No description"}
             </div>
           </div>
-          <IntegrationBadges agent={agent} />
         </div>
       </CardContent>
     </UICard>
@@ -348,11 +284,6 @@ function TableView({ agents }: { agents: Agent[] }) {
       accessor: (agent: Agent) => agent.description,
       sortable: true,
       cellClassName: "max-w-xl",
-    },
-    {
-      id: "integrations",
-      header: "Connections",
-      render: (agent: Agent) => <IntegrationBadges agent={agent} max={5} />,
     },
     {
       id: "actions",
