@@ -722,86 +722,11 @@ export const DECO_INTEGRATION_OAUTH_START = createIntegrationManagementTool({
   },
 });
 
-// TODO: Check if any composio integration cannot be auto connected
-const canAutoConnect = (_data: Record<string, unknown>) => {
-  console.log("[Composio] canAutoConnect", _data);
-  return true;
-};
-
-const parseComposioToolResult = (result: ToolCallResult) => {
-  try {
-    const dataStringified = result.content?.[0]?.text ?? "{}";
-    const data = JSON.parse(dataStringified);
-    return data;
-  } catch (error) {
-    console.error("Error parsing Composio tool result", error);
-    return {};
-  }
-};
-
 interface ToolCallResult {
   content?: {
     text?: string;
   }[];
 }
-
-export const COMPOSIO_INTEGRATION_OAUTH_START = createIntegrationManagementTool(
-  {
-    name: "COMPOSIO_INTEGRATION_OAUTH_START",
-    description: "Start the OAuth flow for a Composio integration",
-    inputSchema: z.object({
-      url: z.string().describe("The url of the Composio MCP server"),
-    }),
-    handler: async ({ url }, c) => {
-      assertHasWorkspace(c);
-      await assertWorkspaceResourceAccess(c.tool.name, c);
-
-      const client = await createServerClient({
-        name: "composio-authenticator",
-        connection: { type: "HTTP", url },
-      });
-
-      const { tools } = await client.listTools();
-
-      const initiateConnectionTool = tools.find((tool) =>
-        tool.name.endsWith("_INITIATE_CONNECTION"),
-      );
-      const getRequiredParametersTool = tools.find((tool) =>
-        tool.name.endsWith("_GET_REQUIRED_PARAMETERS"),
-      );
-
-      if (!initiateConnectionTool) {
-        throw new Error("Composio authenticator has no required tools");
-      }
-
-      if (getRequiredParametersTool) {
-        const getRequiredParametersResult = await client.callTool({
-          name: getRequiredParametersTool.name,
-          arguments: {},
-        });
-
-        const getRequiredParametersData = parseComposioToolResult(
-          getRequiredParametersResult as ToolCallResult,
-        );
-
-        if (!canAutoConnect(getRequiredParametersData)) {
-          return { redirectUrl: null };
-        }
-      }
-
-      const initiateConnectionResult = await client.callTool({
-        name: initiateConnectionTool.name,
-        arguments: {},
-      });
-
-      const data = parseComposioToolResult(
-        initiateConnectionResult as ToolCallResult,
-      );
-      const redirectUrl = data.data?.response_data?.redirect_url ?? null;
-      return { redirectUrl };
-    },
-  },
-);
 
 const CONFIGURE_INTEGRATION_OUTPUT_SCHEMA = z.object({
   success: z.boolean().describe("Whether the configuration was successful"),
@@ -810,7 +735,7 @@ const CONFIGURE_INTEGRATION_OUTPUT_SCHEMA = z.object({
     .describe("A message describing the result of the configuration attempt")
     .optional(),
   data: IntegrationSchema.omit({ id: true }).optional(),
-  // configure integration can return the install id, e.g for composio
+  // configure integration can return the install id
   installId: z.string().optional(),
 });
 

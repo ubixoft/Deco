@@ -80,7 +80,6 @@ export const WORKSPACE_TOOLS = [
   integrationsAPI.deleteIntegration,
   integrationsAPI.listIntegrations,
   integrationsAPI.callTool,
-  integrationsAPI.COMPOSIO_INTEGRATION_OAUTH_START,
   integrationsAPI.DECO_INTEGRATION_OAUTH_START,
   integrationsAPI.DECO_INTEGRATION_INSTALL,
   integrationsAPI.DECO_INTEGRATIONS_SEARCH,
