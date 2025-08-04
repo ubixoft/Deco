@@ -61,7 +61,7 @@ export const handleStripeWebhook = async (c: Context) => {
         {
           message: error.message,
         },
-        400,
+        202,
       );
     }
 
