@@ -104,9 +104,9 @@ async function getWorkspaceByCustomerId({
     .maybeSingle();
 
   if (!data || error) {
-    throw new Error("Failed to get workspace by customer ID", {
-      cause: error,
-    });
+    throw new WebhookEventIgnoredError(
+      "Failed to get workspace by customer ID, skipping",
+    );
   }
 
   return data.workspace;
@@ -118,7 +118,9 @@ const paymentIntentSucceeded: EventHandler<
   const customerId = event.data.object.customer;
 
   if (!customerId || typeof customerId !== "string") {
-    throw new Error("Customer ID not found or is not a string");
+    throw new WebhookEventIgnoredError(
+      "Customer ID not found or is not a string, skipping",
+    );
   }
 
   const workspace = await getWorkspaceByCustomerId({
