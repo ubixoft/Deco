@@ -176,11 +176,17 @@ const AUTHENTICATED = (user?: unknown, workspace?: string) => () => {
   } as User;
 };
 
-export const withBindings = <TEnv>(
-  _env: TEnv,
-  server: MCPServer<TEnv, any>,
-  tokenOrContext?: string | RequestContext,
-): TEnv => {
+export const withBindings = <TEnv>({
+  env: _env,
+  server,
+  tokenOrContext,
+  origin,
+}: {
+  env: TEnv;
+  server: MCPServer<TEnv, any>;
+  tokenOrContext?: string | RequestContext;
+  origin?: string | null;
+}): TEnv => {
   const env = _env as DefaultEnv<any>;
 
   let context;
@@ -212,7 +218,10 @@ export const withBindings = <TEnv>(
         authUri.searchParams.set("client_id", env.DECO_CHAT_APP_NAME);
         authUri.searchParams.set(
           "redirect_uri",
-          `${env.DECO_CHAT_APP_ENTRYPOINT}${AUTH_CALLBACK_ENDPOINT}`,
+          new URL(
+            AUTH_CALLBACK_ENDPOINT,
+            origin ?? env.DECO_CHAT_APP_ENTRYPOINT,
+          ).href,
         );
         workspaceHint &&
           authUri.searchParams.set("workspace_hint", workspaceHint);
@@ -290,18 +299,24 @@ export const withRuntime = <TEnv, TSchema extends z.ZodTypeAny = never>(
       env: TEnv & DefaultEnv<TSchema>,
       ctx: ExecutionContext,
     ) => {
+      const referer = req.headers.get("referer");
+      const isFetchRequest =
+        req.headers.has(DECO_MCP_CLIENT_HEADER) ||
+        req.headers.get("sec-fetch-mode") === "cors";
+
       try {
-        const bindings = withBindings(env, server, getReqToken(req));
+        const bindings = withBindings({
+          env,
+          server,
+          tokenOrContext: getReqToken(req),
+          origin: referer ?? req.headers.get("origin"),
+        });
         return await State.run(
           { req, env: bindings, ctx },
           async () => await fetcher(req, bindings, ctx),
         );
       } catch (error) {
         if (error instanceof UnauthorizedError) {
-          const referer = req.headers.get("referer");
-          const isFetchRequest =
-            req.headers.has(DECO_MCP_CLIENT_HEADER) ||
-            req.headers.get("sec-fetch-mode") === "cors";
           if (!isFetchRequest) {
             const url = new URL(req.url);
             error.redirectTo.searchParams.set(
