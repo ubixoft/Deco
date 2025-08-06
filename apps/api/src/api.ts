@@ -265,9 +265,14 @@ const createMcpServerProxy = async (c: Context) => {
   const ctx = honoCtxToAppCtx(c);
 
   const integrationId = c.req.param("integrationId");
-  const integration = await State.run(ctx, () =>
-    getIntegration.handler({ id: integrationId }),
-  );
+  const fetchIntegration = async () => {
+    using _ = ctx.resourceAccess.grant();
+    return await State.run(ctx, () =>
+      getIntegration.handler({ id: integrationId }),
+    );
+  };
+
+  const integration = await fetchIntegration();
 
   const mcpServerProxy = proxy(integration.connection, {
     tools: integration.tools

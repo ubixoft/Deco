@@ -71,7 +71,6 @@ interface AuthContext {
 export const withMCPAuthorization =
   (ctx: AppContext, { integrationId }: AuthContext): CallToolMiddleware =>
   async (req, next) => {
-    ctx.resourceAccess.reset();
     try {
       await assertWorkspaceResourceAccess(
         ctx,

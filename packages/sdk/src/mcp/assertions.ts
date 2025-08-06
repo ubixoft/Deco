@@ -86,7 +86,7 @@ interface ResourceAccessContext extends Partial<Omit<AuthContext, "user">> {
 export const assertWorkspaceResourceAccess = async (
   c: AppContext,
   ..._resourcesOrContexts: Array<ResourceAccessContext | string>
-): Promise<void> => {
+): Promise<Disposable> => {
   if (c.isLocal || c.resourceAccess.granted()) {
     return c.resourceAccess.grant();
   }
@@ -220,7 +220,7 @@ export const assertTeamResourceAccess = async (
   resource: string,
   teamIdOrSlug: string | number,
   c: AppContext,
-): Promise<void> => {
+): Promise<Disposable> => {
   if (c.isLocal) {
     return c.resourceAccess.grant();
   }
