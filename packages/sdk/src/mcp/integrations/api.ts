@@ -41,12 +41,19 @@ import {
 import { listKnowledgeBases } from "../knowledge/api.ts";
 import { getRegistryApp, listRegistryApps } from "../registry/api.ts";
 import { createServerClient } from "../utils.ts";
+import type { MCPTool } from "../../hooks/tools.ts";
 
 const SELECT_INTEGRATION_QUERY = `
           *,
           deco_chat_apps_registry(
             name,
-            deco_chat_registry_scopes(scope_name)
+            deco_chat_registry_scopes(scope_name),
+            deco_chat_apps_registry_tools(
+              name,
+              description,
+              input_schema,
+              output_schema
+            )
           )
         ` as const;
 // Tool factories for each group
@@ -259,9 +266,35 @@ const virtualIntegrationsFor = (
   ];
 };
 
+// Helper function to extract tools from registry data - shared between list and get
+const extractToolsFromRegistry = (
+  integration: QueryResult<
+    "deco_chat_integrations",
+    typeof SELECT_INTEGRATION_QUERY
+  >,
+): MCPTool[] | null => {
+  const registryData = integration.deco_chat_apps_registry;
+  const registryTools =
+    registryData && Array.isArray(registryData.deco_chat_apps_registry_tools)
+      ? registryData.deco_chat_apps_registry_tools
+      : null;
+
+  return (
+    registryTools?.map(
+      (tool): MCPTool => ({
+        name: tool.name,
+        description: tool.description || undefined,
+        inputSchema: (tool.input_schema as Record<string, unknown>) || {},
+        outputSchema:
+          (tool.output_schema as Record<string, unknown>) || undefined,
+      }),
+    ) || null
+  );
+};
+
 export const listIntegrations = createIntegrationManagementTool({
   name: "INTEGRATIONS_LIST",
-  description: "List all integrations",
+  description: "List all integrations with their tools",
   inputSchema: z.object({
     binder: BindingsSchema.optional(),
   }),
@@ -308,7 +341,8 @@ export const listIntegrations = createIntegrationManagementTool({
         userRoles?.some((role) => IMPORTANT_ROLES.includes(role)),
     );
 
-    const result = [
+    // Build the result with all integrations
+    const baseResult = [
       ...virtualIntegrationsFor(workspace, knowledgeBases.names ?? [], c.token),
       ...filteredIntegrations.map(mapIntegration),
       ...filteredAgents
@@ -320,27 +354,27 @@ export const listIntegrations = createIntegrationManagementTool({
       .map((i) => IntegrationSchema.safeParse(i)?.data)
       .filter((i) => !!i);
 
-    if (binder) {
-      const filtered: typeof result = [];
-      await Promise.all(
-        result.map(async (integration) => {
-          const integrationTools = await Promise.race([
-            listTools.handler({
-              connection: integration.connection,
-            }),
-            new Promise<null>((r) => setTimeout(() => r(null), 7_000)),
-          ]);
-          if (!integrationTools) {
-            return;
-          }
-          const tools = integrationTools.tools ?? [];
-          if (Binding(WellKnownBindings[binder]).isImplementedBy(tools)) {
-            filtered.push(integration);
-          }
-        }),
+    // Add tools to each integration
+    const result = baseResult.map((integration) => {
+      // Find the corresponding database record to extract tools
+      const dbRecord = filteredIntegrations.find(
+        (dbIntegration) => formatId("i", dbIntegration.id) === integration.id,
       );
-      return filtered;
+
+      const tools = dbRecord ? extractToolsFromRegistry(dbRecord) : null;
+
+      return { ...integration, tools };
+    });
+
+    if (binder) {
+      // Filter by binder capability
+      return result.filter((integration) => {
+        return Binding(WellKnownBindings[binder]).isImplementedBy(
+          integration.tools ?? [],
+        );
+      });
     }
+
     return result;
   },
 });
@@ -356,7 +390,7 @@ export const convertFromDatabase = (
 
 export const getIntegration = createIntegrationManagementTool({
   name: "INTEGRATIONS_GET",
-  description: "Get an integration by id",
+  description: "Get an integration by id with tools",
   inputSchema: z.object({
     id: z.string(),
   }),
@@ -379,10 +413,11 @@ export const getIntegration = createIntegrationManagementTool({
     if (uuid in INNATE_INTEGRATIONS) {
       const data =
         INNATE_INTEGRATIONS[uuid as keyof typeof INNATE_INTEGRATIONS];
-      return IntegrationSchema.parse({
+      const baseIntegration = IntegrationSchema.parse({
         ...data,
         id: formatId(type, data.id),
       });
+      return { ...baseIntegration, tools: null }; // Innate integrations don't have tools for now
     }
     assertHasWorkspace(c);
 
@@ -412,10 +447,11 @@ export const getIntegration = createIntegrationManagementTool({
     );
 
     if (virtualIntegrations.some((i) => i.id === id)) {
-      return IntegrationSchema.parse({
+      const baseIntegration = IntegrationSchema.parse({
         ...virtualIntegrations.find((i) => i.id === id),
         id: formatId(type, id),
       });
+      return { ...baseIntegration, tools: null }; // Virtual integrations don't have tools for now
     }
 
     const { data, error } = await selectPromise;
@@ -433,21 +469,25 @@ export const getIntegration = createIntegrationManagementTool({
         c.workspace.value as Workspace,
         c.token,
       );
-      return IntegrationSchema.parse({
+      const baseIntegration = IntegrationSchema.parse({
         ...mapAgentToIntegration(data as unknown as Agent),
         id: formatId(type, data.id),
       });
+      return { ...baseIntegration, tools: null }; // Agents don't have tools for now
     }
 
-    return IntegrationSchema.parse({
-      ...mapIntegration(
-        data as unknown as QueryResult<
-          "deco_chat_integrations",
-          typeof SELECT_INTEGRATION_QUERY
-        >,
-      ),
+    const integrationData = data as unknown as QueryResult<
+      "deco_chat_integrations",
+      typeof SELECT_INTEGRATION_QUERY
+    >;
+
+    const tools = extractToolsFromRegistry(integrationData);
+    const baseIntegration = IntegrationSchema.parse({
+      ...mapIntegration(integrationData),
       id: formatId(type, data.id),
     });
+
+    return { ...baseIntegration, tools };
   },
 });
 
