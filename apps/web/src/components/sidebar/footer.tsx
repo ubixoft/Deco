@@ -94,6 +94,7 @@ function UserPreferencesModal({
       smoothStream: preferences.smoothStream,
       sendReasoning: preferences.sendReasoning,
       pdfSummarization: preferences.pdfSummarization,
+      enableDecopilot: preferences.enableDecopilot,
     },
   });
   const {
@@ -107,8 +108,12 @@ function UserPreferencesModal({
     sendReasoning: boolean;
     smoothStream: boolean;
     pdfSummarization: boolean;
+    enableDecopilot: boolean;
   }) {
-    setPreferences(data);
+    setPreferences({
+      ...preferences,
+      ...data,
+    });
     form.reset(data);
     onOpenChange(false);
   }
@@ -247,6 +252,32 @@ function UserPreferencesModal({
                   <FormDescription>
                     Summarize large PDFs to reduce token usage and enable larger
                     PDF support.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              name="enableDecopilot"
+              render={({ field }) => (
+                <FormItem className="flex flex-col justify-center items-start gap-2">
+                  <div className="flex items-center gap-2 cursor-pointer">
+                    <FormControl>
+                      <Switch
+                        id="enableDecopilot"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel
+                      htmlFor="enableDecopilot"
+                      className="cursor-pointer"
+                    >
+                      Enable Decopilot
+                    </FormLabel>
+                  </div>
+                  <FormDescription>
+                    Show the Decopilot toggle button in the chat interface.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

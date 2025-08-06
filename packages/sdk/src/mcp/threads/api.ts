@@ -263,7 +263,9 @@ export const getThreadMessages = createTool({
       list.add(message as unknown as AIMessage, "memory");
     }
 
-    return list.get.all.ui();
+    const uiMessages = list.get.all.ui();
+
+    return uiMessages;
   },
 });
 

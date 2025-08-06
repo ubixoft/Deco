@@ -308,6 +308,18 @@ Provide examples and suggest improvements until the user confirms the prompt is 
 When user asks for a prompt, you should use the PROMPTS_GET tool to get the actual prompt and then use the PROMPTS_UPDATE tool to update the prompt in question.
     `,
   },
+  decopilotAgent: {
+    ...NEW_AGENT_TEMPLATE,
+    id: "decopilotAgent",
+    name: "Decopilot",
+    avatar: pickCapybaraAvatar(12),
+    description: "Let's Deco!",
+    instructions: `
+You are an assistant that helps users with decopilot.
+
+When user asks for a decopilot, you should use the DECOPILOT_GET tool to get the actual decopilot and then use the DECOPILOT_UPDATE tool to update the decopilot in question.
+    `,
+  },
 } satisfies Record<string, Agent>;
 
 export const WELL_KNOWN_KNOWLEDGE_BASE_CONNECTION_ID_STARTSWITH =
