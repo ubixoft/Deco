@@ -91,8 +91,6 @@ export function usePermissionDescriptions(scopes: AppScope[]): {
   const isLoading = isWorkspaceLoading || isRegistryLoading;
   const error = workspaceError || registryError;
 
-  console.log({ scopes, registryAppsData, workspaceToolsData });
-
   // Map scopes to permissions with descriptions
   const permissions: PermissionDescription[] = scopes.map((scope) => {
     if (scope.app) {

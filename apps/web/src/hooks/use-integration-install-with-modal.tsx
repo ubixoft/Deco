@@ -120,7 +120,7 @@ export function useIntegrationInstallWithModal() {
             const integrationId = binding?.value;
             return {
               effect: "allow" as const,
-              resource: toolName,
+              resource: toolName ?? scope,
               ...(integrationId
                 ? {
                     matchCondition: {
