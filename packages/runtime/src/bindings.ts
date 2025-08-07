@@ -9,6 +9,15 @@ interface IntegrationContext {
   decoChatApiUrl?: string;
 }
 
+const normalizeWorkspace = (workspace: string) => {
+  if (workspace.startsWith("/users")) {
+    return workspace;
+  }
+  if (workspace.startsWith("/shared")) {
+    return workspace;
+  }
+  return `/shared/${workspace}`;
+};
 /**
  * Url: /:workspace.root/:workspace.slug/:integrationId/mcp
  */
@@ -18,7 +27,7 @@ const createIntegrationsUrl = ({
   decoChatApiUrl,
 }: IntegrationContext) =>
   new URL(
-    `${workspace}/${integrationId}/mcp`,
+    `${normalizeWorkspace(workspace)}/${integrationId}/mcp`,
     decoChatApiUrl ?? "https://api.deco.chat",
   ).href;
 
