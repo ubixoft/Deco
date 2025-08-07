@@ -343,6 +343,11 @@ app.post(
   createToolCallHandlerFor(WORKSPACE_TOOLS),
 );
 
+app.post(
+  `/:root/:slug/${WellKnownMcpGroups.Email}/mcp`,
+  createMCPHandlerFor(EMAIL_TOOLS),
+);
+
 app.post("/:root/:slug/:integrationId/mcp", async (c) => {
   const mcpServerProxy = await createMcpServerProxy(c);
 
@@ -377,11 +382,6 @@ app.post("/:root/:slug/:integrationId/tools/call/:tool", async (c) => {
 app.post(
   "/:root/:slug/tools/call/agents/:agentId/:tool",
   createToolCallHandlerFor(AGENT_TOOLS),
-);
-
-app.post(
-  `/:root/:slug/${WellKnownMcpGroups.Email}/mcp`,
-  createMCPHandlerFor(EMAIL_TOOLS),
 );
 
 app.post("/apps/code-exchange", handleCodeExchange);
