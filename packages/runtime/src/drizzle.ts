@@ -3,6 +3,7 @@ import { drizzle as drizzleProxy } from "drizzle-orm/sqlite-proxy";
 import { DefaultEnv } from "./index.ts";
 import { QueryResult } from "./mcp.ts";
 export * from "drizzle-orm/sqlite-core";
+export * as orm from "drizzle-orm";
 
 const mapGetResult = ({ result: [page] }: { result: QueryResult[] }) => {
   return page.results ?? [];
