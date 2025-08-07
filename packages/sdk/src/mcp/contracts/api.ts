@@ -4,7 +4,6 @@ import { WellKnownMcpGroups } from "../../crud/groups.ts";
 import { AppContext, createToolFactory } from "../context.ts";
 import {
   assertHasWorkspace,
-  assertWorkspaceResourceAccess,
   ForbiddenError,
   fromWorkspaceString,
   WithTool,
@@ -107,7 +106,6 @@ export const contractAuthorize = createContractTool({
   }),
   handler: async (context, c) => {
     assertHasWorkspace(c);
-    await assertWorkspaceResourceAccess(c);
 
     if (!("state" in c.user) || typeof c.user.state !== "object") {
       throw new ForbiddenError("User state not found");
