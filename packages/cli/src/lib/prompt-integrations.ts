@@ -69,7 +69,11 @@ export async function promptIntegrations(
       throw new Error("Failed to fetch integrations");
     }
 
-    const integrationsResponse = response.structuredContent as Integration[];
+    const integrationsResponse = (
+      response.structuredContent as {
+        items: Integration[];
+      }
+    )?.items;
     const integrations = (integrationsResponse || [])
       .filter((c) => c.connection.type !== "INNATE")
       .sort((a, b) => a.name.localeCompare(b.name));
