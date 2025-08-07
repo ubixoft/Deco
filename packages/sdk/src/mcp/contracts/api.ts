@@ -141,15 +141,12 @@ export const contractSettle = createContractTool({
     transactionId: z.string(),
     clauses: z.array(ContractClauseExerciseSchema).optional(),
     amount: z.number().optional(),
+    vendorId: z.string(),
   }),
   outputSchema: z.object({
     transactionId: z.string(),
   }),
   handler: async (context, c) => {
-    if (!("appVendor" in c.user) || typeof c.user.appVendor !== "string") {
-      throw new ForbiddenError("App vendor not found");
-    }
-
     if (!("state" in c.user) || typeof c.user.state !== "object") {
       throw new ForbiddenError("User state not found");
     }
@@ -170,13 +167,12 @@ export const contractSettle = createContractTool({
       amount = totalAmount(state.clauses, context.clauses);
     }
 
-    const vendor = c.user.appVendor;
     await State.run(c, () =>
       commitPreAuthorizedAmount.handler({
         contractId,
         identifier: context.transactionId,
         amount,
-        vendorId: vendor,
+        vendorId: context.vendorId,
       }),
     );
 

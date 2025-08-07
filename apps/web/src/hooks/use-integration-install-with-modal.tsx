@@ -117,7 +117,6 @@ export function useIntegrationInstallWithModal() {
           state: formData,
           integrationId: installId,
           appName: installState.appName,
-          appVendor: marketplaceApp.workspace,
         },
         name: keyName,
         policies: [
