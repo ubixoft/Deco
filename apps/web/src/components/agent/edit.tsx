@@ -1,38 +1,17 @@
 import {
-  type Agent,
-  AgentSchema,
-  type Integration,
   NotFoundError,
-  useAgent,
+  useAgentData,
   useFile,
-  useIntegrations,
-  useUpdateAgent,
-  useUpdateAgentCache,
   WELL_KNOWN_AGENTS,
 } from "@deco/sdk";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@deco/ui/components/alert-dialog.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
-import { toast } from "@deco/ui/components/sonner.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { createContext, Suspense, useContext, useEffect, useMemo } from "react";
-import { useForm, type UseFormReturn } from "react-hook-form";
-import { useBlocker, useParams } from "react-router";
-import { useCreateAgent } from "../../hooks/use-create-agent.ts";
+import { Suspense, useMemo } from "react";
+import { useParams } from "react-router";
 import { useFocusChat } from "../agents/hooks.ts";
 import { ChatInput } from "../chat/chat-input.tsx";
 import { ChatMessages } from "../chat/chat-messages.tsx";
-import { ChatProvider, useChatContext } from "../chat/context.tsx";
 import { AgentAvatar } from "../common/avatar/agent.tsx";
 import type { Tab } from "../dock/index.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
@@ -46,6 +25,7 @@ import ThreadView from "./thread.tsx";
 import Threads from "./threads.tsx";
 import { isFilePath } from "../../utils/path.ts";
 import { useDocumentMetadata } from "../../hooks/use-document-metadata.ts";
+import { AgentProvider, useAgent } from "./provider.tsx";
 
 interface Props {
   agentId?: string;
@@ -53,12 +33,8 @@ interface Props {
 }
 
 const Chat = () => {
-  const { agentId, chat } = useChatContext();
-  const { data: agent } = useAgent(agentId);
-  const {
-    chat: { messages },
-  } = useChatContext();
-  const { hasChanges } = useAgentSettingsForm();
+  const { agentId, chat, agent, hasUnsavedChanges: hasChanges } = useAgent();
+  const { messages } = chat;
   const focusChat = useFocusChat();
 
   return (
@@ -157,38 +133,24 @@ const TABS: Record<string, Tab> = {
 };
 
 // --- AgentSettingsFormContext ---
-interface AgentSettingsFormContextValue {
-  form: ReturnType<typeof useForm<Agent>>;
-  hasChanges: boolean;
-  handleSubmit: () => void;
-  installedIntegrations: Integration[];
-  agent: Agent;
-}
 
-const AgentSettingsFormContext = createContext<
-  AgentSettingsFormContextValue | undefined
->(undefined);
+function ActionButtons() {
+  const {
+    form,
+    hasUnsavedChanges: hasChanges,
+    handleSubmit,
+    agent,
+  } = useAgent();
 
-export function useAgentSettingsForm() {
-  const ctx = useContext(AgentSettingsFormContext);
-  if (!ctx) {
-    throw new Error(
-      "useAgentSettingsForm must be used within AgentSettingsFormContext",
-    );
+  const isWellKnownAgent = Boolean(
+    WELL_KNOWN_AGENTS[agent.id as keyof typeof WELL_KNOWN_AGENTS],
+  );
+
+  const numberOfChanges = Object.keys(form.formState.dirtyFields).length;
+
+  function discardChanges() {
+    form.reset();
   }
-  return ctx;
-}
-
-function ActionButtons({
-  discardChanges,
-  numberOfChanges,
-  isWellKnownAgent,
-}: {
-  discardChanges: () => void;
-  numberOfChanges: number;
-  isWellKnownAgent: boolean;
-}) {
-  const { form, hasChanges, handleSubmit } = useAgentSettingsForm();
 
   return (
     <div className="flex items-center gap-2 bg-sidebar transition-opacity">
@@ -231,25 +193,12 @@ function ActionButtons({
 
 function FormProvider(props: Props & { agentId: string; threadId: string }) {
   const { agentId, threadId } = props;
-  const { data: agent } = useAgent(agentId);
+  const { data: agent } = useAgentData(agentId);
   const { data: resolvedAvatar } = useFile(
     agent?.avatar && isFilePath(agent.avatar) ? agent.avatar : "",
   );
-  const { data: installedIntegrations } = useIntegrations();
-  const updateAgent = useUpdateAgent();
-  const updateAgentCache = useUpdateAgentCache();
-  const createAgent = useCreateAgent();
 
   const tabs = useTabsForAgent(agent, TABS);
-
-  const isWellKnownAgent = Boolean(
-    WELL_KNOWN_AGENTS[agentId as keyof typeof WELL_KNOWN_AGENTS],
-  );
-
-  const form = useForm({
-    defaultValues: agent,
-    resolver: zodResolver(AgentSchema),
-  });
 
   useDocumentMetadata({
     title: agent ? `${agent.name} | deco.chat` : undefined,
@@ -264,124 +213,32 @@ function FormProvider(props: Props & { agentId: string; threadId: string }) {
     socialImage: agent?.avatar,
   });
 
-  const numberOfChanges = Object.keys(form.formState.dirtyFields).length;
-  const hasChanges = numberOfChanges > 0;
-
-  // Use deferred values for better UX - updates cache at lower priority
-  const values = form.watch();
-  useEffect(() => {
-    const timeout = setTimeout(() => updateAgentCache(values as Agent), 200);
-
-    return () => clearTimeout(timeout);
-  }, [values, updateAgentCache]);
-
-  const blocked = useBlocker(hasChanges && !isWellKnownAgent);
-
-  const handleSubmit = form.handleSubmit(async (data: Agent) => {
-    try {
-      if (isWellKnownAgent) {
-        const id = crypto.randomUUID();
-        const agent = { ...data, id };
-        await createAgent(agent, {});
-        const wellKnownAgent =
-          WELL_KNOWN_AGENTS[agentId as keyof typeof WELL_KNOWN_AGENTS];
-        form.reset(wellKnownAgent);
-        updateAgentCache(wellKnownAgent);
-        return;
-      }
-
-      await updateAgent.mutateAsync(data);
-      form.reset(data);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update agent",
-      );
-    }
-  });
-
-  function handleCancel() {
-    blocked.reset?.();
-  }
-
-  function discardChanges() {
-    form.reset();
-    updateAgentCache(form.getValues() as Agent);
-    blocked.proceed?.();
-  }
-
   return (
-    <>
-      <AlertDialog open={blocked.state === "blocked"}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes. If you leave this page, your edits will
-              be lost. Are you sure you want to discard your changes and
-              navigate away?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={discardChanges}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Discard changes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <ChatProvider
-        agentId={agentId}
-        threadId={threadId}
-        uiOptions={{
-          showThreadTools: false,
-          showEditAgent: false,
-          showModelSelector: false,
-        }}
-      >
-        <AgentSettingsFormContext.Provider
-          value={{
-            form: form as UseFormReturn<Agent>,
-            hasChanges: hasChanges,
-            handleSubmit,
-            installedIntegrations: installedIntegrations.filter(
-              (i) => !i.id.includes(agentId),
-            ),
-            agent,
-          }}
-        >
-          <PageLayout
-            tabs={tabs}
-            key={agentId}
-            actionButtons={
-              <ActionButtons
-                discardChanges={discardChanges}
-                numberOfChanges={numberOfChanges}
-                isWellKnownAgent={isWellKnownAgent}
-              />
-            }
-            breadcrumb={
-              <DefaultBreadcrumb
-                items={[
-                  { link: "/agents", label: "Agents" },
-                  {
-                    label: (
-                      <AgentBreadcrumbSegment
-                        agentId={agentId}
-                        variant="summary"
-                      />
-                    ),
-                  },
-                ]}
-              />
-            }
+    <AgentProvider
+      agentId={agentId}
+      threadId={threadId}
+      uiOptions={{
+        showThreadTools: false,
+        showEditAgent: false,
+        showModelSelector: false,
+      }}
+    >
+      <PageLayout
+        tabs={tabs}
+        key={agentId}
+        actionButtons={<ActionButtons />}
+        breadcrumb={
+          <DefaultBreadcrumb
+            items={[
+              { link: "/agents", label: "Agents" },
+              {
+                label: <AgentBreadcrumbSegment variant="summary" />,
+              },
+            ]}
           />
-        </AgentSettingsFormContext.Provider>
-      </ChatProvider>
-    </>
+        }
+      />
+    </AgentProvider>
   );
 }
 

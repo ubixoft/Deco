@@ -1,7 +1,7 @@
 import { WELL_KNOWN_AGENTS } from "@deco/sdk";
 import { DockviewApi } from "dockview-react";
 import { MainChat } from "../agent/chat.tsx";
-import { ChatProvider } from "../chat/context.tsx";
+import { AgentProvider } from "../agent/provider.tsx";
 
 export const NO_DROP_TARGET = "no-drop-target";
 
@@ -27,6 +27,7 @@ export const toggleDecopilotTab = (api: DockviewApi) => {
     component: DecopilotChat.displayName,
     title: "Default Chat",
     tabComponent: DecopilotTabs.displayName,
+    maximumWidth: 512,
   });
 
   return true;
@@ -34,7 +35,7 @@ export const toggleDecopilotTab = (api: DockviewApi) => {
 
 export function DecopilotChat() {
   return (
-    <ChatProvider
+    <AgentProvider
       agentId={WELL_KNOWN_AGENTS.decopilotAgent.id}
       threadId="1"
       uiOptions={{
@@ -46,7 +47,7 @@ export function DecopilotChat() {
       }}
     >
       <MainChat />
-    </ChatProvider>
+    </AgentProvider>
   );
 }
 DecopilotChat.displayName = "DefaultChat";
