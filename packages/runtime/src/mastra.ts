@@ -105,7 +105,7 @@ export function createTool<
       execute: (context: TContext) => Promise<any>;
     }
   : Tool<TSchemaIn, TSchemaOut, TContext> {
-  return mastraCreateTool({
+  return mastraCreateTool<TSchemaIn, TSchemaOut, TContext, TExecute>({
     ...opts,
     execute:
       typeof opts?.execute === "function"

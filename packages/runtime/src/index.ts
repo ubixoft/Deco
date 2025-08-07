@@ -244,7 +244,7 @@ export const withBindings = <TEnv>({
 
 export const withRuntime = <TEnv, TSchema extends z.ZodTypeAny = never>(
   userFns: UserDefaultExport<TEnv, TSchema>,
-): UserDefaultExport<TEnv, TSchema> & {
+): ExportedHandler<TEnv & DefaultEnv<TSchema>> & {
   Workflow: ReturnType<typeof Workflow>;
 } => {
   const server = createMCPServer<TEnv, TSchema>(userFns);
