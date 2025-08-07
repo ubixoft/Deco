@@ -107,13 +107,17 @@ export function useIntegrationInstallWithModal() {
       // Step 1: Generate API key with required policies
       const installId = installState.integration?.id ?? crypto.randomUUID();
       const keyName = `${installState.appName}-${installId}`;
+      // Step 2: Get marketplace app info
+      const marketplaceApp = await getRegistryApp.mutateAsync({
+        name: installState.appName,
+      });
 
       const apiKey = await createAPIKey.mutateAsync({
         claims: {
           state: formData,
           integrationId: installId,
           appName: installState.appName,
-          appVendor: installState.vendor,
+          appVendor: marketplaceApp.workspace,
         },
         name: keyName,
         policies: [
@@ -138,11 +142,6 @@ export function useIntegrationInstallWithModal() {
         ],
       });
 
-      // Step 2: Get marketplace app info
-      const marketplaceApp = await getRegistryApp.mutateAsync({
-        name: installState.appName,
-      });
-
       // Step 3: Create integration with marketplace info and API token
       const integrationData = {
         id: installId,
@@ -162,7 +161,6 @@ export function useIntegrationInstallWithModal() {
       // Close modal after successful submission
       setInstallState((prev: InstallState) => ({
         ...prev,
-        vendor: marketplaceApp.workspace,
         isModalOpen: false,
       }));
 
