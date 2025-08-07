@@ -1,4 +1,5 @@
 import z from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { WellKnownMcpGroups } from "../../crud/groups.ts";
 import { AppContext, createToolFactory } from "../context.ts";
 import {
@@ -81,7 +82,7 @@ export const oauthStart = createContractTool({
   handler: (_, c) => {
     c.resourceAccess.grant();
     return {
-      stateSchema: ContractStateSchema,
+      stateSchema: zodToJsonSchema(ContractStateSchema),
       scopes: ["PRE_AUTHORIZE_AMOUNT", "COMMIT_PRE_AUTHORIZED_AMOUNT"],
     };
   },
