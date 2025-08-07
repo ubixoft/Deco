@@ -1,6 +1,10 @@
 {
   "name": "@deco/workers-runtime",
+<<<<<<< HEAD
   "version": "0.9.0",
+=======
+  "version": "0.8.1",
+>>>>>>> 9599f88c (Export drizzle stuff)
   "exports": {
     ".": "./src/index.ts",
     "./proxy": "./src/proxy.ts",
