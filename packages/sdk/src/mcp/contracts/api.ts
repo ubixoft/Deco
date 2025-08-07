@@ -144,16 +144,11 @@ export const contractSettle = createContractTool({
   name: "CONTRACT_SETTLE",
   description:
     "Settle the current authorized charge. Processes the payment for the current authorization.",
-  inputSchema: z.union([
-    z.object({
-      transactionId: z.string(),
-      amount: z.number(),
-    }),
-    z.object({
-      transactionId: z.string(),
-      clauses: z.array(ContractClauseExerciseSchema),
-    }),
-  ]),
+  inputSchema: z.object({
+    transactionId: z.string(),
+    clauses: z.array(ContractClauseExerciseSchema).optional(),
+    amount: z.number().optional(),
+  }),
   outputSchema: z.object({
     transactionId: z.string(),
   }),
@@ -175,13 +170,17 @@ export const contractSettle = createContractTool({
     const state = c.user.state as ContractState;
     const contractId = c.user.integrationId;
 
+    let amount = 0;
+    if ("amount" in context && context.amount !== undefined) {
+      amount = context.amount;
+    } else if ("clauses" in context && context.clauses !== undefined) {
+      amount = totalAmount(state.clauses, context.clauses);
+    }
+
     await commitPreAuthorizedAmount.handler({
       contractId,
       identifier: context.transactionId,
-      amount:
-        "amount" in context
-          ? context.amount
-          : totalAmount(state.clauses, context.clauses),
+      amount,
       vendorId: c.user.appVendor,
     });
 
