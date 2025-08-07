@@ -36,7 +36,8 @@ export const isApiDecoChatMCPConnection = (
 ): connection is HTTPConnection =>
   "url" in connection &&
   connection.type === "HTTP" &&
-  ApiDecoChatURLs.some((url) => connection.url.startsWith(url));
+  ApiDecoChatURLs.some((url) => connection.url.startsWith(url)) &&
+  connection.token === undefined;
 
 export const patchApiDecoChatTokenHTTPConnection = (
   connection: HTTPConnection,

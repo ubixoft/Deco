@@ -1,6 +1,6 @@
 import {
   createServerClient as createMcpServerClient,
-  isApiDecoChatMCPConnection,
+  isApiDecoChatMCPConnection as shouldPatchDecoChatMCPConnection,
   listToolsByConnectionType,
   patchApiDecoChatTokenHTTPConnection,
 } from "@deco/ai/mcp";
@@ -115,7 +115,7 @@ export const callTool = createIntegrationManagementTool({
   handler: async ({ connection: reqConnection, params: toolCall }, c) => {
     c.resourceAccess.grant();
 
-    const connection = isApiDecoChatMCPConnection(reqConnection)
+    const connection = shouldPatchDecoChatMCPConnection(reqConnection)
       ? patchApiDecoChatTokenHTTPConnection(reqConnection, c.cookie)
       : reqConnection;
 
@@ -298,9 +298,6 @@ export const listIntegrations = createIntegrationManagementTool({
   inputSchema: z.object({
     binder: BindingsSchema.optional(),
   }),
-  outputSchema: z.object({
-    items: z.array(IntegrationSchema),
-  }),
   handler: async ({ binder }, c) => {
     assertHasWorkspace(c);
     const workspace = c.workspace.value;
@@ -371,15 +368,14 @@ export const listIntegrations = createIntegrationManagementTool({
 
     if (binder) {
       // Filter by binder capability
-      const filteredResult = result.filter((integration) => {
+      return result.filter((integration) => {
         return Binding(WellKnownBindings[binder]).isImplementedBy(
           integration.tools ?? [],
         );
       });
-      return { items: filteredResult };
     }
 
-    return { items: result };
+    return result;
   },
 });
 

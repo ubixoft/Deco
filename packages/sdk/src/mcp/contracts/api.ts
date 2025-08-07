@@ -1,13 +1,8 @@
 import z from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WellKnownMcpGroups } from "../../crud/groups.ts";
-import { AppContext, createToolFactory } from "../context.ts";
-import {
-  assertHasWorkspace,
-  ForbiddenError,
-  fromWorkspaceString,
-  WithTool,
-} from "../index.ts";
+import { AppContext, createToolFactory, State } from "../context.ts";
+import { ForbiddenError, fromWorkspaceString, WithTool } from "../index.ts";
 import {
   commitPreAuthorizedAmount,
   preAuthorizeAmount,
@@ -105,8 +100,6 @@ export const contractAuthorize = createContractTool({
     timestamp: z.number(),
   }),
   handler: async (context, c) => {
-    assertHasWorkspace(c);
-
     if (!("state" in c.user) || typeof c.user.state !== "object") {
       throw new ForbiddenError("User state not found");
     }
@@ -122,13 +115,15 @@ export const contractAuthorize = createContractTool({
 
     const clauseAmount = totalAmount(state.clauses, context.clauses);
 
-    const { id: transactionId } = await preAuthorizeAmount.handler({
-      amount: clauseAmount,
-      metadata: {
-        contractId,
-        clauses: context.clauses,
-      },
-    });
+    const { id: transactionId } = await State.run(c, () =>
+      preAuthorizeAmount.handler({
+        amount: clauseAmount,
+        metadata: {
+          contractId,
+          clauses: context.clauses,
+        },
+      }),
+    );
 
     return {
       transactionId,
@@ -175,12 +170,15 @@ export const contractSettle = createContractTool({
       amount = totalAmount(state.clauses, context.clauses);
     }
 
-    await commitPreAuthorizedAmount.handler({
-      contractId,
-      identifier: context.transactionId,
-      amount,
-      vendorId: c.user.appVendor,
-    });
+    const vendor = c.user.appVendor;
+    await State.run(c, () =>
+      commitPreAuthorizedAmount.handler({
+        contractId,
+        identifier: context.transactionId,
+        amount,
+        vendorId: vendor,
+      }),
+    );
 
     return {
       transactionId: context.transactionId,
