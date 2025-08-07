@@ -69,7 +69,7 @@ export async function promptWorkspace(
       throw new Error("Failed to fetch teams");
     }
 
-    const teams = response.structuredContent as Team[];
+    const { items: teams } = response.structuredContent as { items: Team[] };
 
     if (!teams || teams.length === 0) {
       throw new Error("No teams found. Please create a team first.");
