@@ -2,7 +2,6 @@ import z from "zod";
 import { workspaceDB } from "../context.ts";
 import { assertHasWorkspace, assertWorkspaceResourceAccess } from "../index.ts";
 import { createDatabaseTool } from "./tool.ts";
-import { trace } from "@deco/sdk/observability";
 
 export { getWorkspaceD1Database } from "./d1.ts";
 export { migrate } from "./migration.ts";
@@ -74,11 +73,9 @@ export const runSql = createDatabaseTool({
     result: z.array(QueryResult),
   }),
   handler: async ({ sql, params, _legacy }, c) => {
-    const span = trace.getActiveSpan();
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c);
     const db = await workspaceDB(c, _legacy);
-    span?.setAttribute("db.sql", sql);
     using responseDO = await db.exec({
       sql,
       params,

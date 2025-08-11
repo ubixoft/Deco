@@ -21,6 +21,8 @@ import type { ResourceAccess } from "./auth/index.ts";
 import { DatatabasesRunSqlInput, QueryResult } from "./databases/api.ts";
 import { addGroup, type GroupIntegration } from "./groups.ts";
 import { generateUUIDv5, toAlphanumericId } from "./slugify.ts";
+import { trace } from "../observability/index.ts";
+import * as api from "@opentelemetry/api";
 
 export type UserPrincipal = Pick<SupaUser, "id" | "email" | "is_anonymous">;
 
@@ -59,7 +61,38 @@ export interface SQLIteOptions {
   workspace: string;
 }
 
-export const workspaceDB = async (
+const wrapIWorkspaceDB = (
+  db: IWorkspaceDB,
+  workspace?: string,
+  turso?: boolean,
+): IWorkspaceDB => {
+  return {
+    ...db,
+    exec: ({ sql, params }) => {
+      const tracer = trace.getTracer("db-sql-tracer");
+      return tracer.startActiveSpan(
+        "db-query",
+        {
+          attributes: {
+            "db.sql.query": sql,
+            workspace,
+            turso,
+          },
+        },
+        api.context.active(),
+        async (span) => {
+          try {
+            return await db.exec({ sql, params });
+          } finally {
+            span.end();
+          }
+        },
+      );
+    },
+  };
+};
+
+const createWorkspaceDB = async (
   options: Pick<AppContext, "workspaceDO"> & {
     workspace: Pick<NonNullable<AppContext["workspace"]>, "value">;
     envVars: Pick<EnvVars, "TURSO_GROUP_DATABASE_TOKEN" | "TURSO_ORGANIZATION">;
@@ -98,6 +131,20 @@ export const workspaceDB = async (
       };
     },
   };
+};
+
+export const workspaceDB = async (
+  options: Pick<AppContext, "workspaceDO"> & {
+    workspace: Pick<NonNullable<AppContext["workspace"]>, "value">;
+    envVars: Pick<EnvVars, "TURSO_GROUP_DATABASE_TOKEN" | "TURSO_ORGANIZATION">;
+  },
+  turso?: boolean,
+): Promise<IWorkspaceDB> => {
+  return wrapIWorkspaceDB(
+    await createWorkspaceDB(options, turso),
+    options.workspace.value,
+    turso,
+  );
 };
 
 export type IWorkspaceDBExecResult = { result: QueryResult[] } & Disposable;
