@@ -1134,10 +1134,11 @@ export const listWorkflowRuns = createTool({
     params.push(per_page.toString(), offset.toString());
 
     try {
-      const { result } = await db.exec({
+      const { result, [Symbol.dispose]: dispose } = await db.exec({
         sql,
         params,
       });
+      dispose?.();
 
       const transformed =
         result[0].results?.map((row: unknown) => {
@@ -1346,10 +1347,10 @@ export const listWorkflowNames = createTool({
     `;
 
     try {
-      const { result } = await db.exec({
+      const { result, [Symbol.dispose]: dispose } = await db.exec({
         sql,
       });
-
+      dispose?.();
       const workflowNames =
         result[0].results?.map((row: unknown) => {
           const rowData = row as { workflow_name: string };
