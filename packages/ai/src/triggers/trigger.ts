@@ -422,24 +422,10 @@ export class Trigger {
       }
 
       runData.result = await this.hooks?.run(data, this, args);
-
-      this._trackEvent("trigger_run_success", {
-        triggerId: this._getTriggerId(),
-        triggerType: this.data?.type,
-        args: JSON.stringify(args),
-        hasResult: runData.result !== undefined,
-      });
-
       return runData.result;
     } catch (error) {
       console.error("Error running trigger:", error);
       runData.error = JSON.stringify(error);
-      this._trackEvent("trigger_run_error", {
-        error: error instanceof Error ? error.message : String(error),
-        triggerId: this._getTriggerId(),
-        triggerType: this.data?.type,
-        args: JSON.stringify(args),
-      });
     } finally {
       await this._saveRun({
         triggerId: this._getTriggerId(),
