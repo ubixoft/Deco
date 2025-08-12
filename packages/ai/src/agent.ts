@@ -43,6 +43,7 @@ import {
   MCPClient,
   type MCPClientStub,
   PolicyClient,
+  serializeError,
   SupabaseLLMVault,
   type WorkspaceTools,
 } from "@deco/sdk/mcp";
@@ -360,7 +361,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     } catch (error) {
       console.error("Error getting server tools", error);
       this._trackEvent("agent_tool_connection_error", {
-        error: error instanceof Error ? error.message : String(error),
+        error: serializeError(error),
         integrationId: mcpId,
       });
       throw error;
@@ -390,7 +391,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
               (err) => {
                 console.error("list tools error", err);
                 this._trackEvent("agent_tool_connection_error", {
-                  error: err instanceof Error ? err.message : String(err),
+                  error: serializeError(err),
                   integrationId: mcpId,
                   method: "_pickCallableTools",
                 });
@@ -802,7 +803,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     } catch (error) {
       console.error("Error configuring agent", error);
       this._trackEvent("agent_configure_error", {
-        error: error instanceof Error ? error.message : String(error),
+        error: serializeError(error),
         agentId: this.agentId,
       });
       throw new Error(`Error configuring agent: ${error}`);
@@ -826,7 +827,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       .catch((error) => {
         console.error("Error querying memory", error);
         this._trackEvent("agent_memory_query_error", {
-          error: error instanceof Error ? error.message : String(error),
+          error: serializeError(error),
           threadId: options?.threadId ?? currentThreadId.threadId,
         });
         return {
@@ -875,7 +876,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       return readableStream;
     } catch (error) {
       this._trackEvent("agent_generate_error", {
-        error: error instanceof Error ? error.message : String(error),
+        error: serializeError(error),
         method: "speak",
       });
       throw error;
@@ -901,7 +902,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       return transcription;
     } catch (error) {
       this._trackEvent("agent_generate_error", {
-        error: error instanceof Error ? error.message : String(error),
+        error: serializeError(error),
         method: "listen",
       });
       throw error;
@@ -969,7 +970,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
             .catch((err: unknown) => {
               console.error("Error getting agent", err);
               this._trackEvent("agent_mcp_client_error", {
-                error: err instanceof Error ? err.message : String(err),
+                error: serializeError(err),
                 method: "configuration",
                 agentId: this.agentId,
               });
@@ -1040,7 +1041,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       return result;
     } catch (error) {
       this._trackEvent("agent_tool_error", {
-        error: error instanceof Error ? error.message : String(error),
+        error: serializeError(error),
         toolId,
         method: "callTool",
       });
@@ -1312,7 +1313,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         onError: (err) => {
           console.error("agent stream error", err);
           this._trackEvent("agent_stream_error", {
-            error: err instanceof Error ? err.message : String(err),
+            error: serializeError(err),
             threadId: thread.threadId,
             model: options?.model ?? this._configuration?.model,
           });
@@ -1353,7 +1354,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     } catch (err) {
       console.error("Error on stream", err);
       this._trackEvent("agent_stream_error", {
-        error: err instanceof Error ? err.message : String(err),
+        error: serializeError(err),
         method: "stream_main",
       });
       throw err;
