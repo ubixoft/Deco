@@ -16,6 +16,7 @@ import {
   type AppContext,
   createToolGroup,
   getEnv,
+  serializeError,
   workspaceDB,
 } from "../context.ts";
 import { MCPClient } from "../index.ts";
@@ -859,7 +860,7 @@ Important Notes:
       c.posthog.trackEvent("hosting_app_deploy_error", {
         distinctId: isUserDeployment ? String(c.user.id) : "api-key",
         $process_person_profile: isUserDeployment,
-        error: error instanceof Error ? error.message : String(error),
+        error: serializeError(error),
       });
       throw error;
     }
