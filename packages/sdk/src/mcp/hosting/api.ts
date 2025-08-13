@@ -1144,7 +1144,6 @@ export const listWorkflowRuns = createTool({
         snapshot
       FROM mastra_workflow_snapshot 
       ${whereClause} 
-      ORDER BY createdAt DESC 
       LIMIT ? OFFSET ?
     `;
     params.push(per_page.toString(), offset.toString());
