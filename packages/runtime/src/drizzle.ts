@@ -134,8 +134,10 @@ export async function migrateWithoutTransaction(
 
     // Apply pending migrations sequentially (without transaction wrapper)
     for (const migration of migrations) {
+      const hasNoMigrations =
+        lastDbMigration === undefined || !lastDbMigration.length;
       if (
-        !lastDbMigration.length ||
+        hasNoMigrations ||
         Number(lastDbMigration[2])! < migration.folderMillis
       ) {
         if (debug) console.log(`Applying migration: ${migration.folderMillis}`);
