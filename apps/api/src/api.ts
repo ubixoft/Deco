@@ -379,11 +379,16 @@ app.post("/:root/:slug/:integrationId/tools/list", async (c) => {
 });
 
 app.all("/:root/:slug/i:databases-management/studio", async (c) => {
+  const root = c.req.param("root");
+  const slug = c.req.param("slug");
   const ctx = honoCtxToAppCtx(c);
   await assertWorkspaceResourceAccess(ctx, {
     resource: "DATABASES_RUN_SQL",
   });
-  return studio(c.req.raw, ctx.workspaceDO);
+  const url = new URL(c.req.raw.url);
+  url.searchParams.set("id", `/${root}/${slug}`);
+  const request = new Request(url.toString(), c.req.raw);
+  return studio(request, ctx.workspaceDO);
 });
 
 app.post("/:root/:slug/:integrationId/tools/call/:tool", async (c) => {
