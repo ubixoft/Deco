@@ -101,7 +101,7 @@ const RegistryAppSchema = z.object({
   friendlyName: z.string().optional(),
   verified: z.boolean().optional(),
   tools: z.array(RegistryToolSchema).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.unknown()).optional().nullable(),
 });
 
 export type RegistryScope = {
@@ -165,7 +165,10 @@ const Mappers = {
       scopeId: data.scope_id,
       scopeName: data.deco_chat_registry_scopes.scope_name,
       name: data.name,
-      appName: `${data.deco_chat_registry_scopes.scope_name}/${data.name}`,
+      appName: AppName.build(
+        data.deco_chat_registry_scopes.scope_name,
+        data.name,
+      ),
       friendlyName: data.friendly_name ?? undefined,
       description: data.description ?? undefined,
       icon: data.icon ?? undefined,
@@ -312,7 +315,9 @@ export const getRegistryApp = createTool({
     if (!data) {
       throw new UserInputError("App not found");
     }
-    return Mappers.toRegistryApp(data!);
+    const s = Mappers.toRegistryApp(data!);
+    console.log({ s });
+    return s;
   },
 });
 export const listRegistryApps = createTool({
