@@ -26,6 +26,7 @@ export class WorkspaceDatabase extends DurableObject implements IWorkspaceDB {
   async recovery(dt: Date) {
     const bookmark = await this.ctx.storage.getBookmarkForTime(dt);
     this.ctx.storage.onNextSessionRestoreBookmark(bookmark);
+    this.ctx.abort();
     return {
       [Symbol.dispose]: () => {},
     };
