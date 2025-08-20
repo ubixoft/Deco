@@ -105,8 +105,9 @@ const createWorkspaceDB = async (
     workspaceDO,
     envVars: { TURSO_GROUP_DATABASE_TOKEN, TURSO_ORGANIZATION },
   } = options;
-  const shouldUseSQLite = turso !== true &&
-    workspace.value !== "/shared/superfrete";
+  const shouldUseSQLite = turso === false || (
+    turso !== true && workspace.value !== "/shared/superfrete"
+  );
 
   if (shouldUseSQLite) {
     return workspaceDO.get(
