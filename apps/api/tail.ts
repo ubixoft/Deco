@@ -19,7 +19,7 @@ interface TailTrace {
 // Interface for log events from tail
 interface TailLog {
   level: string;
-  message: string;
+  message: string | string[];
   timestamp: number;
   traces?: {
     trace_id: string;
@@ -39,6 +39,8 @@ interface TailEvent {
   logs?: TailLog[];
   exceptions?: TailException[];
   scriptName: string;
+  outcome: "exception" | string;
+  eventTimestamp?: number;
   rayId: string;
   timestamp: number;
   event: {
@@ -51,183 +53,218 @@ interface TailEvent {
   };
 }
 
-function convertTailEventToOTLP(event: TailEvent): any {
-  const [name, version] = event.scriptName.split("--"); // double-dash
-  const resourceAttributes = [
-    {
-      key: "service.name",
-      value: { stringValue: name },
-    },
-    {
-      key: "service.version",
-      value: { stringValue: version },
-    },
-    {
-      key: "ray_id",
-      value: { stringValue: event.rayId },
-    },
-    {
-      key: "service.type",
-      value: { stringValue: "app" },
-    },
-  ];
+const parse = (scriptName: string) => {
+  const [name, version] = scriptName.split("--"); // double-dash
 
-  // Create request attributes to be shared across logs and traces
-  const requestAttributes = [
-    {
-      key: "http.url",
-      value: { stringValue: event.event.request.url },
-    },
-    {
-      key: "http.method",
-      value: { stringValue: event.event.request.method },
-    },
-    {
-      key: "ray_id",
-      value: { stringValue: event.rayId },
-    },
-    // Add Cloudflare specific data
-    ...(event.event.request.cf?.colo
-      ? [
-          {
-            key: "cf.colo",
-            value: { stringValue: event.event.request.cf.colo },
-          },
-        ]
-      : []),
-    // Add important headers (excluding sensitive ones)
-    ...Object.entries(event.event.request.headers)
-      .filter(
-        ([key]) =>
-          !key.toLowerCase().includes("authorization") &&
-          !key.toLowerCase().includes("cookie"),
-      )
-      .map(([key, value]) => ({
-        key: `http.request.header.${key.toLowerCase()}`,
-        value: { stringValue: value },
-      })),
-  ];
+  return {
+    name,
+    version,
+  };
+};
+function convertTailLogs(event: TailEvent): any {
+  if (!event.logs) return null;
 
-  // Convert traces to OTLP format
-  const resourceSpans =
-    event.traces && event.traces.length > 0
-      ? [
-          {
-            resource: {
-              attributes: resourceAttributes,
+  const { name, version } = parse(event.scriptName);
+
+  return {
+    resourceLogs: [
+      {
+        resource: {
+          attributes: [
+            {
+              key: "service.name",
+              value: { stringValue: name },
             },
-            scopeSpans: [
-              {
-                scope: {},
-                spans: event.traces.map((trace) => ({
-                  traceId: trace.trace_id,
-                  spanId: trace.span_id,
-                  parentSpanId: trace.parent_id || undefined,
-                  name: trace.name,
-                  kind: mapSpanKind(trace.kind),
-                  startTimeUnixNano: trace.start_time_ms * 1000000,
-                  endTimeUnixNano: trace.end_time_ms * 1000000,
-                  attributes: [
-                    ...Object.entries(trace.attributes || {}).map(
-                      ([key, value]) => ({
-                        key,
-                        value: convertAttributeValue(value),
-                      }),
-                    ),
-                    ...requestAttributes, // Add request info to traces
-                  ],
-                })),
-              },
-            ],
-          },
-        ]
-      : [];
-
-  // Convert logs to OTLP format
-  const resourceLogs =
-    event.logs && event.logs.length > 0
-      ? [
-          {
-            resource: {
-              attributes: resourceAttributes,
+            {
+              key: "service.version",
+              value: { stringValue: version || "unknown" },
             },
-            scopeLogs: [
-              {
-                scope: {},
-                logRecords: event.logs.map((log) => ({
-                  timeUnixNano: event.timestamp * 1000000,
-                  severityText: log.level,
-                  body: { stringValue: log.message },
-                  attributes: [
-                    ...requestAttributes, // Add request info to logs
-                    ...(log.traces?.trace_id
-                      ? [
-                          {
-                            key: "trace_id",
-                            value: { stringValue: log.traces.trace_id },
-                          },
-                        ]
-                      : []),
-                    ...(log.traces?.span_id
-                      ? [
-                          {
-                            key: "span_id",
-                            value: { stringValue: log.traces.span_id },
-                          },
-                        ]
-                      : []),
-                  ],
-                })),
-              },
-            ],
-          },
-        ]
-      : [];
-
-  // Convert exceptions to log records (OTLP doesn't have a separate exception format)
-  const exceptionLogs =
-    event.exceptions && event.exceptions.length > 0
-      ? [
-          {
-            resource: {
-              attributes: resourceAttributes,
+            {
+              key: "ray_id",
+              value: { stringValue: event.rayId },
             },
-            scopeLogs: [
-              {
-                scope: {},
-                logRecords: event.exceptions.map((exception) => ({
-                  timeUnixNano: event.timestamp * 1000000,
-                  severityText: "ERROR",
-                  body: { stringValue: exception.message },
-                  attributes: [
-                    ...requestAttributes, // Add request info to exceptions
-                    {
-                      key: "exception.type",
-                      value: { stringValue: exception.name },
-                    },
-                  ],
-                })),
-              },
-            ],
+            {
+              key: "http.url",
+              value: { stringValue: event.event.request.url },
+            },
+            {
+              key: "http.method",
+              value: { stringValue: event.event.request.method },
+            },
+            {
+              key: "cf.colo",
+              value: { stringValue: event.event.request.cf?.colo || "unknown" },
+            },
+            {
+              key: "outcome",
+              value: { stringValue: event.outcome },
+            },
+          ],
+        },
+        scopeLogs: [
+          {
+            scope: {},
+            logRecords: event.logs.map((log) => {
+              // Handle both string and array message formats
+              const message = Array.isArray(log.message)
+                ? log.message.join(" ")
+                : log.message;
+
+              return {
+                timeUnixNano: event.timestamp * 1000000,
+                severityText: log.level,
+                body: { stringValue: message },
+                attributes: [
+                  ...(log.traces?.trace_id
+                    ? [
+                        {
+                          key: "trace_id",
+                          value: { stringValue: log.traces.trace_id },
+                        },
+                      ]
+                    : []),
+                  ...(log.traces?.span_id
+                    ? [
+                        {
+                          key: "span_id",
+                          value: { stringValue: log.traces.span_id },
+                        },
+                      ]
+                    : []),
+                ],
+              };
+            }),
           },
-        ]
-      : [];
+        ],
+      },
+    ],
+  };
+}
 
-  // Combine all logs (regular logs + exceptions)
-  const allResourceLogs = [...resourceLogs, ...exceptionLogs];
+function convertTailExceptions(event: TailEvent): any {
+  if (!event.exceptions) return null;
 
-  // Create the combined OTLP payload
-  const otlpPayload: any = {};
+  const { name, version } = parse(event.scriptName);
 
-  if (resourceSpans.length > 0) {
-    otlpPayload.resourceSpans = resourceSpans;
-  }
+  return {
+    resourceLogs: [
+      {
+        resource: {
+          attributes: [
+            {
+              key: "service.name",
+              value: { stringValue: name },
+            },
+            {
+              key: "service.version",
+              value: { stringValue: version || "unknown" },
+            },
+            {
+              key: "ray_id",
+              value: { stringValue: event.rayId },
+            },
+            {
+              key: "http.url",
+              value: { stringValue: event.event.request.url },
+            },
+            {
+              key: "http.method",
+              value: { stringValue: event.event.request.method },
+            },
+            {
+              key: "cf.colo",
+              value: { stringValue: event.event.request.cf?.colo || "unknown" },
+            },
+            {
+              key: "outcome",
+              value: { stringValue: event.outcome },
+            },
+          ],
+        },
+        scopeLogs: [
+          {
+            scope: {},
+            logRecords: event.exceptions.map((exception) => ({
+              timeUnixNano: event.timestamp * 1000000,
+              severityText: "ERROR",
+              body: { stringValue: exception.message },
+              attributes: [
+                {
+                  key: "exception.type",
+                  value: { stringValue: exception.name },
+                },
+              ],
+            })),
+          },
+        ],
+      },
+    ],
+  };
+}
 
-  if (allResourceLogs.length > 0) {
-    otlpPayload.resourceLogs = allResourceLogs;
-  }
+function convertTailTraces(event: TailEvent): any {
+  if (!event.traces) return null;
 
-  return otlpPayload;
+  const { name, version } = parse(event.scriptName);
+
+  return {
+    resourceSpans: [
+      {
+        resource: {
+          attributes: [
+            {
+              key: "service.name",
+              value: { stringValue: name },
+            },
+            {
+              key: "service.version",
+              value: { stringValue: version || "unknown" },
+            },
+            {
+              key: "ray_id",
+              value: { stringValue: event.rayId },
+            },
+            {
+              key: "http.url",
+              value: { stringValue: event.event.request.url },
+            },
+            {
+              key: "http.method",
+              value: { stringValue: event.event.request.method },
+            },
+            {
+              key: "cf.colo",
+              value: { stringValue: event.event.request.cf?.colo || "unknown" },
+            },
+            {
+              key: "outcome",
+              value: { stringValue: event.outcome },
+            },
+          ],
+        },
+        scopeSpans: [
+          {
+            scope: {},
+            spans: event.traces.map((trace) => ({
+              traceId: trace.trace_id,
+              spanId: trace.span_id,
+              parentSpanId: trace.parent_id || undefined,
+              name: trace.name,
+              kind: mapSpanKind(trace.kind),
+              startTimeUnixNano: trace.start_time_ms * 1000000,
+              endTimeUnixNano: trace.end_time_ms * 1000000,
+              attributes: Object.entries(trace.attributes || {}).map(
+                ([key, value]) => ({
+                  key,
+                  value: convertAttributeValue(value),
+                }),
+              ),
+            })),
+          },
+        ],
+      },
+    ],
+  };
 }
 
 function mapSpanKind(kind: string): number {
@@ -260,12 +297,13 @@ function convertAttributeValue(value: any): { [key: string]: any } {
   return { stringValue: JSON.stringify(value) };
 }
 
-const otelHeadersToObject = (headers: string) => {
-  const headersParts = headers
-    .split(",")
-    .map((kv) => kv.split("=") as [string, string]);
-  return Object.fromEntries(headersParts);
-};
+function otelHeadersToObject(headers: string) {
+  return headers.split(";").reduce((acc: Record<string, string>, header) => {
+    const [key, value] = header.split("=");
+    acc[key] = value;
+    return acc;
+  }, {});
+}
 
 export async function tail(
   events: TailEvent[],
@@ -275,23 +313,57 @@ export async function tail(
   },
 ): Promise<void> {
   try {
-    for (const event of events) {
-      // Convert to combined OTLP format
-      const otlpPayload = convertTailEventToOTLP(event);
+    // Parse the authorization header
+    const headers = otelHeadersToObject(env.OTEL_EXPORTER_OTLP_HEADERS);
 
-      // Only send if there's actually data to send
-      if (Object.keys(otlpPayload).length > 0) {
-        await fetch(env.OTEL_EXPORTER_OTLP_ENDPOINT, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...otelHeadersToObject(env.OTEL_EXPORTER_OTLP_HEADERS),
-          },
-          body: JSON.stringify(otlpPayload),
-        });
+    const ingestTraces = <TEvent = unknown>(evt: TEvent) => {
+      return fetch(`${env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify(evt),
+      }).then((res) => {
+        console.log("Traces response:", res.status);
+      });
+    };
+
+    const ingestLogs = <TEvent = unknown>(evt: TEvent) => {
+      return fetch(`${env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/logs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify(evt),
+      }).then((res) => {
+        console.log("Logs response:", res.status);
+      });
+    };
+
+    for (const event of events) {
+      // Handle traces using OTLP format to /v1/traces
+      if (event.traces && event.traces.length > 0) {
+        const traceData = convertTailTraces(event);
+        traceData && (await ingestTraces(traceData));
+      }
+
+      // Handle logs using OTLP format to /v1/logs
+      if (event.logs && event.logs.length > 0) {
+        const logData = convertTailLogs(event);
+        logData && (await ingestLogs(logData));
+      }
+
+      // Handle exceptions as logs to /v1/logs
+      if (event.exceptions && event.exceptions.length > 0) {
+        const exceptionData = convertTailExceptions(event);
+        exceptionData && (await ingestLogs(exceptionData));
       }
     }
   } catch (error) {
     console.error("Error processing tail events:", error);
   }
 }
+
+export default { tail };
