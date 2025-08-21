@@ -48,8 +48,9 @@ interface TailEvent {
     id: string;
   };
   scriptName: string;
+  entrypoint?: string;
   event: {
-    request: {
+    request?: {
       url: string;
       method: string;
       headers: Record<string, string>;
@@ -57,6 +58,7 @@ interface TailEvent {
     response?: {
       status: number;
     };
+    rpcMethod?: string;
   };
   wallTime: number;
   cpuTime: number;
@@ -76,49 +78,55 @@ function convertEventToRequestLog(event: TailEvent): any {
   const { name, version } = parse(event.scriptName);
   const workspace = event.scriptTags[0] || "unknown";
 
+  const baseAttributes: any[] = [
+    { key: "service.name", value: { stringValue: name } },
+    { key: "service.version", value: { stringValue: version || "unknown" } },
+    { key: "workspace", value: { stringValue: workspace } },
+    { key: "outcome", value: { stringValue: event.outcome } },
+    { key: "execution_model", value: { stringValue: event.executionModel } },
+    {
+      key: "dispatch_namespace",
+      value: { stringValue: event.dispatchNamespace },
+    },
+  ];
+
+  const hasRequest = !!event.event?.request;
+  const attributes: any[] = [...baseAttributes];
+  if (hasRequest) {
+    attributes.push(
+      { key: "http.url", value: { stringValue: event.event!.request!.url } },
+      {
+        key: "http.method",
+        value: { stringValue: event.event!.request!.method },
+      },
+      {
+        key: "http.status_code",
+        value: { intValue: event.event?.response?.status || 0 },
+      },
+    );
+  } else {
+    if (event.event?.rpcMethod) {
+      attributes.push({
+        key: "rpc.method",
+        value: { stringValue: event.event.rpcMethod },
+      });
+    }
+    if (event.entrypoint) {
+      attributes.push({
+        key: "entrypoint",
+        value: { stringValue: event.entrypoint },
+      });
+    }
+  }
+
+  const bodyString = hasRequest
+    ? `${event.event!.request!.method} ${event.event!.request!.url} - ${event.event?.response?.status ?? "no response"} - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`
+    : `DO ${event.entrypoint || "unknown"}.${event.event?.rpcMethod || "unknown"} - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`;
+
   return {
     resourceLogs: [
       {
-        resource: {
-          attributes: [
-            {
-              key: "service.name",
-              value: { stringValue: name },
-            },
-            {
-              key: "service.version",
-              value: { stringValue: version || "unknown" },
-            },
-            {
-              key: "workspace",
-              value: { stringValue: workspace },
-            },
-            {
-              key: "http.url",
-              value: { stringValue: event.event.request.url },
-            },
-            {
-              key: "http.method",
-              value: { stringValue: event.event.request.method },
-            },
-            {
-              key: "http.status_code",
-              value: { intValue: event.event.response?.status || 0 },
-            },
-            {
-              key: "outcome",
-              value: { stringValue: event.outcome },
-            },
-            {
-              key: "execution_model",
-              value: { stringValue: event.executionModel },
-            },
-            {
-              key: "dispatch_namespace",
-              value: { stringValue: event.dispatchNamespace },
-            },
-          ],
-        },
+        resource: { attributes },
         scopeLogs: [
           {
             scope: {},
@@ -126,35 +134,26 @@ function convertEventToRequestLog(event: TailEvent): any {
               {
                 timeUnixNano: event.eventTimestamp * 1000000,
                 severityText: "INFO",
-                body: {
-                  stringValue: `${event.event.request.method} ${event.event.request.url} - ${event.event.response?.status || "no response"} - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`,
-                },
+                body: { stringValue: bodyString },
                 attributes: [
-                  {
-                    key: "wall_time_ms",
-                    value: { intValue: event.wallTime },
-                  },
-                  {
-                    key: "cpu_time_ms",
-                    value: { intValue: event.cpuTime },
-                  },
-                  {
-                    key: "truncated",
-                    value: { boolValue: event.truncated },
-                  },
-                  // Add important headers (excluding sensitive ones)
-                  ...Object.entries(event.event.request.headers)
-                    .filter(
-                      ([key]) =>
-                        !key.toLowerCase().includes("authorization") &&
-                        !key.toLowerCase().includes("cookie") &&
-                        !key.toLowerCase().includes("x-real-ip"),
-                    )
-                    .slice(0, 10) // Limit to first 10 headers to avoid too much data
-                    .map(([key, value]) => ({
-                      key: `http.request.header.${key.toLowerCase()}`,
-                      value: { stringValue: value },
-                    })),
+                  { key: "wall_time_ms", value: { intValue: event.wallTime } },
+                  { key: "cpu_time_ms", value: { intValue: event.cpuTime } },
+                  { key: "truncated", value: { boolValue: event.truncated } },
+                  // Add important headers (excluding sensitive ones) only if request exists
+                  ...(hasRequest
+                    ? Object.entries(event.event!.request!.headers)
+                        .filter(
+                          ([key]) =>
+                            !key.toLowerCase().includes("authorization") &&
+                            !key.toLowerCase().includes("cookie") &&
+                            !key.toLowerCase().includes("x-real-ip"),
+                        )
+                        .slice(0, 10)
+                        .map(([key, value]) => ({
+                          key: `http.request.header.${key.toLowerCase()}`,
+                          value: { stringValue: value },
+                        }))
+                    : []),
                 ],
               },
             ],
@@ -171,41 +170,42 @@ function convertTailLogs(event: TailEvent): any {
   const { name, version } = parse(event.scriptName);
   const workspace = event.scriptTags[0] || "unknown";
 
+  const baseAttributes: any[] = [
+    { key: "service.name", value: { stringValue: name } },
+    { key: "service.version", value: { stringValue: version || "unknown" } },
+    { key: "workspace", value: { stringValue: workspace } },
+    { key: "outcome", value: { stringValue: event.outcome } },
+  ];
+  const attributes: any[] = [...baseAttributes];
+  if (event.event?.request) {
+    attributes.push(
+      { key: "http.url", value: { stringValue: event.event.request.url } },
+      {
+        key: "http.method",
+        value: { stringValue: event.event.request.method },
+      },
+      {
+        key: "http.status_code",
+        value: { intValue: event.event.response?.status || 0 },
+      },
+    );
+  } else {
+    if (event.event?.rpcMethod)
+      attributes.push({
+        key: "rpc.method",
+        value: { stringValue: event.event.rpcMethod },
+      });
+    if (event.entrypoint)
+      attributes.push({
+        key: "entrypoint",
+        value: { stringValue: event.entrypoint },
+      });
+  }
+
   return {
     resourceLogs: [
       {
-        resource: {
-          attributes: [
-            {
-              key: "service.name",
-              value: { stringValue: name },
-            },
-            {
-              key: "service.version",
-              value: { stringValue: version || "unknown" },
-            },
-            {
-              key: "workspace",
-              value: { stringValue: workspace },
-            },
-            {
-              key: "http.url",
-              value: { stringValue: event.event.request.url },
-            },
-            {
-              key: "http.method",
-              value: { stringValue: event.event.request.method },
-            },
-            {
-              key: "http.status_code",
-              value: { intValue: event.event.response?.status || 0 },
-            },
-            {
-              key: "outcome",
-              value: { stringValue: event.outcome },
-            },
-          ],
-        },
+        resource: { attributes },
         scopeLogs: [
           {
             scope: {},
@@ -220,14 +220,8 @@ function convertTailLogs(event: TailEvent): any {
                 severityText: log.level,
                 body: { stringValue: message },
                 attributes: [
-                  {
-                    key: "wall_time_ms",
-                    value: { intValue: event.wallTime },
-                  },
-                  {
-                    key: "cpu_time_ms",
-                    value: { intValue: event.cpuTime },
-                  },
+                  { key: "wall_time_ms", value: { intValue: event.wallTime } },
+                  { key: "cpu_time_ms", value: { intValue: event.cpuTime } },
                   ...(log.traces?.trace_id
                     ? [
                         {
@@ -260,41 +254,42 @@ function convertTailExceptions(event: TailEvent): any {
   const { name, version } = parse(event.scriptName);
   const workspace = event.scriptTags[0] || "unknown";
 
+  const baseAttributes: any[] = [
+    { key: "service.name", value: { stringValue: name } },
+    { key: "service.version", value: { stringValue: version || "unknown" } },
+    { key: "workspace", value: { stringValue: workspace } },
+    { key: "outcome", value: { stringValue: event.outcome } },
+  ];
+  const attributes: any[] = [...baseAttributes];
+  if (event.event?.request) {
+    attributes.push(
+      { key: "http.url", value: { stringValue: event.event.request.url } },
+      {
+        key: "http.method",
+        value: { stringValue: event.event.request.method },
+      },
+      {
+        key: "http.status_code",
+        value: { intValue: event.event.response?.status || 0 },
+      },
+    );
+  } else {
+    if (event.event?.rpcMethod)
+      attributes.push({
+        key: "rpc.method",
+        value: { stringValue: event.event.rpcMethod },
+      });
+    if (event.entrypoint)
+      attributes.push({
+        key: "entrypoint",
+        value: { stringValue: event.entrypoint },
+      });
+  }
+
   return {
     resourceLogs: [
       {
-        resource: {
-          attributes: [
-            {
-              key: "service.name",
-              value: { stringValue: name },
-            },
-            {
-              key: "service.version",
-              value: { stringValue: version || "unknown" },
-            },
-            {
-              key: "workspace",
-              value: { stringValue: workspace },
-            },
-            {
-              key: "http.url",
-              value: { stringValue: event.event.request.url },
-            },
-            {
-              key: "http.method",
-              value: { stringValue: event.event.request.method },
-            },
-            {
-              key: "http.status_code",
-              value: { intValue: event.event.response?.status || 0 },
-            },
-            {
-              key: "outcome",
-              value: { stringValue: event.outcome },
-            },
-          ],
-        },
+        resource: { attributes },
         scopeLogs: [
           {
             scope: {},
@@ -307,14 +302,8 @@ function convertTailExceptions(event: TailEvent): any {
                   key: "exception.type",
                   value: { stringValue: exception.name },
                 },
-                {
-                  key: "wall_time_ms",
-                  value: { intValue: event.wallTime },
-                },
-                {
-                  key: "cpu_time_ms",
-                  value: { intValue: event.cpuTime },
-                },
+                { key: "wall_time_ms", value: { intValue: event.wallTime } },
+                { key: "cpu_time_ms", value: { intValue: event.cpuTime } },
               ],
             })),
           },
@@ -330,41 +319,42 @@ function convertTailTraces(event: TailEvent): any {
   const { name, version } = parse(event.scriptName);
   const workspace = event.scriptTags[0] || "unknown";
 
+  const baseAttributes: any[] = [
+    { key: "service.name", value: { stringValue: name } },
+    { key: "service.version", value: { stringValue: version || "unknown" } },
+    { key: "workspace", value: { stringValue: workspace } },
+    { key: "outcome", value: { stringValue: event.outcome } },
+  ];
+  const attributes: any[] = [...baseAttributes];
+  if (event.event?.request) {
+    attributes.push(
+      { key: "http.url", value: { stringValue: event.event.request.url } },
+      {
+        key: "http.method",
+        value: { stringValue: event.event.request.method },
+      },
+      {
+        key: "http.status_code",
+        value: { intValue: event.event.response?.status || 0 },
+      },
+    );
+  } else {
+    if (event.event?.rpcMethod)
+      attributes.push({
+        key: "rpc.method",
+        value: { stringValue: event.event.rpcMethod },
+      });
+    if (event.entrypoint)
+      attributes.push({
+        key: "entrypoint",
+        value: { stringValue: event.entrypoint },
+      });
+  }
+
   return {
     resourceSpans: [
       {
-        resource: {
-          attributes: [
-            {
-              key: "service.name",
-              value: { stringValue: name },
-            },
-            {
-              key: "service.version",
-              value: { stringValue: version || "unknown" },
-            },
-            {
-              key: "workspace",
-              value: { stringValue: workspace },
-            },
-            {
-              key: "http.url",
-              value: { stringValue: event.event.request.url },
-            },
-            {
-              key: "http.method",
-              value: { stringValue: event.event.request.method },
-            },
-            {
-              key: "http.status_code",
-              value: { intValue: event.event.response?.status || 0 },
-            },
-            {
-              key: "outcome",
-              value: { stringValue: event.outcome },
-            },
-          ],
-        },
+        resource: { attributes },
         scopeSpans: [
           {
             scope: {},
@@ -383,14 +373,8 @@ function convertTailTraces(event: TailEvent): any {
                     value: convertAttributeValue(value),
                   }),
                 ),
-                {
-                  key: "wall_time_ms",
-                  value: { intValue: event.wallTime },
-                },
-                {
-                  key: "cpu_time_ms",
-                  value: { intValue: event.cpuTime },
-                },
+                { key: "wall_time_ms", value: { intValue: event.wallTime } },
+                { key: "cpu_time_ms", value: { intValue: event.cpuTime } },
               ],
             })),
           },
@@ -430,13 +414,12 @@ function convertAttributeValue(value: any): { [key: string]: any } {
   return { stringValue: JSON.stringify(value) };
 }
 
-function otelHeadersToObject(headers: string) {
-  return headers.split(";").reduce((acc: Record<string, string>, header) => {
-    const [key, value] = header.split("=");
-    acc[key] = value;
-    return acc;
-  }, {});
-}
+const otelHeadersToObject = (headers: string) => {
+  const headersParts = headers
+    .split(",")
+    .map((kv) => kv.split("=") as [string, string]);
+  return Object.fromEntries(headersParts);
+};
 
 export async function tail(
   events: TailEvent[],
@@ -476,7 +459,7 @@ export async function tail(
     };
 
     for (const event of events) {
-      // Always create a request log for every event
+      // Always create a request (or durable object) log for every event
       const requestLog = convertEventToRequestLog(event);
       await ingestLogs(requestLog);
 
