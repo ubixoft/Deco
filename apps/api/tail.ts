@@ -117,19 +117,19 @@ function convertTailLogs(event: TailEvent): any {
                 attributes: [
                   ...(log.traces?.trace_id
                     ? [
-                        {
-                          key: "trace_id",
-                          value: { stringValue: log.traces.trace_id },
-                        },
-                      ]
+                      {
+                        key: "trace_id",
+                        value: { stringValue: log.traces.trace_id },
+                      },
+                    ]
                     : []),
                   ...(log.traces?.span_id
                     ? [
-                        {
-                          key: "span_id",
-                          value: { stringValue: log.traces.span_id },
-                        },
-                      ]
+                      {
+                        key: "span_id",
+                        value: { stringValue: log.traces.span_id },
+                      },
+                    ]
                     : []),
                 ],
               };
@@ -315,6 +315,7 @@ export async function tail(
   try {
     // Parse the authorization header
     const headers = otelHeadersToObject(env.OTEL_EXPORTER_OTLP_HEADERS);
+    console.log({ events });
 
     const ingestTraces = <TEvent = unknown>(evt: TEvent) => {
       return fetch(`${env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`, {
