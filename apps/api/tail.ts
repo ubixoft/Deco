@@ -33,38 +33,48 @@ interface TailException {
   timestamp: number;
 }
 
+// Updated interface to match the real structure from source
 interface TailEvent {
-  type: "trace" | "log";
+  diagnosticsChannelEvents: any[];
+  exceptions: TailException[];
+  logs: TailLog[];
   traces?: TailTrace[];
-  logs?: TailLog[];
-  exceptions?: TailException[];
+  truncated: boolean;
+  executionModel: string;
+  outcome: string;
+  scriptTags: string[]; // Array, not object with numeric keys
+  dispatchNamespace: string;
+  scriptVersion: {
+    id: string;
+  };
   scriptName: string;
-  outcome: "exception" | string;
-  eventTimestamp?: number;
-  rayId: string;
-  timestamp: number;
   event: {
     request: {
       url: string;
       method: string;
       headers: Record<string, string>;
-      cf: Record<string, string>;
+    };
+    response?: {
+      status: number;
     };
   };
+  wallTime: number;
+  cpuTime: number;
+  eventTimestamp: number;
 }
 
-const parse = (scriptName: string) => {
-  const [name, version] = scriptName.split("--"); // double-dash
-
+function parse(scriptName: string) {
+  const [name, version] = scriptName.split("--");
   return {
     name,
     version,
   };
-};
-function convertTailLogs(event: TailEvent): any {
-  if (!event.logs) return null;
+}
 
+// Create a request log for every event (even when no explicit logs/traces/exceptions)
+function convertEventToRequestLog(event: TailEvent): any {
   const { name, version } = parse(event.scriptName);
+  const workspace = event.scriptTags[0] || "unknown";
 
   return {
     resourceLogs: [
@@ -80,8 +90,8 @@ function convertTailLogs(event: TailEvent): any {
               value: { stringValue: version || "unknown" },
             },
             {
-              key: "ray_id",
-              value: { stringValue: event.rayId },
+              key: "workspace",
+              value: { stringValue: workspace },
             },
             {
               key: "http.url",
@@ -92,8 +102,103 @@ function convertTailLogs(event: TailEvent): any {
               value: { stringValue: event.event.request.method },
             },
             {
-              key: "cf.colo",
-              value: { stringValue: event.event.request.cf?.colo || "unknown" },
+              key: "http.status_code",
+              value: { intValue: event.event.response?.status || 0 },
+            },
+            {
+              key: "outcome",
+              value: { stringValue: event.outcome },
+            },
+            {
+              key: "execution_model",
+              value: { stringValue: event.executionModel },
+            },
+            {
+              key: "dispatch_namespace",
+              value: { stringValue: event.dispatchNamespace },
+            },
+          ],
+        },
+        scopeLogs: [
+          {
+            scope: {},
+            logRecords: [
+              {
+                timeUnixNano: event.eventTimestamp * 1000000,
+                severityText: "INFO",
+                body: {
+                  stringValue: `${event.event.request.method} ${event.event.request.url} - ${event.event.response?.status || "no response"} - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`,
+                },
+                attributes: [
+                  {
+                    key: "wall_time_ms",
+                    value: { intValue: event.wallTime },
+                  },
+                  {
+                    key: "cpu_time_ms",
+                    value: { intValue: event.cpuTime },
+                  },
+                  {
+                    key: "truncated",
+                    value: { boolValue: event.truncated },
+                  },
+                  // Add important headers (excluding sensitive ones)
+                  ...Object.entries(event.event.request.headers)
+                    .filter(
+                      ([key]) =>
+                        !key.toLowerCase().includes("authorization") &&
+                        !key.toLowerCase().includes("cookie") &&
+                        !key.toLowerCase().includes("x-real-ip"),
+                    )
+                    .slice(0, 10) // Limit to first 10 headers to avoid too much data
+                    .map(([key, value]) => ({
+                      key: `http.request.header.${key.toLowerCase()}`,
+                      value: { stringValue: value },
+                    })),
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function convertTailLogs(event: TailEvent): any {
+  if (!event.logs || event.logs.length === 0) return null;
+
+  const { name, version } = parse(event.scriptName);
+  const workspace = event.scriptTags[0] || "unknown";
+
+  return {
+    resourceLogs: [
+      {
+        resource: {
+          attributes: [
+            {
+              key: "service.name",
+              value: { stringValue: name },
+            },
+            {
+              key: "service.version",
+              value: { stringValue: version || "unknown" },
+            },
+            {
+              key: "workspace",
+              value: { stringValue: workspace },
+            },
+            {
+              key: "http.url",
+              value: { stringValue: event.event.request.url },
+            },
+            {
+              key: "http.method",
+              value: { stringValue: event.event.request.method },
+            },
+            {
+              key: "http.status_code",
+              value: { intValue: event.event.response?.status || 0 },
             },
             {
               key: "outcome",
@@ -111,10 +216,18 @@ function convertTailLogs(event: TailEvent): any {
                 : log.message;
 
               return {
-                timeUnixNano: event.timestamp * 1000000,
+                timeUnixNano: event.eventTimestamp * 1000000,
                 severityText: log.level,
                 body: { stringValue: message },
                 attributes: [
+                  {
+                    key: "wall_time_ms",
+                    value: { intValue: event.wallTime },
+                  },
+                  {
+                    key: "cpu_time_ms",
+                    value: { intValue: event.cpuTime },
+                  },
                   ...(log.traces?.trace_id
                     ? [
                         {
@@ -142,9 +255,10 @@ function convertTailLogs(event: TailEvent): any {
 }
 
 function convertTailExceptions(event: TailEvent): any {
-  if (!event.exceptions) return null;
+  if (!event.exceptions || event.exceptions.length === 0) return null;
 
   const { name, version } = parse(event.scriptName);
+  const workspace = event.scriptTags[0] || "unknown";
 
   return {
     resourceLogs: [
@@ -160,8 +274,8 @@ function convertTailExceptions(event: TailEvent): any {
               value: { stringValue: version || "unknown" },
             },
             {
-              key: "ray_id",
-              value: { stringValue: event.rayId },
+              key: "workspace",
+              value: { stringValue: workspace },
             },
             {
               key: "http.url",
@@ -172,8 +286,8 @@ function convertTailExceptions(event: TailEvent): any {
               value: { stringValue: event.event.request.method },
             },
             {
-              key: "cf.colo",
-              value: { stringValue: event.event.request.cf?.colo || "unknown" },
+              key: "http.status_code",
+              value: { intValue: event.event.response?.status || 0 },
             },
             {
               key: "outcome",
@@ -185,13 +299,21 @@ function convertTailExceptions(event: TailEvent): any {
           {
             scope: {},
             logRecords: event.exceptions.map((exception) => ({
-              timeUnixNano: event.timestamp * 1000000,
+              timeUnixNano: event.eventTimestamp * 1000000,
               severityText: "ERROR",
               body: { stringValue: exception.message },
               attributes: [
                 {
                   key: "exception.type",
                   value: { stringValue: exception.name },
+                },
+                {
+                  key: "wall_time_ms",
+                  value: { intValue: event.wallTime },
+                },
+                {
+                  key: "cpu_time_ms",
+                  value: { intValue: event.cpuTime },
                 },
               ],
             })),
@@ -203,9 +325,10 @@ function convertTailExceptions(event: TailEvent): any {
 }
 
 function convertTailTraces(event: TailEvent): any {
-  if (!event.traces) return null;
+  if (!event.traces || event.traces.length === 0) return null;
 
   const { name, version } = parse(event.scriptName);
+  const workspace = event.scriptTags[0] || "unknown";
 
   return {
     resourceSpans: [
@@ -221,8 +344,8 @@ function convertTailTraces(event: TailEvent): any {
               value: { stringValue: version || "unknown" },
             },
             {
-              key: "ray_id",
-              value: { stringValue: event.rayId },
+              key: "workspace",
+              value: { stringValue: workspace },
             },
             {
               key: "http.url",
@@ -233,8 +356,8 @@ function convertTailTraces(event: TailEvent): any {
               value: { stringValue: event.event.request.method },
             },
             {
-              key: "cf.colo",
-              value: { stringValue: event.event.request.cf?.colo || "unknown" },
+              key: "http.status_code",
+              value: { intValue: event.event.response?.status || 0 },
             },
             {
               key: "outcome",
@@ -253,12 +376,22 @@ function convertTailTraces(event: TailEvent): any {
               kind: mapSpanKind(trace.kind),
               startTimeUnixNano: trace.start_time_ms * 1000000,
               endTimeUnixNano: trace.end_time_ms * 1000000,
-              attributes: Object.entries(trace.attributes || {}).map(
-                ([key, value]) => ({
-                  key,
-                  value: convertAttributeValue(value),
-                }),
-              ),
+              attributes: [
+                ...Object.entries(trace.attributes || {}).map(
+                  ([key, value]) => ({
+                    key,
+                    value: convertAttributeValue(value),
+                  }),
+                ),
+                {
+                  key: "wall_time_ms",
+                  value: { intValue: event.wallTime },
+                },
+                {
+                  key: "cpu_time_ms",
+                  value: { intValue: event.cpuTime },
+                },
+              ],
             })),
           },
         ],
@@ -315,7 +448,6 @@ export async function tail(
   try {
     // Parse the authorization header
     const headers = otelHeadersToObject(env.OTEL_EXPORTER_OTLP_HEADERS);
-    console.log({ events });
 
     const ingestTraces = <TEvent = unknown>(evt: TEvent) => {
       return fetch(`${env.OTEL_EXPORTER_OTLP_ENDPOINT}/v1/traces`, {
@@ -344,6 +476,10 @@ export async function tail(
     };
 
     for (const event of events) {
+      // Always create a request log for every event
+      const requestLog = convertEventToRequestLog(event);
+      await ingestLogs(requestLog);
+
       // Handle traces using OTLP format to /v1/traces
       if (event.traces && event.traces.length > 0) {
         const traceData = convertTailTraces(event);
