@@ -361,6 +361,11 @@ export async function deployToCloudflare({
     observability: {
       enabled: true,
     },
+    tail_consumers: [
+      {
+        service: "hyperdx-tail",
+      },
+    ],
     migrations: doMigrations,
     assets: {
       config: {
