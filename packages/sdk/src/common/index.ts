@@ -1,7 +1,7 @@
 export * from "./singleflight.ts";
 
 export const AppName = {
-  build: (scopeName: string, name: string) => `${scopeName}/${name}`,
+  build: (scopeName: string, name: string) => `@${scopeName}/${name}`,
   parse: (appName: string) => {
     const parts = appName.split("/");
     return {
