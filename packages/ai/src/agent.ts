@@ -233,7 +233,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     protected actorEnv: any,
   ) {
     super(removeNonSerializableFields(actorEnv));
-
     this.id = toAlphanumericId(this.state.id);
     this.env = {
       CF_ACCOUNT_ID: DEFAULT_ACCOUNT_ID,

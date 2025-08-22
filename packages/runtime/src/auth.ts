@@ -1,4 +1,4 @@
-import { jwtVerify } from "jose";
+import { JWK, jwtVerify } from "jose";
 import type { DefaultEnv } from "./index.ts";
 
 const DECO_APP_AUTH_COOKIE_NAME = "deco_page_auth";
@@ -31,6 +31,8 @@ const parseCookies = (cookieHeader: string): Record<string, string> => {
   return cookies;
 };
 
+const parseJWK = (jwk: string): JWK => JSON.parse(atob(jwk)) as JWK;
+
 export const getReqToken = async (req: Request, env: DefaultEnv) => {
   const token = () => {
     // First try to get token from Authorization header
@@ -55,13 +57,9 @@ export const getReqToken = async (req: Request, env: DefaultEnv) => {
   }
 
   env.DECO_CHAT_API_JWT_PUBLIC_KEY &&
-    (await jwtVerify(
-      authToken,
-      new TextEncoder().encode(env.DECO_CHAT_API_JWT_PUBLIC_KEY),
-      {
-        issuer: "https://api.deco.chat",
-      },
-    ).catch((err) => {
+    (await jwtVerify(authToken, parseJWK(env.DECO_CHAT_API_JWT_PUBLIC_KEY), {
+      issuer: "https://api.deco.chat",
+    }).catch((err) => {
       console.error(`[auth-token]: error validating: ${err}`);
     }));
 
