@@ -595,6 +595,8 @@ function Instances({
   );
 }
 
+const MAX_DESCRIPTION_LENGTH = 180;
+
 function Overview({
   data,
   appKey,
@@ -610,6 +612,13 @@ function Overview({
     url: string;
     integrationName: string;
   }>({ open: false, url: "", integrationName: "" });
+  const hasBigDescription = useMemo(() => {
+    return (
+      data.info?.description &&
+      data.info?.description.length > MAX_DESCRIPTION_LENGTH
+    );
+  }, [data.info?.description]);
+  const [isExpanded, setIsExpanded] = useState(!hasBigDescription);
 
   const handleAddConnection = () => {
     setInstallingIntegration({
@@ -621,19 +630,32 @@ function Overview({
     });
   };
 
+  const description = isExpanded
+    ? data.info?.description
+    : data.info?.description?.slice(0, MAX_DESCRIPTION_LENGTH) + "...";
+
   return (
     <div className="w-full p-4 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-4 h-12">
+      <div className="flex items-start gap-4 rounded-xl border border-border p-4 bg-secondary/50">
         <IntegrationIcon
           icon={data.info?.icon}
           name={data.info?.name}
           size="lg"
         />
-        <div className="h-12 flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <h5 className="text-xl font-medium">{data.info?.name}</h5>
-          <p className="text-sm text-muted-foreground">
-            {data.info?.description}
+          <p className="text-sm text-muted-foreground whitespace-pre-line">
+            {description}
           </p>
+          {hasBigDescription && (
+            <Button
+              className="w-fit mt-2"
+              variant="special"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              {isExpanded ? "Show less" : "Show more"}
+            </Button>
+          )}
         </div>
       </div>
       {!isWellKnown && data.info?.provider !== "custom" ? (
