@@ -21,7 +21,6 @@ import { MainChat } from "../agent/chat.tsx";
 import { AgentProvider, useAgent } from "../agent/provider.tsx";
 import { AgentVisibility } from "../common/agent-visibility.tsx";
 import { AgentAvatar } from "../common/avatar/agent.tsx";
-import { useCurrentTeam } from "../sidebar/team-selector.tsx";
 
 export const NO_DROP_TARGET = "no-drop-target";
 
@@ -256,15 +255,6 @@ export function DecopilotChat() {
   const { currentAgentId, setCurrentAgentId } = useCurrentAgent();
   const [isAgentSwitcherOpen, setIsAgentSwitcherOpen] = useState(false);
   const [threadId, _setThreadId] = useState(() => crypto.randomUUID());
-  const team = useCurrentTeam();
-
-  const urlPattern = new URLPattern({ pathname: "/:teamSlug/views/:id" });
-  const match = urlPattern.exec(globalThis.location.href);
-
-  const viewId = match?.pathname.groups?.id;
-
-  const view = team.views.find((view) => view.id === viewId);
-  const integrationId = view?.metadata?.integration?.id;
 
   return (
     <div className="flex flex-col h-full">
@@ -272,13 +262,6 @@ export function DecopilotChat() {
         key={currentAgentId}
         agentId={currentAgentId}
         threadId={threadId}
-        additionalTools={
-          integrationId
-            ? {
-                [integrationId]: [],
-              }
-            : undefined
-        }
         uiOptions={{
           showThreadTools: false,
           showModelSelector: false,
