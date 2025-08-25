@@ -1170,7 +1170,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       const { hasPdf, hasMinimumSizeForSummarization } = shouldSummarizePDFs(
         payload as Message[],
       );
-      const bypassOpenRouter = isClaude && hasPdf;
+      let bypassOpenRouter = isClaude && hasPdf;
+      bypassOpenRouter ||= options?.bypassOpenRouter || false;
 
       if (
         hasPdf &&
@@ -1230,8 +1231,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       const agentOverridesTiming = timings.start("agent-overrides");
       const agent = await this._withAgentOverrides({
         ...options,
-        bypassOpenRouter:
-          bypassOpenRouter ?? options?.bypassOpenRouter ?? false,
+        bypassOpenRouter,
       });
       agentOverridesTiming.end();
 
@@ -1253,9 +1253,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           "agent.id": this.state.id,
           model: options?.model ?? this._configuration?.model,
           "thread.id": thread.threadId,
-          "openrouter.bypass": `${
-            bypassOpenRouter ?? options?.bypassOpenRouter ?? false
-          }`,
+          "openrouter.bypass": `${bypassOpenRouter}`,
         },
       });
       let ended = false;
