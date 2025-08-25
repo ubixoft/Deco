@@ -247,10 +247,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     });
     this.llmVault = this.env.LLMS_ENCRYPTION_KEY
       ? new SupabaseLLMVault(
-        this.db,
-        this.env.LLMS_ENCRYPTION_KEY,
-        this.workspace,
-      )
+          this.db,
+          this.env.LLMS_ENCRYPTION_KEY,
+          this.workspace,
+        )
       : undefined;
     this.posthog = createPosthogServerClient({
       apiKey: this.env.POSTHOG_API_KEY,
@@ -332,8 +332,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     const integration =
       typeof connection === "string"
         ? await this.metadata?.mcpClient?.INTEGRATIONS_GET({
-          id: connection,
-        })
+            id: connection,
+          })
         : { connection };
 
     if (!integration) {
@@ -658,8 +658,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       {
         env: this.actorEnv,
         ctx: {
-          passThroughOnException: () => { },
-          waitUntil: () => { },
+          passThroughOnException: () => {},
+          waitUntil: () => {},
           props: {},
         },
       },
@@ -670,11 +670,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   _token() {
     const keyPair =
       this.env.DECO_CHAT_API_JWT_PRIVATE_KEY &&
-        this.env.DECO_CHAT_API_JWT_PUBLIC_KEY
+      this.env.DECO_CHAT_API_JWT_PUBLIC_KEY
         ? {
-          public: this.env.DECO_CHAT_API_JWT_PUBLIC_KEY,
-          private: this.env.DECO_CHAT_API_JWT_PRIVATE_KEY,
-        }
+            public: this.env.DECO_CHAT_API_JWT_PUBLIC_KEY,
+            private: this.env.DECO_CHAT_API_JWT_PRIVATE_KEY,
+          }
         : undefined;
     return JwtIssuer.forKeyPair(keyPair).then((issuer) =>
       issuer.issue({
@@ -966,16 +966,16 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       this.agentId in WELL_KNOWN_AGENTS
         ? WELL_KNOWN_AGENTS[this.agentId as keyof typeof WELL_KNOWN_AGENTS]
         : await client
-          .AGENTS_GET({ id: this.agentId })
-          .catch((err: unknown) => {
-            console.error("Error getting agent", err);
-            this._trackEvent("agent_mcp_client_error", {
-              error: serializeError(err),
-              method: "configuration",
-              agentId: this.agentId,
+            .AGENTS_GET({ id: this.agentId })
+            .catch((err: unknown) => {
+              console.error("Error getting agent", err);
+              this._trackEvent("agent_mcp_client_error", {
+                error: serializeError(err),
+                method: "configuration",
+                agentId: this.agentId,
+              });
+              return null;
             });
-            return null;
-          });
 
     const merged: Configuration = {
       name: ANONYMOUS_NAME,
@@ -1207,17 +1207,17 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       const context = payload.flatMap((message) =>
         Array.isArray(message.annotations)
           ? message.annotations.map((annotation) => ({
-            role: "user" as const,
-            content:
-              typeof annotation === "string"
-                ? annotation
-                : [
-                  {
-                    type: "text",
-                    text: JSON.stringify(annotation),
-                  } as TextPart,
-                ],
-          }))
+              role: "user" as const,
+              content:
+                typeof annotation === "string"
+                  ? annotation
+                  : [
+                      {
+                        type: "text",
+                        text: JSON.stringify(annotation),
+                      } as TextPart,
+                    ],
+            }))
           : [],
       );
 
@@ -1268,11 +1268,11 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
       const experimentalTransform = options?.smoothStream
         ? smoothStream({
-          delayInMs: options.smoothStream.delayInMs,
-          // The default chunking breaks cloudflare due to using too much CPU.
-          // This is a simpler function that does the job.
-          chunking: (buffer) => buffer.slice(0, 15) || null,
-        })
+            delayInMs: options.smoothStream.delayInMs,
+            // The default chunking breaks cloudflare due to using too much CPU.
+            // This is a simpler function that does the job.
+            chunking: (buffer) => buffer.slice(0, 15) || null,
+          })
         : undefined;
 
       const maxLimit = Math.max(MIN_MAX_TOKENS, this._maxTokens());
