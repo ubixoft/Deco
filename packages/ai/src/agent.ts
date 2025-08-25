@@ -735,11 +735,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       });
     });
     methodTiming.end();
-    try {
-      response.headers.set("Server-Timing", timings.printTimings());
-    } catch {
-      // some headers are immutable
-    }
     return response;
   }
 
