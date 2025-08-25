@@ -160,6 +160,9 @@ export const createLLMProvider: ProviderFactory = (opts) => {
           "cf-aig-metadata": JSON.stringify(opts.metadata),
         }
       : undefined,
+    baseURL: opts.bypassGateway
+      ? undefined
+      : aiGatewayForProvider({ ...opts, provider: "openrouter" }),
   });
 
   const creator = (model: string) =>
