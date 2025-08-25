@@ -1122,7 +1122,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const agent = await this._withAgentOverrides({
       ...options,
-      bypassOpenRouter: bypassOpenRouter ?? options?.bypassOpenRouter ?? false,
+      bypassOpenRouter: bypassOpenRouter || options?.bypassOpenRouter || false,
     });
 
     const aiMessages = await Promise.all(
