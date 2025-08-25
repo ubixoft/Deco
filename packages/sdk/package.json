@@ -18,7 +18,7 @@
     "@modelcontextprotocol/sdk": "1.17.1",
     "@std/path": "npm:@jsr/std__path@1.1.0",
     "cloudflare": "^4.2.0",
-    "@deco/actors": "npm:@jsr/deco__actors@0.34.0-beta.1",
+    "@deco/actors": "npm:@jsr/deco__actors@0.34.0-beta.2",
     "@tanstack/react-query": "^5.80.6",
     "@zenfs/core": "^2.0.0",
     "ai": "^4.3.13",
