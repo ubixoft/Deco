@@ -204,6 +204,7 @@ const WELL_KNOWN_DECO_OAUTH_INTEGRATIONS = [
   "googleyoutube",
   "googledocs",
   "googledrive",
+  "googlesites",
   "airtable",
   "slack",
   "googlecalendar",
