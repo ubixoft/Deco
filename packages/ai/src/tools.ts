@@ -17,10 +17,6 @@ const FetchInputSchema = z.object({
     .enum(["GET", "PUT", "POST", "DELETE", "PATCH", "HEAD"] as const)
     .default("GET")
     .describe("The HTTP method to use for the request"),
-  useProxy: z
-    .boolean()
-    .default(true)
-    .describe("Whether to use the proxy endpoint for the request"),
   headers: z
     .record(z.string(), z.string())
     .optional()
@@ -113,16 +109,12 @@ export const FETCH = createInnateTool({
   execute:
     () =>
     async ({ context }) => {
-      const { url, method, useProxy, headers = {}, body, timeout } = context;
+      const { url: targetUrl, method, headers = {}, body, timeout } = context;
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
 
       try {
-        const targetUrl = useProxy
-          ? `https://webdraw.com/proxy?url=${encodeURIComponent(url)}`
-          : url;
-
         const requestHeaders = new Headers(headers);
         if (body && typeof body === "object") {
           requestHeaders.set("Content-Type", "application/json");
