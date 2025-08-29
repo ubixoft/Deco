@@ -480,7 +480,7 @@ function WorkspaceViews() {
               <CollapsibleTrigger asChild>
                 <SidebarMenuButton className="w-full">
                   <Icon
-                    name="apps"
+                    name="grid_view"
                     size={18}
                     className="text-muted-foreground/75"
                   />
