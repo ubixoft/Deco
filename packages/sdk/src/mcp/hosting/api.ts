@@ -857,7 +857,7 @@ Important Notes:
           connection: Entrypoint.mcp(data.entrypoint),
         })
         .catch((err) => {
-          console.error(err);
+          console.error("publish error", err);
         });
       return {
         entrypoint: data.entrypoint,
