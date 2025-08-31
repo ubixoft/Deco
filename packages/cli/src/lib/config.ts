@@ -86,7 +86,9 @@ export interface WranglerConfig {
   };
   migrations?: {
     tag: string;
-    new_classes: string[];
+    new_classes?: string[];
+    new_sqlite_classes?: string[];
+    deleted_classes?: string[];
   }[];
   durable_objects?: {
     bindings?: {
@@ -158,13 +160,18 @@ export const writeWranglerConfig = async (
 export const addWorkflowDO = async () => {
   const wranglerConfig = await readWranglerConfig(process.cwd());
   const currentDOs = wranglerConfig.durable_objects?.bindings ?? [];
+  const isWorkflowMigration = (m: { new_classes?: string[] }) =>
+    !m.new_classes?.includes(DECO_CHAT_WORKFLOW_BINDING.class_name);
+
+  const workflowMigration = (wranglerConfig.migrations ?? []).find(
+    isWorkflowMigration,
+  );
   const workflowsBindings = {
     migrations: [
-      ...(wranglerConfig.migrations ?? []).filter(
-        (m) => !m.new_classes?.includes(DECO_CHAT_WORKFLOW_BINDING.class_name),
-      ),
+      ...(wranglerConfig.migrations ?? []).filter(isWorkflowMigration),
       {
-        tag: "v1",
+        ...workflowMigration,
+        tag: workflowMigration?.tag ?? "v1",
         new_classes: [DECO_CHAT_WORKFLOW_BINDING.class_name],
       },
     ],

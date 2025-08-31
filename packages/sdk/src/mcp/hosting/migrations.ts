@@ -4,6 +4,7 @@ interface SingleStepMigration {
   old_tag?: string;
   new_tag?: string;
   new_classes?: string[];
+  new_sqlite_classes?: string[];
   deleted_classes?: string[];
   renamed_classes?: {
     from: string;
@@ -37,16 +38,33 @@ const applyMigration =
     if ("new_classes" in migration) {
       bindingsResult = [
         ...bindings,
-        ...migration.new_classes.map((className) => ({
+        ...(migration.new_classes?.map((className) => ({
           class_name: className,
           name: className,
           type: "durable_object_namespace" as const,
-        })),
+        })) ?? []),
       ];
       if (shouldRunMigration) {
         stepMigration.new_classes = [
           ...(stepMigration.new_classes ?? []),
-          ...migration.new_classes,
+          ...(migration.new_classes ?? []),
+        ];
+      }
+    }
+
+    if ("new_sqlite_classes" in migration) {
+      bindingsResult = [
+        ...bindings,
+        ...(migration.new_sqlite_classes?.map((className) => ({
+          class_name: className,
+          name: className,
+          type: "durable_object_namespace" as const,
+        })) ?? []),
+      ];
+      if (shouldRunMigration) {
+        stepMigration.new_sqlite_classes = [
+          ...(stepMigration.new_sqlite_classes ?? []),
+          ...(migration.new_sqlite_classes ?? []),
         ];
       }
     }
@@ -130,7 +148,14 @@ export const migrationDiff = (
       if ("new_classes" in migrationStep) {
         migration.new_classes = [
           ...(migration.new_classes ?? []),
-          ...migrationStep.new_classes,
+          ...(migrationStep.new_classes ?? []),
+        ];
+      }
+
+      if ("new_sqlite_classes" in migrationStep) {
+        migration.new_sqlite_classes = [
+          ...(migration.new_sqlite_classes ?? []),
+          ...(migrationStep.new_sqlite_classes ?? []),
         ];
       }
 
@@ -158,7 +183,7 @@ export const migrationDiff = (
       if ("new_classes" in migrationStep) {
         migration.new_classes = [
           ...(migration.new_classes ?? []),
-          ...migrationStep.new_classes,
+          ...(migrationStep.new_classes ?? []),
         ];
       }
 

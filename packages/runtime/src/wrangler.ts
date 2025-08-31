@@ -45,7 +45,8 @@ export interface MigrationBase {
 }
 
 export interface NewClassMigration extends MigrationBase {
-  new_classes: string[];
+  new_classes?: string[];
+  new_sqlite_classes?: string[];
 }
 
 export interface DeletedClassMigration extends MigrationBase {
