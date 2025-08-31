@@ -846,6 +846,8 @@ Important Notes:
         files: codeFiles,
       });
 
+      const isUnlisted = unlisted ?? true;
+
       await client
         .REGISTRY_PUBLISH_APP({
           name: scriptSlug,
@@ -853,11 +855,14 @@ Important Notes:
           description: `App ${scriptSlug} by deco workers for workspace ${workspace}`,
           icon: "https://assets.decocache.com/mcp/09e44283-f47d-4046-955f-816d227c626f/app.png",
           ...wranglerConfig.deco?.integration,
-          unlisted: unlisted ?? true,
+          unlisted: isUnlisted,
           connection: Entrypoint.mcp(data.entrypoint),
         })
         .catch((err) => {
           console.error("publish error", err);
+          if (!isUnlisted) {
+            throw err;
+          }
         });
       return {
         entrypoint: data.entrypoint,
