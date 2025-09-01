@@ -216,8 +216,8 @@ export const upsertTrigger = createTool({
 export const createTrigger = createTool({
   name: "TRIGGERS_CREATE",
   description: "Create a trigger",
-  inputSchema: TriggerSchema,
-  handler: async (trigger, c) => {
+  inputSchema: z.object({ trigger: TriggerSchema }),
+  handler: async ({ trigger }, c) => {
     assertHasWorkspace(c);
 
     await assertWorkspaceResourceAccess(c);
