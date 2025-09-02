@@ -111,10 +111,6 @@ const createMCPHandlerFor = (
         continue;
       }
 
-      if (!("shape" in tool.inputSchema)) {
-        console.log("FAKE", tool.name);
-      }
-
       server.registerTool(
         tool.name,
         {
