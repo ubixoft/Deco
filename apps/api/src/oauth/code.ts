@@ -25,6 +25,7 @@ export const handleCodeExchange = async (c: Context<AppEnv>) => {
       .maybeSingle();
 
     if (error || !data) {
+      console.error(`error on code exchange ${error}`);
       throw new HTTPException(500, { message: "Failed to exchange code" });
     }
 

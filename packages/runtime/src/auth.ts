@@ -109,6 +109,12 @@ export const handleAuthCallback = async (
     });
 
     if (!exchangeResponse.ok) {
+      console.error(
+        "authentication failed",
+        code,
+        options.appName,
+        await exchangeResponse.text().catch((_) => ""),
+      );
       return new Response("Authentication failed", { status: 401 });
     }
 
