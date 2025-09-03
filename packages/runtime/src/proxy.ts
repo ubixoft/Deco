@@ -47,11 +47,11 @@ export function createMCPClientProxy<T extends Record<string, unknown>>(
 
   const connection: MCPConnection = options?.connection || {
     type: "HTTP",
+    token: options?.token,
     url: new URL(
       `${getWorkspace(options?.workspace)}/mcp`,
       options?.decoChatApiUrl ?? `https://api.deco.chat`,
     ).href,
-    token: options?.token,
   };
 
   return new Proxy<T>({} as T, {
