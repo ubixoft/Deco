@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CREATE_BRANCHInput,
   DELETE_BRANCHInput,
+  DELETE_FILEInput,
   DIFF_BRANCHInput,
   DIFF_BRANCHOutput,
   LIST_FILESOutput,
@@ -94,6 +95,20 @@ export const usePutFile = () => {
 
   return useMutation({
     mutationFn: (input: PUT_FILEInput) => client.PUT_FILE(input),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["files", { branch: variables.branch }],
+      });
+    },
+  });
+};
+
+// Delete file
+export const useDeleteFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: DELETE_FILEInput) => client.DELETE_FILE(input),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["files", { branch: variables.branch }],
