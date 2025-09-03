@@ -22,9 +22,6 @@ local = false
 [[migrations]]
 tag = "v1"
 new_classes = ["Workflow"]
-
-[[migrations]]
-tag = "v2"
 new_sqlite_classes = ["Blobs", "Branch"]
 
 [durable_objects]
