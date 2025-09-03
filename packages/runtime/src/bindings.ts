@@ -1,7 +1,12 @@
 import type { MCPConnection } from "./connection.ts";
 import type { DefaultEnv, RequestContext } from "./index.ts";
 import { MCPClient } from "./mcp.ts";
-import type { BindingBase, ContractBinding, MCPBinding } from "./wrangler.ts";
+import type {
+  BindingBase,
+  ContractBinding,
+  MCPBinding,
+  MCPIntegrationNameBinding,
+} from "./wrangler.ts";
 
 interface IntegrationContext {
   integrationId: string;
@@ -19,6 +24,20 @@ const normalizeWorkspace = (workspace: string) => {
   return `/shared/${workspace}`;
 };
 
+/**
+ * Url: /apps/mcp?appName=$appName
+ */
+const createAppsUrl = ({
+  appName,
+  decoChatApiUrl,
+}: {
+  appName: string;
+  decoChatApiUrl?: string;
+}) =>
+  new URL(
+    `/apps/mcp?appName=${appName}`,
+    decoChatApiUrl ?? "https://api.deco.chat",
+  ).href;
 /**
  * Url: /:workspace.root/:workspace.slug/:integrationId/mcp
  */
@@ -42,6 +61,18 @@ export const workspaceClient = (
   return MCPClient.forWorkspace(ctx.workspace, ctx.token);
 };
 
+const mcpClientForAppName = (appName: string, decoChatApiUrl?: string) => {
+  const mcpConnection: MCPConnection = {
+    type: "HTTP",
+    url: createAppsUrl({
+      appName,
+      decoChatApiUrl,
+    }),
+  };
+
+  return MCPClient.forConnection(mcpConnection);
+};
+
 const mcpClientForIntegrationId = (
   integrationId: string,
   ctx: WorkspaceClientContext,
@@ -61,7 +92,10 @@ const mcpClientForIntegrationId = (
   return MCPClient.forConnection(mcpConnection);
 };
 
-function mcpClientFromState(binding: BindingBase, env: DefaultEnv) {
+function mcpClientFromState(
+  binding: BindingBase | MCPIntegrationNameBinding,
+  env: DefaultEnv,
+) {
   const ctx = env.DECO_CHAT_REQUEST_CONTEXT;
   const bindingFromState = ctx?.state?.[binding.name];
   const integrationId =
@@ -70,8 +104,9 @@ function mcpClientFromState(binding: BindingBase, env: DefaultEnv) {
     "value" in bindingFromState
       ? bindingFromState.value
       : undefined;
-  if (typeof integrationId !== "string") {
-    return null;
+  if (typeof integrationId !== "string" && "integration_name" in binding) {
+    // in case of a binding to an app name, we need to use the new apps/mcp endpoint which will proxy the request to the app but without any token
+    return mcpClientForAppName(binding.integration_name, env.DECO_CHAT_API_URL);
   }
   return mcpClientForIntegrationId(integrationId, ctx, env.DECO_CHAT_API_URL);
 }
