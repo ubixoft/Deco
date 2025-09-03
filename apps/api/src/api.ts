@@ -327,7 +327,12 @@ const createMcpServerProxy = (c: Context) => {
     );
   };
 
-  return createMcpServerProxyForIntegration(c, fetchIntegration);
+  return createMcpServerProxyForIntegration(c, () =>
+    fetchIntegration().then((integration) => ({
+      ...integration,
+      id: integrationId,
+    })),
+  );
 };
 
 // Add logger middleware
