@@ -161,14 +161,16 @@ export const addWorkflowDO = async () => {
   const wranglerConfig = await readWranglerConfig(process.cwd());
   const currentDOs = wranglerConfig.durable_objects?.bindings ?? [];
   const isWorkflowMigration = (m: { new_classes?: string[] }) =>
-    !m.new_classes?.includes(DECO_CHAT_WORKFLOW_BINDING.class_name);
+    m.new_classes?.includes(DECO_CHAT_WORKFLOW_BINDING.class_name);
 
   const workflowMigration = (wranglerConfig.migrations ?? []).find(
     isWorkflowMigration,
   );
   const workflowsBindings = {
     migrations: [
-      ...(wranglerConfig.migrations ?? []).filter(isWorkflowMigration),
+      ...(wranglerConfig.migrations ?? []).filter(
+        (migration) => !isWorkflowMigration(migration),
+      ),
       {
         ...workflowMigration,
         tag: workflowMigration?.tag ?? "v1",

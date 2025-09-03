@@ -2,7 +2,7 @@
 name = "deconfig"
 main = "main.ts"
 compatibility_date = "2025-06-17"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = [ "nodejs_compat" ]
 scope = "deco"
 
 [assets]
@@ -21,8 +21,8 @@ local = false
 
 [[migrations]]
 tag = "v1"
-new_classes = ["Workflow"]
-new_sqlite_classes = ["Blobs", "Branch"]
+new_classes = [ "Workflow" ]
+new_sqlite_classes = [ "Blobs", "Branch" ]
 
 [durable_objects]
 [[durable_objects.bindings]]
@@ -39,5 +39,5 @@ class_name = "Workflow"
 
 [[rules]]
 type = "Text"
-globs = ["**/*.sql"]
+globs = [ "**/*.sql" ]
 fallthrough = true
