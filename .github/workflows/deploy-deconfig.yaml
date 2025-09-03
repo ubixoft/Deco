@@ -29,7 +29,7 @@ jobs:
         run: |
           cd apps/deconfig
           bun install
-          cd apps/deconfig/view
+          cd view
           bun install
 
       - name: Deploy

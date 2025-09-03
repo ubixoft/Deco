@@ -2,7 +2,7 @@
 
 A full-stack template for building
 [Model Context Protocol (MCP)](https://spec.modelcontextprotocol.io/) servers
-with a modern React frontend.
+with a modern React frontend !
 
 This template provides a complete development environment where your MCP server
 not only exposes tools and workflows to AI agents but also serves a beautiful
