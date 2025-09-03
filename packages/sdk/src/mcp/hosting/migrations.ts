@@ -187,6 +187,13 @@ export const migrationDiff = (
         ];
       }
 
+      if ("new_sqlite_classes" in migrationStep) {
+        migration.new_sqlite_classes = [
+          ...(migration.new_sqlite_classes ?? []),
+          ...(migrationStep.new_sqlite_classes ?? []),
+        ];
+      }
+
       if ("deleted_classes" in migrationStep) {
         migration.deleted_classes = [
           ...(migration.deleted_classes ?? []),
@@ -213,7 +220,8 @@ export const migrationDiff = (
     migration.new_tag &&
     (migration.new_classes?.length ||
       migration.deleted_classes?.length ||
-      migration.renamed_classes?.length)
+      migration.renamed_classes?.length ||
+      migration.new_sqlite_classes?.length)
   ) {
     return migration;
   }
