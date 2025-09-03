@@ -17,7 +17,6 @@ bucket_name = "deconfig-blobs"
 workspace = "deco"
 bindings = []
 enable_workflows = true
-local = true
 
 [[migrations]]
 tag = "v1"
