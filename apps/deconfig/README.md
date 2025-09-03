@@ -95,3 +95,4 @@ Documentation can be found at [https://docs.deco.page](https://docs.deco.page)
 
 **Ready to build your next MCP server with a beautiful frontend?
 [Get started now!](https://deco.chat)**
+
