@@ -31,4 +31,4 @@ jobs:
           cd docs
           bun run deploy
         env:
-          DECO_DEPLOY_TOKEN: ${{ secrets.DECO_DEPLOY_TOKEN }}
+          DECO_DEPLOY_TOKEN: ${{ secrets.DECO_DEPLOY_TOKEN_DOCS }}
