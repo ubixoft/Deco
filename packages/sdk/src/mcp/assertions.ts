@@ -212,7 +212,7 @@ export const assertWorkspaceResourceAccess = async (
 
   // If we reach here, none of the resources granted access
   throw new ForbiddenError(
-    `Cannot access any of the requested resources in workspace ${c.workspace.value}. Errors: ${errors.join("; ")}`,
+    `Cannot access any of the requested resources in workspace ${c.workspace.value} ${_resourcesOrContexts}. Errors: ${errors.join("; ")}`,
   );
 };
 
