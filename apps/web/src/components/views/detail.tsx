@@ -1,5 +1,5 @@
 import { NotFoundError, parseViewMetadata, useRemoveView } from "@deco/sdk";
-import { useParams, useSearchParams } from "react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useCurrentTeam } from "../sidebar/team-selector";
 import Preview from "../agent/preview";
 import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
@@ -91,6 +91,19 @@ export default function ViewDetail() {
                       className="w-4 h-4"
                     />
                     <span>{view?.title}</span>
+                    <Link to={meta?.url} target="_blank">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        className="text-muted-foreground hover:text-primary-dark"
+                        title="Open view"
+                      >
+                        <Icon name="open_in_new" className="w-4 h-4" />
+                      </Button>
+                    </Link>
                   </div>
                 ),
               },
