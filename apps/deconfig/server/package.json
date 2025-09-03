@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "deco dev --clean-build-dir ./view-build",
     "deploy": "wrangler build && deco deploy ./dist --public",
-    "ci:deploy": "wrangler build && deco deploy -y -t $DECO_DEPLOY_TOKEN ./dist --public",
+    "deploy:ci": "wrangler build && deco deploy -y -t $DECO_DEPLOY_TOKEN ./dist --public",
     "gen": "deco gen --output=deco.gen.ts",
     "gen:self": "deco gen --self=$DECO_SELF_URL --output=deco.gen.ts"
   },
@@ -14,7 +14,7 @@
     "zod": "^3.24.3"
   },
   "devDependencies": {
-    "deco-cli": "^0.17.4",
+    "deco-cli": "^0.17.6",
     "drizzle-kit": "^0.31.4",
     "wrangler": "^4.28.0"
   }
