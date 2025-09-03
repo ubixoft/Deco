@@ -1,4 +1,4 @@
-name: Deploy Docs
+name: Deploy Deconfig
 
 on:
   push:
@@ -28,6 +28,8 @@ jobs:
       - name: Install dependencies
         run: |
           cd apps/deconfig
+          bun install
+          cd apps/deconfig/view
           bun install
 
       - name: Deploy
