@@ -192,7 +192,9 @@ const virtualIntegrationsFor = (
   token?: string,
 ) => {
   // Create a virtual User Management integration
-  const decoChatMcp = new URL("/mcp", DECO_CMS_API_URL);
+  // const decoChatMcp = new URL("/mcp", DECO_CMS_API_URL);
+  // Point to legacy API for now
+  const decoChatMcp = new URL("/mcp", "https://api.deco.chat");
   const userManagementIntegration = {
     id: formatId("i", "user-management"),
     name: "User Management",
