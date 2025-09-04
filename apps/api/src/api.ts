@@ -343,7 +343,7 @@ app.use(logger());
 app.use(
   cors({
     origin: (origin) =>
-      WELL_KNOWN_ORIGINS.includes(origin as (typeof WELL_KNOWN_ORIGINS)[number])
+      WELL_KNOWN_ORIGINS.some((o) => o.includes(origin))
         ? origin
         : null,
     maxAge: 86400, // one day
