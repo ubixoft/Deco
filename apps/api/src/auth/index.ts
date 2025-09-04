@@ -138,7 +138,7 @@ appLogin.all("/oauth", async (ctx: AppContext) => {
   const provider = (url.searchParams.get("provider") ?? "google") as Provider;
   const redirectTo = new URL(
     AUTH_CALLBACK_OAUTH,
-    DECO_CMS_API(honoCtxToAppCtx(ctx)),
+    DECO_CMS_API(honoCtxToAppCtx(ctx), url.host.includes("deco.chat")),
   );
 
   const next = url.searchParams.get("next");

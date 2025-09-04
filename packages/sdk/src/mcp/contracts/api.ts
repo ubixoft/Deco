@@ -151,7 +151,7 @@ export const contractRegister = createTool({
       appName,
       context.contract as ContractState,
     );
-    const url = new URL(`/contracts/mcp`, DECO_CMS_API(c));
+    const url = new URL(`/contracts/mcp`, DECO_CMS_API(c, false));
 
     const { name, scopeName } = AppName.parse(assignor);
     const app = await publishApp.handler({
