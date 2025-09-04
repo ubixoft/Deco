@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "apps/api/**"
+      - "packages/ai/**"
+      - "packages/sdk/**"
+      - "packages/runtime/**"
 
 jobs:
   deploy:
