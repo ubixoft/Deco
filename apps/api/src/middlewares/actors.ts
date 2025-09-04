@@ -7,15 +7,26 @@ import type { AppEnv } from "../utils/context.ts";
 
 export const runtime = new RuntimeClass();
 
-const actorsRoutePath = `/${Hosts.API_LEGACY}/actors`;
+// Create actors routes for both API hosts
+const actorsRoutePathLegacy = `/${Hosts.API_LEGACY}/actors`;
+const actorsRoutePath = `/${Hosts.API}/actors`;
+
+const actorsRouteLegacy = withActors(runtime, actorsRoutePathLegacy);
 const actorsRoute = withActors(runtime, actorsRoutePath);
 
-export const withActorsMiddleware: Handler<AppEnv> = async (ctx, next) => {
-  ctx.set("immutableRes", true);
-  startTime(ctx, "actor");
-  return await actorsRoute(
-    // deno-lint-ignore no-explicit-any
-    ctx as any, // TODO: maybe bump hono version in deco/actors
-    next,
-  ).finally(() => endTime(ctx, "actor"));
-};
+const createActorsHandler =
+  (actorsRoute: ReturnType<typeof withActors>): Handler<AppEnv> =>
+  async (ctx, next) => {
+    ctx.set("immutableRes", true);
+    startTime(ctx, "actor");
+    return await actorsRoute(
+      // deno-lint-ignore no-explicit-any
+      ctx as any, // TODO: maybe bump hono version in deco/actors
+      next,
+    ).finally(() => endTime(ctx, "actor"));
+  };
+
+export const withActorsMiddlewareLegacy: Handler<AppEnv> =
+  createActorsHandler(actorsRouteLegacy);
+export const withActorsMiddleware: Handler<AppEnv> =
+  createActorsHandler(actorsRoute);
