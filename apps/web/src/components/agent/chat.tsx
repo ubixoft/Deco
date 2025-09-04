@@ -190,7 +190,7 @@ function AgentMetadataUpdater() {
     : agent?.avatar;
 
   useDocumentMetadata({
-    title: agent ? `${agent.name} | deco.chat` : undefined,
+    title: agent ? `${agent.name} | deco CMS` : undefined,
     favicon: faviconHref,
   });
 
