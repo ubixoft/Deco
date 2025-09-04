@@ -283,7 +283,8 @@ export const createDiffBranchTool = (env: Env) =>
 // FILE CRUD OPERATIONS (using branchName directly for performance)
 // =============================================================================
 const normalizePath = (path: string) => {
-  return path.startsWith("/") ? path : `/${path}`;
+  path = path.startsWith("/") ? path : `/${path}`; // add leading slash
+  return path.endsWith("/") ? path.slice(0, -1) : path; // remove trailing slash
 };
 const BaseFileOperationInputSchema = (env: Env) =>
   z.object({

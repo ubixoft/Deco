@@ -62,8 +62,10 @@ export const getAllScopes = (
   schema?: JSONSchema7,
 ): AppScope[] => {
   return [
-    ...DEFAULT_INTEGRATION_POLICIES.map((policy) => policy.resource),
-    ...scopes,
+    ...new Set([
+      ...DEFAULT_INTEGRATION_POLICIES.map((policy) => policy.resource),
+      ...scopes,
+    ]),
   ].map((scope) => {
     const { bindingName, toolName } = parseAppScope(scope);
     return {
