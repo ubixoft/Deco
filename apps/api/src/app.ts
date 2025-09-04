@@ -27,6 +27,7 @@ const normalizeHost = (req: Request) => {
   }
   return (
     {
+      [Hosts.API]: Hosts.API,
       [Hosts.API_LEGACY]: Hosts.API_LEGACY,
       localhost: Hosts.API_LEGACY,
       "localhost:3001": Hosts.API_LEGACY,
