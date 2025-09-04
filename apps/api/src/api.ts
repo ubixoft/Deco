@@ -50,7 +50,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { createPosthogServerClient } from "packages/sdk/src/posthog.ts";
 import { studio } from "@outerbase/browsable-durable-object";
-import { WELL_KNOWN_ORIGINS } from "packages/sdk/src/hosts.ts";
 
 export const app = new Hono<AppEnv>();
 export const honoCtxToAppCtx = (c: Context<AppEnv>): AppContext => {

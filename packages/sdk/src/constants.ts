@@ -13,6 +13,7 @@ import type { Integration } from "./models/mcp.ts";
 // @ts-ignore - Vite injects env variables at build time
 const LOCAL_DEBUGGER = import.meta.env?.VITE_USE_LOCAL_BACKEND === "true";
 const isLocalhost = globalThis.location?.hostname === "localhost";
+const isDecoChat = globalThis.location?.hostname === "deco.chat";
 
 // Log a warning if the environment variable is not set
 // @ts-ignore - Vite injects env variables at build time
@@ -26,13 +27,17 @@ if (isLocalhost && import.meta.env?.VITE_USE_LOCAL_BACKEND === undefined) {
 
 export const SUPABASE_URL = "https://auth.deco.cx";
 
-export const DECO_CMS_WEB_URL = LOCAL_DEBUGGER
-  ? "http://localhost:3000"
-  : "https://admin.decocms.com";
+export const DECO_CMS_WEB_URL = isDecoChat
+  ? "https://deco.chat"
+  : LOCAL_DEBUGGER
+    ? "http://localhost:3000"
+    : "https://admin.decocms.com";
 
-export const DECO_CMS_API_URL = LOCAL_DEBUGGER
-  ? "http://localhost:3001"
-  : "https://api.decocms.com";
+export const DECO_CMS_API_URL = isDecoChat
+  ? "https://api.deco.chat"
+  : LOCAL_DEBUGGER
+    ? "http://localhost:3001"
+    : "https://api.decocms.com";
 
 export const AUTH_PORT_CLI = 3457;
 export const AUTH_URL_CLI = `http://localhost:${AUTH_PORT_CLI}`;
