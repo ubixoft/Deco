@@ -343,9 +343,7 @@ app.use(logger());
 app.use(
   cors({
     origin: (origin) =>
-      WELL_KNOWN_ORIGINS.some((o) => o.includes(origin))
-        ? origin
-        : null,
+      WELL_KNOWN_ORIGINS.some((o) => o.includes(origin)) ? origin : null,
     maxAge: 86400, // one day
     allowMethods: ["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowHeaders: [
