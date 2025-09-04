@@ -1,98 +1,76 @@
-# Deco MCP template app
+This project is **DECONFIG**, a git-like, versioned configuration manager filesystem built on top of **Cloudflare Durable Objects**.
 
-A full-stack template for building
-[Model Context Protocol (MCP)](https://spec.modelcontextprotocol.io/) servers
-with a modern React frontend !
+### System Overview
 
-This template provides a complete development environment where your MCP server
-not only exposes tools and workflows to AI agents but also serves a beautiful
-web interface built with React and Tailwind CSS.
+* A single DECONFIG project contains many **branches**.
+* Branch operations (`create`, `delete`, `clone`, `branch`, `merge`) are **O(1)**.
+* Peers use branches as a **FileSystem-like API with steroids**.
+* Peers can **WATCH files** for real-time changes via Server-Sent Events (SSE).
+* **Path prefixing** enables multiple peers to work on different virtual directories within the same branch.
 
-## 📝 Development History
+### Core Components
 
-This repository uses [Specstory](https://specstory.com/) to track the history of
-prompts that were used to code this repo. You can inspect the complete
-development history in the [`.specstory/`](.specstory/) folder.
+1. **Blobs Durable Object** (Content Addressable Storage)
 
-## ✨ Features
+   * Each project owns a Blobs DO (`blobs:blob-1` addressing).
+   * Functions as **content-addressable storage (CAS)** using SHA-256 hashing.
+   * Stores blobs keyed by hash with **BlobInfo** metadata (hash + size).
+   * Supports both **ReadableStream** and **ArrayBuffer** for efficient data transfer.
+   * **Batch operations** with `putBatch()` for parallel processing.
+   * Scales to virtually infinite storage using `DurableObjectStorage` SQLite.
 
-- **🤖 MCP Server**: Cloudflare Workers-based server with typed tools and
-  workflows
-- **⚛️ React Frontend**: Modern React app with Vite, TanStack Router, and
-  Tailwind CSS
-- **🎨 UI Components**: Pre-configured shadcn/ui components for rapid
-  development
-- **🔧 Type Safety**: Full TypeScript support with auto-generated RPC client
-  types
-- **🚀 Hot Reload**: Live development with automatic rebuilding for both
-  frontend and backend
-- **☁️ Ready to Deploy**: One-command deployment to Cloudflare Workers
+2. **Branch Durable Object** (Versioned File Trees)
 
-## 🚀 Quick Start
+   * Each Branch DO maintains its state in **SQLite** with two tables:
+     - `branch_state`: Current tree state and metadata
+     - `patches`: Historical changes (delta-based storage)
+   * Stores **Tree** as `Record<FilePath, FileMetadata>`.
+   * `FileMetadata` includes:
+     - `address`: Blob address (`blobs:blob-1:$HASH`)
+     - `metadata`: User-defined key/value data
+     - `mtime`: Modification time (content changes)
+     - `ctime`: Change time (content or metadata changes)
+   * **Patch-based history**: Only stores deltas, not full trees (O(1) updates).
+   * The Branch DO caches the **current tree in memory** for O(1) lookups.
+   * **RPC-based communication** with typed interfaces for tool integration.
 
-### Prerequisites
+3. **Branch Creation & Branching**
 
-- Node.js ≥22.0.0
-- [Deco CLI](https://deco.chat): `npm i -g deco-cli`
+   * **BranchConfig interface** for clean initialization:
+     - `projectId`: The workspace/project owning this branch
+     - `branchName`: Optional name (auto-generated if not provided)
+     - `tree`: Initial tree state for efficient branching (O(1) copy)
+     - `origin`: Parent branch name for lineage tracking
+   * **Lazy creation**: Branches exist as empty when first accessed
+   * **O(1) branching**: `sourceRpc.branch(newBranchName)` copies current tree instantly
 
-### Setup
+### Architecture Patterns
 
-```bash
-# Install dependencies
-npm install
-
-# Configure your app
-npm run configure
-
-# Start development server
-npm run dev
-```
-
-The server will start on `http://localhost:8787` serving both your MCP endpoints
-and the React frontend.
-
-## 📁 Project Structure
-
-```
-├── server/           # MCP Server (Cloudflare Workers + Deco runtime)
-│   ├── main.ts      # Server entry point with tools & workflows
-│   └── deco.gen.ts  # Auto-generated integration types
-└── view/            # React Frontend (Vite + Tailwind CSS)
-    ├── src/
-    │   ├── lib/rpc.ts    # Typed RPC client for server communication
-    │   ├── routes/       # TanStack Router routes
-    │   └── components/   # UI components with Tailwind CSS
-    └── package.json
-```
-
-## 🛠️ Development Workflow
-
-- **`npm run dev`** - Start development with hot reload
-- **`npm run gen`** - Generate types for external integrations
-- **`npm run gen:self`** - Generate types for your own tools/workflows
-- **`npm run deploy`** - Deploy to production
-
-## 🔗 Frontend ↔ Server Communication
-
-The template includes a fully-typed RPC client that connects your React frontend
-to your MCP server:
-
+**Tool Structure:**
 ```typescript
-// Typed calls to your server tools and workflows
-const result = await client.MY_TOOL({ input: "data" });
-const workflowResult = await client.MY_WORKFLOW({ input: "data" });
+// Branch CRUD tools
+CREATE_BRANCH     // Create empty or branch from existing
+LIST_BRANCHES     // List all branches with metadata
+DELETE_BRANCH     // Remove branch and soft-delete files
+MERGE_BRANCH      // Merge with conflict resolution
+DIFF_BRANCH       // Compare branch states
+
+// File CRUD tools (within branches)
+PUT_FILE          // Create/update with conflict detection
+READ_FILE         // Stream file content
+DELETE_FILE       // Remove file from branch
+LIST_FILES        // List files with optional prefix filter
 ```
 
-## 📖 Learn More
+**Key Features:**
+- **Git-like semantics**: branches, merging, conflict resolution
+- **Real-time sync**: SSE file watching with event streams
+- **Efficient storage**: Content-addressable blobs with deduplication
+- **Transactional writes**: Atomic multi-file operations with conflict detection
+- **Workspace isolation**: Database-managed branch metadata per workspace
 
-This template is built for deploying primarily on top of the
-[Deco platform](https://deco.chat/about) which can be found at the
-[deco-cx/chat](https://github.com/deco-cx/chat) repository.
-
-Documentation can be found at [https://docs.deco.page](https://docs.deco.page)
-
----
-
-**Ready to build your next MCP server with a beautiful frontend?
-[Get started now!](https://deco.chat)**
-
+**Performance Characteristics:**
+- Branch creation: O(1) - tree copying, not file copying
+- File operations: O(1) - direct SQLite lookups with in-memory caching
+- Conflict detection: O(1) - ctime-based optimistic locking
+- Storage: O(log n) - content-addressed with automatic deduplication
