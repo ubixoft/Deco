@@ -74,3 +74,4 @@ LIST_FILES        // List files with optional prefix filter
 - File operations: O(1) - direct SQLite lookups with in-memory caching
 - Conflict detection: O(1) - ctime-based optimistic locking
 - Storage: O(log n) - content-addressed with automatic deduplication
+
