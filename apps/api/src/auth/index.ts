@@ -98,7 +98,9 @@ export const createMagicLinkEmail = async (ctx: AppContext) => {
     // includes a condition to insert it (/auth/callback/magiclink)
     const redirectTo = url.host.includes("localhost")
       ? "http://localhost:3001/"
-      : "https://api.decocms.com/";
+      : url.host.includes("deco.chat")
+        ? "https://api.deco.chat/"
+        : "https://api.decocms.com/";
 
     await db.auth.signInWithOtp({
       email,
@@ -178,7 +180,9 @@ appLogin.all("/magiclink", async (ctx: AppContext) => {
       ? AUTH_URL_CLI
       : url.host.includes("localhost")
         ? "http://localhost:3001/"
-        : "https://api.decocms.com/";
+        : url.host.includes("deco.chat")
+          ? "https://api.deco.chat/"
+          : "https://api.decocms.com/";
 
     await db.auth.signInWithOtp({
       email,
@@ -197,8 +201,13 @@ appAuth.all("/callback/oauth", async (ctx: AppContext) => {
     const { db, headers } = createDbAndHeadersForRequest(ctx);
     const request = ctx.req.raw;
     const url = new URL(request.url);
-    const nextDefault = new URL("/", url.origin).toString();
-    const redirectUrl = url.searchParams.get("next") || nextDefault;
+    const next =
+      url.searchParams.get("next") ||
+      (url.host.includes("localhost")
+        ? "http://localhost:3000"
+        : url.host.includes("deco.chat")
+          ? "https://deco.chat"
+          : "https://admin.decocms.com");
     const code = url.searchParams.get("code");
 
     if (!code) {
@@ -214,7 +223,7 @@ appAuth.all("/callback/oauth", async (ctx: AppContext) => {
 
     setHeaders(headers, ctx);
 
-    return ctx.redirect(redirectUrl);
+    return ctx.redirect(next);
   } catch (e) {
     if (e instanceof Error) {
       return ctx.text(e.message, 400);
@@ -233,7 +242,9 @@ appAuth.all("/callback/magiclink", async (ctx: AppContext) => {
       url.searchParams.get("next") ||
       (url.host.includes("localhost")
         ? "http://localhost:3000"
-        : "https://admin.decocms.com");
+        : url.host.includes("deco.chat")
+          ? "https://deco.chat"
+          : "https://admin.decocms.com");
     const tokenHash = url.searchParams.get("tokenHash");
     const type = url.searchParams.get("type") as EmailOtpType | null;
 
