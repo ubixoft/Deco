@@ -342,8 +342,7 @@ app.use(logger());
 // Enable CORS for all routes on api.decocms.com and localhost
 app.use(
   cors({
-    origin: (origin) =>
-      WELL_KNOWN_ORIGINS.some((o) => o.includes(origin)) ? origin : null,
+    origin: (origin) => origin,
     maxAge: 86400, // one day
     allowMethods: ["HEAD", "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowHeaders: [
