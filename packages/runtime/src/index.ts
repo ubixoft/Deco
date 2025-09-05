@@ -108,6 +108,7 @@ export interface User {
 
 export interface RequestContext<TSchema extends z.ZodTypeAny = any> {
   state: z.infer<TSchema>;
+  branch?: string;
   token: string;
   workspace: string;
   ensureAuthenticated: (options?: {
@@ -216,13 +217,16 @@ export const withBindings = <TEnv>({
   tokenOrContext,
   origin,
   url,
+  branch,
 }: {
   env: TEnv;
   server: MCPServer<TEnv, any>;
   tokenOrContext?: string | RequestContext;
   origin?: string | null;
   url?: string;
+  branch?: string | null;
 }): TEnv => {
+  branch ??= undefined;
   const env = _env as DefaultEnv<any>;
 
   const apiUrl = env.DECO_API_URL ?? "https://api.decocms.com";
@@ -236,6 +240,7 @@ export const withBindings = <TEnv>({
       token: tokenOrContext,
       workspace,
       ensureAuthenticated: AUTHENTICATED(decoded.user, workspace),
+      branch,
     } as RequestContext<any>;
   } else if (typeof tokenOrContext === "object") {
     context = tokenOrContext;
@@ -247,6 +252,7 @@ export const withBindings = <TEnv>({
       state: undefined,
       token: env.DECO_API_TOKEN,
       workspace: env.DECO_WORKSPACE,
+      branch,
       ensureAuthenticated: (options?: { workspaceHint?: string }) => {
         const workspaceHint = options?.workspaceHint ?? env.DECO_WORKSPACE;
         const authUri = new URL("/apps/oauth", apiUrl);
@@ -351,6 +357,9 @@ export const withRuntime = <TEnv, TSchema extends z.ZodTypeAny = never>(
         const bindings = withBindings({
           env,
           server,
+          branch:
+            req.headers.get("x-deco-branch") ??
+            new URL(req.url).searchParams.get("__b"),
           tokenOrContext: await getReqToken(req, env),
           origin: referer ?? req.headers.get("origin"),
           url: req.url,

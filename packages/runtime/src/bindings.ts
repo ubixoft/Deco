@@ -133,6 +133,7 @@ export const createIntegrationBinding = (
     {
       workspace: env.DECO_WORKSPACE,
       token: env.DECO_API_TOKEN,
+      branch: env.DECO_REQUEST_CONTEXT?.branch,
     },
     env.DECO_API_URL,
   );
