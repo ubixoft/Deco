@@ -26,8 +26,7 @@ with Astro and Starlight.
 
 ### Prerequisites
 
-- Node.js ≥18.0.0
-- [Deco CLI](https://deco.chat): `npm i -g deco-cli`
+- Node.js ≥22.0.0
 
 ### Setup
 

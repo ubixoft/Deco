@@ -291,7 +291,7 @@ function WorkflowRunsTab() {
 
 function WorkflowEmptyState() {
   const [copied, setCopied] = useState(false);
-  const cliCommand = "npm i -g deco-cli";
+  const cliCommand = "npm create deco@latest";
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(cliCommand);

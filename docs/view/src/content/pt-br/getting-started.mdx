@@ -8,47 +8,31 @@ icon: Play
 
 Antes de começar, certifique-se de ter o seguinte:
 
-- **Node.js** (v18+ recomendado) – necessário para executar o servidor de desenvolvimento frontend e empacotar assets.
-
-- **deco.chat CLI** – a interface de linha de comando para deco.chat, que você pode instalar via NPM.
-
-- **Conta Cloudflare** – necessária para implantar seu aplicativo (Cloudflare Workers é o runtime).
+- **Node.js** (v22+ recomendado) – necessário para executar o servidor de desenvolvimento frontend e empacotar assets.
 
 - **Conhecimento básico de TypeScript** – O projeto é pesado em TypeScript, então familiaridade com TS é importante (se você é novo, veja a documentação oficial do TypeScript para uma introdução).
 
-## Configuração do Projeto com o CLI
-
 Uma vez que seu ambiente esteja pronto, siga estes passos para criar um novo projeto deco.chat:
 
-### 1. Instale o CLI Deco
+### 1. Inicialize um novo projeto
 
 Abra seu terminal e execute:
 
 ```shell
-npm i -g deco-cli
+npm create deco@latest
 ```
 
 ou
 
 ```shell
-bun i -g deco-cli
+bun create deco@latest
 ```
 
-Isso instala globalmente o comando deco. Após a instalação, você pode executar `deco --help` para verificar se está funcionando.
-
-### 2. Faça login no deco.chat
-
-Use `deco login` para autenticar o CLI com sua conta deco.chat. Uma janela do navegador solicitará que você faça login, e o CLI armazenará um token de API para sua sessão. (Se você não tem uma conta, cadastre-se primeiro no site deco.chat.)
-
-### 3. Inicialize um novo projeto
-
-Navegue até o diretório onde você quer seu projeto e execute `deco init`. Você será guiado para escolher um template (por exemplo, um template **React + Tailwind View** ou um template minimalista apenas para servidor). O CLI irá estruturar um projeto com a estrutura recomendada. Ele também solicitará que você configure seu workspace e nome do aplicativo (ou você pode executar `deco configure` manualmente para definir estes).
-
-### 4. Instale dependências
+### 2. Instale dependências
 
 Após a estruturação, `cd` para a pasta do projeto. Se o projeto incluir um frontend, execute `npm install` (ou `pnpm install`) para instalar dependências Node para a visualização.
 
-### 5. Execute o servidor de desenvolvimento
+### 3. Execute o servidor de desenvolvimento
 
 Inicie seu aplicativo localmente com:
 

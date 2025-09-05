@@ -12,33 +12,15 @@ import { Step } from "../../../components/ui/Step";
 Welcome to deco.chat! This guide will help you create your first MCP server with a beautiful documentation site.
 
 <StepGroup>
-  <Step number={1} title="Install the CLI">
-    Run the following command to install the deco CLI:
+  <Step number={1} title="Create a project">
+    Run the following command to create a project:
     
     ```bash
-    npm i -g deco-cli
+    npm create deco@latest
     ```
   </Step>
 
-  <Step number={2} title="Authenticate">
-    Log in to your deco.chat account:
-    
-    ```bash
-    deco login
-    ```
-  </Step>
-
-  <Step number={3} title="Create a new project">
-    Initialize a new deco.chat app in your current directory:
-    
-    ```bash
-    deco create
-    ```
-    
-    This will set up a complete project with both the MCP server and documentation site.
-  </Step>
-
-  <Step number={4} title="Start development">
+  <Step number={2} title="Start development">
     Navigate to your project directory and start the development server:
     
     ```bash
@@ -48,7 +30,7 @@ Welcome to deco.chat! This guide will help you create your first MCP server with
     This starts both the MCP server and the documentation site with hot reload.
   </Step>
 
-  <Step number={5} title="Deploy to production">
+  <Step number={3} title="Deploy to production">
     When you're ready to deploy:
     
     ```bash

@@ -24,37 +24,18 @@ Before you begin, make sure you have the following:
 Once your environment is ready, follow these steps to create a new deco.chat project:
 
 <StepGroup>
-  <Step number={1} title="Install the Deco CLI">
+  <Step number={1} title="Create a project">
     Open your terminal and run:
     
     ```bash
-    npm i -g deco-cli
+    npm create deco@latest
     ```
     
-    This globally installs the deco command. After installation, you can run `deco --help` to verify it's working.
+    If you're not authenticated, this will your browser so you can log in or create an account,
+    then initialize a project for you.
   </Step>
 
-  <Step number={2} title="Log in to deco.chat">
-    Use `deco login` to authenticate the CLI with your deco.chat account:
-    
-    ```bash
-    deco login
-    ```
-    
-    A browser window will prompt you to sign in, and the CLI will store an API token for your session. (If you don't have an account, sign up on the deco.chat website first.)
-  </Step>
-
-  <Step number={3} title="Initialize a new project">
-    Navigate to the directory where you want your project and run:
-    
-    ```bash
-    deco create
-    ```
-    
-    You'll be guided to pick a template (for example, a **React + Tailwind View** template or a minimal server-only template). The CLI will scaffold a project with the recommended structure. It will also prompt you to configure your workspace and app name (or you can run `deco configure` manually to set these).
-  </Step>
-
-  <Step number={4} title="Install dependencies">
+  <Step number={2} title="Install dependencies">
     After scaffolding, `cd` into the project folder. If the project includes a frontend, run:
     
     ```bash
@@ -64,7 +45,7 @@ Once your environment is ready, follow these steps to create a new deco.chat pro
     (or `pnpm install`) to install Node dependencies for the view.
   </Step>
 
-  <Step number={5} title="Run the development server">
+  <Step number={3} title="Run the development server">
     Start your app locally with:
     
     ```bash
