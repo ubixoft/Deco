@@ -52,7 +52,7 @@ import {
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { createPosthogServerClient } from "packages/sdk/src/posthog.ts";
-import { studio } from "@outerbase/browsable-durable-object";
+import { studio } from "outerbase-browsable-do-enforced";
 
 export const app = new Hono<AppEnv>();
 export const honoCtxToAppCtx = (c: Context<AppEnv>): AppContext => {
@@ -432,10 +432,14 @@ app.all("/:root/:slug/i:databases-management/studio", async (c) => {
   await assertWorkspaceResourceAccess(ctx, {
     resource: "DATABASES_RUN_SQL",
   });
-  const url = new URL(c.req.raw.url);
-  url.searchParams.set("id", `/${root}/${slug}`);
-  const request = new Request(url.toString(), c.req.raw);
-  return studio(request, ctx.workspaceDO);
+
+  // The DO id can be overridden by the client, both on the URL
+  // for GET requests and on the body "id" property for POST requests
+  // i've forked the library to add the ability to enforce the id
+  return studio(c.req.raw, ctx.workspaceDO, {
+    disableHomepage: true,
+    enforceId: `/${root}/${slug}`,
+  });
 });
 
 app.post("/:root/:slug/:integrationId/tools/call/:tool", async (c) => {
