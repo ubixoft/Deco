@@ -1,149 +1,185 @@
-import { NotFoundError, parseViewMetadata, useRemoveView } from "@deco/sdk";
-import { Link, useParams, useSearchParams } from "react-router";
-import { useCurrentTeam } from "../sidebar/team-selector";
-import Preview from "../agent/preview";
-import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
-import { Button } from "@deco/ui/components/button.tsx";
-import { toast } from "@deco/ui/components/sonner.tsx";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@deco/ui/components/alert-dialog.tsx";
+  NotFoundError,
+  useConnectionViews,
+  useIntegrations,
+  findConnectionView,
+} from "@deco/sdk";
+import { Button } from "@deco/ui/components/button.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
+import { createContext, useContext, useMemo } from "react";
+import { Link, useParams, useSearchParams } from "react-router";
+import Preview from "../agent/preview";
 import type { Tab } from "../dock/index.tsx";
-import { useNavigateWorkspace } from "../../hooks/use-navigate-workspace.ts";
-import { useState } from "react";
+import { DefaultBreadcrumb, PageLayout } from "../layout.tsx";
+import { InternalResourceListWithIntegration } from "./internal-resource-list.tsx";
+import { ViewRouteProvider } from "./view-route-context.tsx";
+import { dispatchRulesUpdated } from "../../utils/events.ts";
+
+interface ViewDetailContextValue {
+  integrationId?: string;
+  integration?: {
+    id: string;
+    name: string;
+    icon?: string;
+    description?: string;
+    connection?: { type?: string; url?: string };
+  };
+  resolvedUrl: string;
+  embeddedName?: string;
+  view?: {
+    title?: string;
+    icon?: string;
+    url?: string;
+    rules?: string[];
+  };
+}
+
+const ViewDetailContext = createContext<ViewDetailContextValue | undefined>(
+  undefined,
+);
+
+function useViewDetail(): ViewDetailContextValue {
+  const ctx = useContext(ViewDetailContext);
+  if (!ctx) {
+    return { resolvedUrl: "" };
+  }
+  return ctx;
+}
+
+function PreviewTab() {
+  const { embeddedName, integrationId, integration, resolvedUrl, view } =
+    useViewDetail();
+
+  if (embeddedName && integrationId) {
+    return (
+      <InternalResourceListWithIntegration
+        name={embeddedName}
+        integrationId={integrationId}
+      />
+    );
+  }
+
+  const relativeTo =
+    integration?.connection?.type === "HTTP"
+      ? (integration?.connection?.url ?? "")
+      : "";
+  const src = new URL(resolvedUrl, relativeTo).href;
+
+  return <Preview src={src} title={view?.title || "Untitled view"} />;
+}
+
+const TABS: Record<string, Tab> = {
+  preview: {
+    Component: PreviewTab,
+    title: "Preview",
+    initialOpen: true,
+    active: true,
+  },
+};
 
 export default function ViewDetail() {
-  const { id } = useParams();
+  const { integrationId, viewName } = useParams();
   const [searchParams] = useSearchParams();
-  const url = searchParams.get("url");
-  const team = useCurrentTeam();
-  const removeViewMutation = useRemoveView();
-  const navigateWorkspace = useNavigateWorkspace();
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const url = searchParams.get("viewUrl") || searchParams.get("url");
+  const { data: integrations = [] } = useIntegrations();
 
-  const view = team.views.find((view) => view.id === id);
-  if (!view && !url) {
-    throw new NotFoundError("View not found");
-  }
-  const meta = view
-    ? parseViewMetadata(view)
-    : {
-        type: "custom",
-        icon: "dashboard",
-        url: url || "",
-      };
-  if (meta?.type !== "custom") {
-    throw new NotFoundError("View not found");
-  }
+  const integration = useMemo(
+    () => integrations.find((i) => i.id === integrationId),
+    [integrations, integrationId],
+  );
 
-  const handleDeleteView = async () => {
-    if (!view) {
-      return;
-    }
+  const { data: connectionViews } = useConnectionViews(integration ?? null);
+
+  const connectionViewMatch = useMemo(() => {
+    return findConnectionView(connectionViews?.views, { viewName, url });
+  }, [connectionViews, viewName, url]);
+
+  const resolvedUrl = url || connectionViewMatch?.url || "";
+  const isEmbeddedList = resolvedUrl?.startsWith("internal://resource/list?");
+  const isEmbeddedDetail = resolvedUrl?.startsWith(
+    "internal://resource/detail?",
+  );
+
+  const embeddedName = useMemo(() => {
+    if (!resolvedUrl || (!isEmbeddedList && !isEmbeddedDetail))
+      return undefined;
     try {
-      await removeViewMutation.mutateAsync({
-        viewId: view.id,
-      });
-
-      toast.success(`View "${view.title}" deleted successfully`);
-      setShowDeleteAlert(false);
-      navigateWorkspace("/"); // Navigate back to the main page after deletion
-    } catch (error) {
-      console.error("Error deleting view:", error);
-      toast.error(`Failed to delete view "${view.title}"`);
-      setShowDeleteAlert(false);
+      const u = new URL(
+        resolvedUrl.replace("internal://", "https://internal/"),
+      );
+      return u.searchParams.get("name") ?? undefined;
+    } catch {
+      return undefined;
     }
-  };
+  }, [resolvedUrl, isEmbeddedList, isEmbeddedDetail]);
 
-  const tabs: Record<string, Tab> = {
-    preview: {
-      Component: () => (
-        <Preview src={meta.url} title={view?.title || "Untitled view"} />
-      ),
-      title: "Preview",
-      initialOpen: true,
-      active: true,
-    },
-  };
+  if (!connectionViewMatch) {
+    throw new NotFoundError("View not found");
+  }
+
+  const tabs = TABS;
+
+  // Seed rules for this view when present (no effect outside view routes)
+  const rules = (connectionViewMatch?.rules ?? []) as string[];
+  if (rules.length) {
+    // Single dispatch based on current render; upstream keeps last update
+    dispatchRulesUpdated({ rules });
+  }
 
   return (
-    <>
-      <PageLayout
-        key={view?.id}
-        hideViewsButton
-        tabs={tabs}
-        breadcrumb={
-          <DefaultBreadcrumb
-            items={[
-              {
-                label: (
-                  <div className="flex items-center gap-2">
-                    <Icon
-                      name={view?.icon || "dashboard"}
-                      className="w-4 h-4"
-                    />
-                    <span>{view?.title}</span>
-                    <Link to={meta?.url} target="_blank">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                        className="text-muted-foreground hover:text-primary-dark"
-                        title="Open view"
-                      >
-                        <Icon name="open_in_new" className="w-4 h-4" />
-                      </Button>
-                    </Link>
-                  </div>
-                ),
-              },
-            ]}
-          />
-        }
-        actionButtons={
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowDeleteAlert(true)}
-            className="text-muted-foreground hover:text-destructive"
-            title="Delete view"
-          >
-            <Icon name="delete" className="w-4 h-4" />
-          </Button>
-        }
-      />
-
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete View</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the view "{view?.title}"? This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteView}
-              disabled={removeViewMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {removeViewMutation.isPending ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    <ViewRouteProvider
+      integrationId={integrationId}
+      viewName={viewName}
+      view={connectionViewMatch}
+    >
+      <ViewDetailContext.Provider
+        value={{
+          integrationId,
+          integration,
+          resolvedUrl,
+          embeddedName,
+          view: connectionViewMatch,
+        }}
+      >
+        <PageLayout
+          key={`${integrationId}-${viewName}`}
+          hideViewsButton
+          tabs={tabs}
+          breadcrumb={
+            <DefaultBreadcrumb
+              items={[
+                {
+                  label: (
+                    <div className="flex items-center gap-2">
+                      <Icon
+                        name={connectionViewMatch?.icon || "dashboard"}
+                        className="w-4 h-4"
+                      />
+                      <span>{connectionViewMatch?.title}</span>
+                      <Link to={resolvedUrl ?? "#"} target="_blank">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="text-muted-foreground hover:text-primary-dark"
+                          title="Open view"
+                        >
+                          <Icon name="open_in_new" className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          }
+          actionButtons={undefined}
+        />
+      </ViewDetailContext.Provider>
+    </ViewRouteProvider>
   );
 }
+
+// (Internal fallback components removed to simplify the view renderer)

@@ -70,7 +70,7 @@ export interface AddViewInput {
     title: string;
     icon: string;
     type: "custom";
-    url: string;
+    name: string;
     tools?: string[];
     rules?: string[];
     integration: {
@@ -84,10 +84,9 @@ export const addView = (
   input: AddViewInput,
   init?: RequestInit,
 ): Promise<View> =>
-  MCPClient.forWorkspace(workspace).TEAMS_ADD_VIEW(
-    input,
-    init,
-  ) as Promise<View>;
+  MCPClient.forWorkspace(workspace)
+    .TEAMS_ADD_VIEW(input, init)
+    .then((v) => v as unknown as View);
 
 export interface RemoveViewInput {
   viewId: string;
@@ -102,9 +101,20 @@ export const removeView = (
     success: boolean;
   }>;
 
+type ViewListItem = {
+  name?: string;
+  title: string;
+  icon: string;
+  url: string;
+  mimeTypePattern?: string;
+  resourceName?: string;
+  rules?: string[];
+  tools?: string[];
+};
+
 export const listAvailableViewsForConnection = async (
   connection: MCPConnection,
-) => {
+): Promise<{ views: ViewListItem[] }> => {
   try {
     const result = await MCPClient.INTEGRATIONS_CALL_TOOL({
       connection,
@@ -114,19 +124,21 @@ export const listAvailableViewsForConnection = async (
       },
     });
 
-    if (typeof result.error === "string") {
-      console.error(result.error);
-      return { views: [] };
+    if (typeof result.isError === "boolean" && result.isError) {
+      const firstContent = Array.isArray(result.content)
+        ? result.content[0]?.text
+        : undefined;
+      const message = result.structuredContent ?? firstContent;
+      throw new Error(JSON.stringify(message));
     }
 
-    return result.structuredContent as {
-      views: Array<{
-        title: string;
-        icon: string;
-        url: string;
-        tools?: string[];
-        rules?: string[];
-      }>;
+    const viewsList = result.structuredContent as { views?: ViewListItem[] };
+
+    return {
+      views: (viewsList?.views ?? []).map((view) => ({
+        ...view,
+        name: view.name ?? view.title,
+      })),
     };
   } catch (error) {
     console.error("Error listing available views for connection:", error);

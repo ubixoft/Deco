@@ -1,4 +1,10 @@
-import { useAddView, useRemoveView, useIntegrationViews } from "@deco/sdk";
+import {
+  useAddView,
+  useRemoveView,
+  useIntegrationViews,
+  buildAddViewPayload,
+  findPinnedView,
+} from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Card, CardContent } from "@deco/ui/components/card.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
@@ -17,7 +23,8 @@ import { Spinner } from "@deco/ui/components/spinner.tsx";
 export interface ViewWithStatus {
   isAdded: boolean;
   teamViewId?: string;
-  url: string;
+  name?: string;
+  url?: string;
   title: string;
   icon: string;
   integration: {
@@ -107,16 +114,15 @@ function TogglePin({ view }: { view: ViewWithStatus }) {
   const handleAddView = async (view: ViewWithStatus) => {
     try {
       await addViewMutation.mutateAsync({
-        view: {
-          id: crypto.randomUUID(),
-          title: view.title,
-          icon: view.icon,
-          type: "custom" as const,
-          url: view.url,
-          integration: {
-            id: view.integration.id,
+        view: buildAddViewPayload({
+          view: {
+            name: view.name,
+            title: view.title,
+            icon: view.icon,
+            url: view.url,
           },
-        },
+          integrationId: view.integration.id,
+        }),
       });
 
       toast.success(`View "${view.title}" added successfully`);
@@ -196,10 +202,11 @@ function ViewsList() {
 
   const allViews = useMemo(() => {
     return views.map((view) => {
-      const existingView = currentTeam.views.find((teamView) => {
-        const metadata = teamView.metadata as { url?: string };
-        return metadata?.url === view.url;
-      });
+      const existingView = findPinnedView(
+        currentTeam.views,
+        view.integration.id,
+        { name: view.name },
+      );
       return {
         ...view,
         isAdded: !!existingView,
@@ -229,11 +236,11 @@ function ViewsList() {
   };
 
   const handleViewClick = (view: ViewWithStatus) => {
-    if (view.isAdded) {
-      navigateWorkspace(`/views/${view.teamViewId}`);
-    } else {
-      navigateWorkspace(`/views/${crypto.randomUUID()}?url=${view.url}`);
-    }
+    // Navigate to dynamic view; workspace prefix is added by hook
+    const qs = view.url ? `?viewUrl=${encodeURIComponent(view.url)}` : "";
+    navigateWorkspace(
+      `/views/${view.integration.id}/${view.name ?? "index"}${qs}`,
+    );
   };
 
   return (
