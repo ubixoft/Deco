@@ -13,6 +13,7 @@ import { AppKeys, getConnectionAppKey } from "../integrations/apps.ts";
 import { VerifiedBadge } from "../integrations/marketplace.tsx";
 import { DefaultBreadcrumb, PageLayout } from "../layout";
 import { IntegrationAvatar } from "../common/avatar/integration.tsx";
+import { useCreateCustomConnection } from "../../hooks/use-create-custom-connection.ts";
 
 // For the future, it should be controlled in a view
 const HIGHLIGHTS = [
@@ -107,6 +108,7 @@ const Marketplace = () => {
   const [search, setSearch] = useState("");
   const { data: integrations } = useMarketplaceIntegrations();
   const navigateWorkspace = useNavigateWorkspace();
+  const createCustomConnection = useCreateCustomConnection();
 
   const featuredIntegrations = integrations?.integrations.filter(
     (integration) => FEATURED.includes(integration.name),
@@ -128,32 +130,46 @@ const Marketplace = () => {
   }, [integrations]);
 
   const filteredIntegrations = useMemo(() => {
-    return integrations?.integrations.filter(
-      (integration) =>
-        integration.name.toLowerCase().includes(search.toLowerCase()) ||
-        integration.friendlyName?.toLowerCase().includes(search.toLowerCase()),
-    );
+    return integrations?.integrations
+      ?.filter(
+        (integration) =>
+          integration.name.toLowerCase().includes(search.toLowerCase()) ||
+          integration.friendlyName
+            ?.toLowerCase()
+            .includes(search.toLowerCase()),
+      )
+      ?.slice(0, 7);
   }, [integrations, search]);
 
   return (
     <div className="p-4 flex flex-col gap-4 overflow-y-auto h-full">
-      <div className="relative">
-        <Input
-          placeholder="Search"
-          className="w-[370px]"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {search && (
-          <div className="z-20 p-4 bg-white w-[370px] absolute left-0 top-[calc(100%+8px)] rounded-xl">
-            {filteredIntegrations.slice(0, 7).map((integration) => (
-              <SimpleFeaturedCard
-                key={"search-" + integration.id}
-                integration={integration}
-              />
-            ))}
-          </div>
-        )}
+      <div className="flex justify-between items-center">
+        <div className="relative">
+          <Input
+            placeholder="Search"
+            className="w-[370px]"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <div className="z-20 p-4 bg-white w-[370px] absolute left-0 top-[calc(100%+8px)] rounded-xl">
+              {filteredIntegrations?.map((integration) => (
+                <SimpleFeaturedCard
+                  key={"search-" + integration.id}
+                  integration={integration}
+                />
+              ))}
+              {filteredIntegrations?.length === 0 && (
+                <div className="text-sm text-muted-foreground">
+                  No integrations found
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <Button variant="outline" onClick={createCustomConnection}>
+          Create Custom App
+        </Button>
       </div>
       <div className="grid grid-cols-6 gap-8">
         <div className="flex flex-col gap-4 col-span-4">
