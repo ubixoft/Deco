@@ -357,6 +357,45 @@ export function getDefaultAnyOfSchema(schemas: JSONSchema7[]): JSONSchema7 {
 }
 
 /**
+ * Helper function to detect if anyOf contains Secret + string combination
+ * and return the string schema
+ */
+function handleSecretStringAnyOf(schemas: JSONSchema7[]): JSONSchema7 | null {
+  // Check if we have exactly 2 schemas
+  if (schemas.length !== 2) {
+    return null;
+  }
+
+  let secretSchema: JSONSchema7 | null = null;
+  let stringSchema: JSONSchema7 | null = null;
+
+  for (const schema of schemas) {
+    // Check if this is a Secret schema (object with title "Secret" or hideOption="true")
+    if (
+      schema.type === "object" &&
+      (schema.title === "Secret" ||
+        (schema as JSONSchema7 & { hideOption?: string | boolean })
+          .hideOption === "true" ||
+        (schema as JSONSchema7 & { hideOption?: string | boolean })
+          .hideOption === true)
+    ) {
+      secretSchema = schema;
+    }
+    // Check if this is a string schema
+    else if (schema.type === "string") {
+      stringSchema = schema;
+    }
+  }
+
+  // If we found both Secret and string schemas, return the string schema
+  if (secretSchema && stringSchema) {
+    return stringSchema;
+  }
+
+  return null;
+}
+
+/**
  * Select the best matching schema from anyOf
  * This is a unified function that implements the algorithm used in both
  * Form.tsx and generateDefaultValues.ts
@@ -378,6 +417,12 @@ export function selectAnyOfSchema<
   }
 
   const schemas = schema.anyOf as JSONSchema7[];
+
+  // Special handling for Secret + string combination
+  const secretStringSchema = handleSecretStringAnyOf(schemas);
+  if (secretStringSchema) {
+    return secretStringSchema;
+  }
 
   // If we have form data and a field name, try to find a schema based on the current field value
   if (form && fieldName) {
