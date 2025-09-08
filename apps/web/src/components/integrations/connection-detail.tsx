@@ -478,7 +478,6 @@ const MAX_DESCRIPTION_LENGTH = 180;
 function Overview({
   data,
   appKey,
-  showInstallButton,
 }: {
   data: ReturnType<typeof useGroupedApp>;
   appKey: string;
