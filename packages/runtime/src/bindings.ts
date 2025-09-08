@@ -77,6 +77,7 @@ const mcpClientForIntegrationId = (
   integrationId: string,
   ctx: WorkspaceClientContext,
   decoChatApiUrl?: string,
+  appName?: string,
 ) => {
   const mcpConnection: MCPConnection = {
     type: "HTTP",
@@ -86,6 +87,7 @@ const mcpClientForIntegrationId = (
       decoCmsApiUrl: decoChatApiUrl,
     }),
     token: ctx.token,
+    headers: appName ? { "x-caller-app": appName } : undefined,
   };
 
   // TODO(@igorbrasileiro): Switch this proxy to be a proxy that call MCP Client.toolCall from @modelcontextprotocol
@@ -108,7 +110,12 @@ function mcpClientFromState(
     // in case of a binding to an app name, we need to use the new apps/mcp endpoint which will proxy the request to the app but without any token
     return mcpClientForAppName(binding.integration_name, env.DECO_API_URL);
   }
-  return mcpClientForIntegrationId(integrationId, ctx, env.DECO_API_URL);
+  return mcpClientForIntegrationId(
+    integrationId,
+    ctx,
+    env.DECO_API_URL,
+    env.DECO_APP_NAME,
+  );
 }
 
 export const createContractBinding = (
@@ -136,5 +143,6 @@ export const createIntegrationBinding = (
       branch: env.DECO_REQUEST_CONTEXT?.branch,
     },
     env.DECO_API_URL,
+    env.DECO_APP_NAME,
   );
 };

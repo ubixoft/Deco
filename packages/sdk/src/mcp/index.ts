@@ -143,6 +143,7 @@ export const PROJECT_TOOLS = [
   walletAPI.getWorkspacePlan,
   walletAPI.preAuthorizeAmount,
   walletAPI.commitPreAuthorizedAmount,
+  walletAPI.getContractsCommits,
   triggersAPI.activateTrigger,
   triggersAPI.deactivateTrigger,
   triggersAPI.updateTrigger,
