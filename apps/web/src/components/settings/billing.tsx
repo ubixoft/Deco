@@ -22,26 +22,6 @@ import { Table, type TableColumn } from "../common/table/index.tsx";
 import { DepositDialog } from "../wallet/deposit-dialog.tsx";
 import { VoucherDialog } from "../wallet/voucher-dialog.tsx";
 
-interface PlanFeature {
-  name: string;
-  included: boolean;
-  limit?: string | number;
-}
-
-interface PlanInfo {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  credits: number;
-  seats: number;
-  markup: number;
-  popular?: boolean;
-  current?: boolean;
-  features: PlanFeature[];
-  support: string;
-}
-
 function WalletBalanceCard() {
   const { balance, refetch, isRefetching } = useWorkspaceWalletBalance();
 
