@@ -39,6 +39,7 @@ import type { JSONSchema7 } from "json-schema";
 import { getAllScopes } from "../../utils/scopes.ts";
 import { VerifiedBadge } from "../integrations/marketplace.tsx";
 import { Locator } from "@deco/sdk";
+import { useUser } from "../../hooks/use-user.ts";
 
 const preSelectTeam = (teams: Team[], workspace_hint: string | undefined) => {
   if (teams.length === 1) {
@@ -153,10 +154,12 @@ const SelectOrganization = ({
       <div className="text-center flex flex-col gap-10 w-96">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-center">
-            <IntegrationAvatar
+            <Avatar
+              shape="square"
+              size="xl"
+              objectFit="contain"
               url={registryApp.icon}
               fallback={registryApp.friendlyName ?? registryApp.name}
-              size="xl"
             />
           </div>
           <h1 className="text-xl font-semibold">
@@ -691,22 +694,25 @@ function AppsOAuth({
 export default function Page() {
   return (
     <AppsAuthLayout>
-      {(props) => (
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center h-full">
-              <Spinner />
-            </div>
-          }
-        >
-          <ErrorBoundary
-            shouldCatch={(error) => error instanceof RegistryAppNotFoundError}
-            fallback={<NoAppFound client_id={props.client_id} />}
+      {(props) => {
+        useUser();
+        return (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center h-full">
+                <Spinner />
+              </div>
+            }
           >
-            <AppsOAuth {...props} />
-          </ErrorBoundary>
-        </Suspense>
-      )}
+            <ErrorBoundary
+              shouldCatch={(error) => error instanceof RegistryAppNotFoundError}
+              fallback={<NoAppFound client_id={props.client_id} />}
+            >
+              <AppsOAuth {...props} />
+            </ErrorBoundary>
+          </Suspense>
+        );
+      }}
     </AppsAuthLayout>
   );
 }
