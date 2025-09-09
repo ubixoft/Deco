@@ -313,8 +313,13 @@ export const createPutFileTool = (env: Env) =>
       "Put a file in a DECONFIG branch (create or update) with optional conflict detection",
     inputSchema: BaseFileOperationInputSchema(env).extend({
       content: z
-        .string()
-        .describe("The file content (will be base64 decoded if needed)"),
+        .union([
+          z
+            .string()
+            .describe("String content (will be base64 decoded if needed)"),
+          z.array(z.number()).describe("Array of bytes (0-255)"),
+        ])
+        .describe("The file content as string or array of bytes"),
       metadata: z
         .record(z.any())
         .optional()
@@ -330,14 +335,21 @@ export const createPutFileTool = (env: Env) =>
     execute: async ({ context }) => {
       // Convert content to ArrayBuffer
       let data: ArrayBuffer;
-      try {
-        // Try to decode as base64 first
-        data = Uint8Array.from(atob(context.content), (c: string) =>
-          c.charCodeAt(0),
-        ).buffer;
-      } catch {
-        // If not base64, treat as regular string
-        data = new TextEncoder().encode(context.content).buffer;
+
+      if (Array.isArray(context.content)) {
+        // Handle array of bytes
+        data = new Uint8Array(context.content).buffer;
+      } else {
+        // Handle string content
+        try {
+          // Try to decode as base64 first
+          data = Uint8Array.from(atob(context.content), (c: string) =>
+            c.charCodeAt(0),
+          ).buffer;
+        } catch {
+          // If not base64, treat as regular string
+          data = new TextEncoder().encode(context.content).buffer;
+        }
       }
 
       using branchRpc = await branchRpcFor(env, context.branch);
