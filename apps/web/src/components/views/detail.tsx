@@ -1,6 +1,5 @@
 import {
   findConnectionView,
-  NotFoundError,
   useConnectionViews,
   useIntegrations,
 } from "@deco/sdk";
