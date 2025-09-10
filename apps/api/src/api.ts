@@ -477,7 +477,7 @@ app.all("/:org/:project/i:databases-management/studio", async (c) => {
   const org = c.req.param("org");
   const project = c.req.param("project");
   const ctx = honoCtxToAppCtx(c);
-  const uid = ctx.user.id as string | undefined;
+  const uid = ctx.user?.id as string | undefined;
   await assertWorkspaceResourceAccess(ctx, {
     resource: "DATABASES_RUN_SQL",
   });
