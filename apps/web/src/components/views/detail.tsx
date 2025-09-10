@@ -113,10 +113,6 @@ export default function ViewDetail() {
     }
   }, [resolvedUrl, isEmbeddedList, isEmbeddedDetail]);
 
-  if (!connectionViewMatch) {
-    throw new NotFoundError("View not found");
-  }
-
   const tabs = TABS;
 
   // Seed rules for this view when present (no effect outside view routes)
