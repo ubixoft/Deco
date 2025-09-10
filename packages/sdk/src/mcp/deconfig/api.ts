@@ -25,6 +25,7 @@ import {
 import { withProject } from "../index.ts";
 import type { BranchRpc, ConflictEntry, DiffEntry } from "./branch.ts";
 import { newBranchesCRUD, type BranchRecord } from "./branches-db.ts";
+import { DECO_CHAT_ISSUER } from "../../auth/jwt.ts";
 
 interface DeconfigState {
   pathPrefix?: string;
@@ -46,10 +47,11 @@ export enum MergeStrategy {
 
 // Helper function to get workspace from context
 const projectFor = (c: WithTool<AppContext>): string => {
-  if (!c.locator?.project) {
+  const workspace = c.workspace?.value;
+  if (!workspace) {
     throw new Error("No project context available");
   }
-  return c.locator.project;
+  return workspace;
 };
 
 // Helper function to get branch RPC (using branchName directly for performance)
@@ -77,7 +79,11 @@ const createDeconfigTool = createToolFactory<DeconfigContext>(
       state = c.state as DeconfigState;
     }
 
-    if ("aud" in c.user && typeof c.user.aud === "string") {
+    if (
+      "aud" in c.user &&
+      typeof c.user.aud === "string" &&
+      c.user.iss === DECO_CHAT_ISSUER
+    ) {
       c = withProject(c, c.user.aud, c.user.sub);
     }
     return {

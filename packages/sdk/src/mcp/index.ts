@@ -249,7 +249,9 @@ export const withProject = (
   projectValue: string,
   userId?: string,
 ): AppContext => {
-  const { org, project } = Locator.parse(projectValue as `${string}/${string}`);
+  const { org, project } = Locator.parse(
+    projectValue.slice(1) as `${string}/${string}`,
+  );
   return {
     ...context,
     locator: { org, project, value: Locator.from({ org, project }) },
