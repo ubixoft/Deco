@@ -17,14 +17,19 @@ type WithWorkspace<TAppContext extends AppContext = AppContext> = Omit<
   TAppContext,
   "workspace"
 > & {
-  workspace: { root: string; slug: string; value: Workspace };
+  workspace: { root: string; slug: string; value: Workspace; branch: string };
 };
 
 type WithLocator<TAppContext extends AppContext = AppContext> = Omit<
   TAppContext,
   "locator"
 > & {
-  locator: { org: string; project: string; value: ProjectLocator };
+  locator: {
+    org: string;
+    project: string;
+    value: ProjectLocator;
+    branch: string;
+  };
 };
 
 type WithKbFileProcessor<TAppContext extends AppContext = AppContext> = Omit<
@@ -109,7 +114,10 @@ export const assertWorkspaceResourceAccess = async (
   }
 
   if (c.proxyToken) {
-    return await grantAccessForProxy(c);
+    const grant = await grantAccessForProxy(c);
+    if (grant) {
+      return grant;
+    }
   }
 
   const resourcesOrContexts =
@@ -296,16 +304,27 @@ export const issuerFromContext = async (c: AppContext) => {
   return await JwtIssuer.forKeyPair(keyPair);
 };
 
-async function grantAccessForProxy(c: AppContext): Promise<Disposable> {
+async function grantAccessForProxy(
+  c: AppContext,
+): Promise<Disposable | undefined> {
   if (!c.proxyToken) {
     throw new ForbiddenError("Proxy token not found");
+  }
+
+  // This allows integration_id on wrangler.toml because the app token is used to make requests.
+  if (
+    "sub" in c.user &&
+    typeof c.user.sub === "string" &&
+    c.user.sub.startsWith("app:")
+  ) {
+    return undefined; // fallthrough to authorization
   }
 
   if (
     !("integrationId" in c.user) ||
     typeof c.user.integrationId !== "string"
   ) {
-    throw new ForbiddenError("Integration ID not found");
+    throw new ForbiddenError("Proxy denied for unknown integration");
   }
 
   const integrationId = c.user.integrationId;
