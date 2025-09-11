@@ -311,20 +311,11 @@ async function grantAccessForProxy(
     throw new ForbiddenError("Proxy token not found");
   }
 
-  // This allows integration_id on wrangler.toml because the app token is used to make requests.
-  if (
-    "sub" in c.user &&
-    typeof c.user.sub === "string" &&
-    c.user.sub.startsWith("app:")
-  ) {
-    return undefined; // fallthrough to authorization
-  }
-
   if (
     !("integrationId" in c.user) ||
     typeof c.user.integrationId !== "string"
   ) {
-    throw new ForbiddenError("Proxy denied for unknown integration");
+    return undefined; // fallthrough to authorization
   }
 
   const integrationId = c.user.integrationId;
