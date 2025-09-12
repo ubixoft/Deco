@@ -4,3 +4,4 @@ export { watchCommand } from "./watch.js";
 export { cloneCommand } from "./clone.js";
 export { pushCommand } from "./push.js";
 export { pullCommand } from "./pull.js";
+export { listCommand } from "./list.js";

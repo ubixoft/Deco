@@ -78,6 +78,7 @@ import {
   watchCommand,
   pushCommand,
   pullCommand,
+  listCommand,
 } from "./commands/deconfig/index.js";
 import { detectRuntime } from "./lib/runtime.js";
 
@@ -539,7 +540,7 @@ const gen = new Command("gen")
 const deconfigGet = new Command("get")
   .description("Get a file from a deconfig branch.")
   .argument("<path>", "File path to get")
-  .requiredOption("-b, --branch <branchName>", "Branch name")
+  .option("-b, --branch <branchName>", "Branch name", "main")
   .option("-o, --output <file>", "Output file (defaults to stdout)")
   .option("-w, --workspace <workspace>", "Workspace name")
   .action(async (path, options) => {
@@ -567,7 +568,7 @@ const deconfigGet = new Command("get")
 const deconfigPut = new Command("put")
   .description("Put a file to a deconfig branch.")
   .argument("<path>", "File path to put")
-  .requiredOption("-b, --branch <branchName>", "Branch name")
+  .option("-b, --branch <branchName>", "Branch name", "main")
   .option("-f, --file <file>", "Local file to upload")
   .option("-c, --content <content>", "Content to upload")
   .option("-m, --metadata <metadata>", "Metadata JSON string")
@@ -598,7 +599,7 @@ const deconfigPut = new Command("put")
 // Watch command for deconfig
 const deconfigWatch = new Command("watch")
   .description("Watch a deconfig branch for changes.")
-  .requiredOption("-b, --branch <branchName>", "Branch name")
+  .option("-b, --branch <branchName>", "Branch name", "main")
   .option("-p, --path <path>", "Path filter for watching specific files")
   .option(
     "--from-ctime <ctime>",
@@ -631,7 +632,7 @@ const deconfigWatch = new Command("watch")
 // Clone command for deconfig
 const deconfigClone = new Command("clone")
   .description("Clone a deconfig branch to a local directory.")
-  .requiredOption("-b, --branch <branchName>", "Branch name to clone")
+  .option("-b, --branch <branchName>", "Branch name to clone", "main")
   .requiredOption("--path <path>", "Local directory path to clone files to")
   .option("--path-filter <filter>", "Filter files by path pattern")
   .option("-w, --workspace <workspace>", "Workspace name")
@@ -659,7 +660,7 @@ const deconfigClone = new Command("clone")
 // Push command for deconfig
 const deconfigPush = new Command("push")
   .description("Push local files to a deconfig branch.")
-  .requiredOption("-b, --branch <branchName>", "Branch name to push to")
+  .option("-b, --branch <branchName>", "Branch name to push to", "main")
   .requiredOption("--path <path>", "Local directory path to push files from")
   .option("--path-filter <filter>", "Filter files by path pattern")
   .option("--dry-run", "Show what would be pushed without making changes")
@@ -689,7 +690,7 @@ const deconfigPush = new Command("push")
 // Pull command for deconfig
 const deconfigPull = new Command("pull")
   .description("Pull changes from a deconfig branch to local directory.")
-  .requiredOption("-b, --branch <branchName>", "Branch name to pull from")
+  .option("-b, --branch <branchName>", "Branch name to pull from", "main")
   .requiredOption("--path <path>", "Local directory path to pull files to")
   .option("--path-filter <filter>", "Filter files by path pattern")
   .option("--dry-run", "Show what would be changed without making changes")
@@ -716,6 +717,38 @@ const deconfigPull = new Command("pull")
     }
   });
 
+// List command for deconfig
+const deconfigList = new Command("list")
+  .description("Interactively browse and view files in a deconfig branch.")
+  .option("-b, --branch <branchName>", "Branch name to list files from", "main")
+  .option("--path-filter <filter>", "Filter files by path pattern")
+  .option(
+    "--format <format>",
+    "Content display format: plainString, json, base64",
+    "plainString",
+  )
+  .option("-w, --workspace <workspace>", "Workspace name")
+  .action(async (options) => {
+    try {
+      const config = await getConfig({
+        inlineOptions: { workspace: options.workspace },
+      });
+      await listCommand({
+        branchName: options.branch,
+        pathFilter: options.pathFilter,
+        format: options.format,
+        workspace: config.workspace,
+        local: config.local,
+      });
+    } catch (error) {
+      console.error(
+        "❌ List failed:",
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(1);
+    }
+  });
+
 // Deconfig parent command
 const deconfig = new Command("deconfig")
   .description("Manage deconfig filesystem operations.")
@@ -724,7 +757,8 @@ const deconfig = new Command("deconfig")
   .addCommand(deconfigWatch)
   .addCommand(deconfigClone)
   .addCommand(deconfigPush)
-  .addCommand(deconfigPull);
+  .addCommand(deconfigPull)
+  .addCommand(deconfigList);
 
 // Main CLI program
 const program = new Command()
