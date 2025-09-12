@@ -234,14 +234,18 @@ export const assertWorkspaceResourceAccess = async (
       }
     } catch (error) {
       errors.push(
-        `Error checking access for resource: ${error instanceof Error ? error.message : String(error)}`,
+        `Error checking access for resource: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       );
     }
   }
 
   // If we reach here, none of the resources granted access
   throw new ForbiddenError(
-    `Cannot access any of the requested resources in workspace ${c.workspace.value} ${resourcesOrContexts}. Errors: ${errors.join("; ")}`,
+    `Cannot access any of the requested resources in workspace ${c.workspace.value} ${resourcesOrContexts}. Errors: ${errors.join(
+      "; ",
+    )}`,
   );
 };
 

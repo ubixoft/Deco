@@ -1,23 +1,3 @@
-export * from "../errors.ts";
-export * from "./assertions.ts";
-export { createResourceAccess } from "./auth/index.ts";
-export * from "./bindings/binder.ts";
-export * from "./context.ts";
-export {
-  getPresignedReadUrl_WITHOUT_CHECKING_AUTHORIZATION,
-  getWorkspaceBucketName,
-} from "./fs/api.ts";
-export { HOSTING_APPS_DOMAIN } from "./hosting/api.ts";
-export * from "./middlewares.ts";
-export * from "./models/llm-vault.ts";
-export * from "./wallet/stripe/webhook.ts";
-
-export { EMAIL_TOOLS } from "./email/api.ts";
-export {
-  getIntegration,
-  type IntegrationWithTools,
-} from "./integrations/api.ts";
-export { getRegistryApp } from "./registry/api.ts";
 import { Locator } from "../locator.ts";
 import * as agentAPI from "./agent/api.ts";
 import * as agentsAPI from "./agents/api.ts";
@@ -44,14 +24,38 @@ import * as oauthAPI from "./oauth/api.ts";
 import * as profilesAPI from "./profiles/api.ts";
 import * as promptsAPI from "./prompts/api.ts";
 import * as registryAPI from "./registry/api.ts";
+import { SANDBOX_TOOLS } from "./sandbox/api.ts";
 import type { CreateStubHandlerOptions, MCPClientStub } from "./stub.ts";
 import * as teamsAPI from "./teams/api.ts";
 import * as threadsAPI from "./threads/api.ts";
 import * as triggersAPI from "./triggers/api.ts";
 import * as walletAPI from "./wallet/api.ts";
-export { watchSSE } from "./deconfig/watch-sse.ts";
+
+export { AuthorizationClient, PolicyClient } from "../auth/policy.ts";
+export * from "../errors.ts";
+export { FileProcessor } from "../mcp/file-processor.ts";
+export * from "./assertions.ts";
+export { createResourceAccess } from "./auth/index.ts";
+export * from "./bindings/binder.ts";
+export * from "./context.ts";
 export type { ContractState } from "./contracts/api.ts";
+export type { DatatabasesRunSqlInput } from "./databases/api.ts";
 export { Blobs, Branch } from "./deconfig/api.ts";
+export { watchSSE } from "./deconfig/watch-sse.ts";
+export { EMAIL_TOOLS } from "./email/api.ts";
+export {
+  getPresignedReadUrl_WITHOUT_CHECKING_AUTHORIZATION,
+  getWorkspaceBucketName,
+} from "./fs/api.ts";
+export { HOSTING_APPS_DOMAIN } from "./hosting/api.ts";
+export {
+  getIntegration,
+  type IntegrationWithTools,
+} from "./integrations/api.ts";
+export * from "./middlewares.ts";
+export * from "./models/llm-vault.ts";
+export { getRegistryApp } from "./registry/api.ts";
+export * from "./wallet/stripe/webhook.ts";
 
 export const DECONFIG_TOOLS = deconfigAPI.DECONFIG_TOOLS;
 export const CONTRACTS_TOOLS = [
@@ -204,6 +208,8 @@ export const PROJECT_TOOLS = [
   contractRegister,
   // DECONFIG tools
   ...deconfigAPI.DECONFIG_TOOLS,
+  // SANDBOX tools
+  ...SANDBOX_TOOLS,
 ] as const;
 
 export const AGENT_TOOLS = [
@@ -346,7 +352,3 @@ export function createMCPToolsStub<TDefinition extends readonly ToolLike[]>(
     },
   );
 }
-
-export { AuthorizationClient, PolicyClient } from "../auth/policy.ts";
-export { FileProcessor } from "../mcp/file-processor.ts";
-export type { DatatabasesRunSqlInput } from "./databases/api.ts";
