@@ -9,7 +9,7 @@
     "@aws-sdk/s3-request-presigner": "^3.812.0",
     "@deco/actors": "npm:@jsr/deco__actors@0.34.1",
     "@deco/ai": "^1.0.0",
-    "@deco/cf-sandbox": "^1.0.0",
+    "@deco/cf-sandbox": "workspace:*",
     "@deco/workers-runtime": "^0.1.0",
     "@libsql/client": "^0.15.10",
     "@mastra/cloudflare-d1": "0.12.4",
