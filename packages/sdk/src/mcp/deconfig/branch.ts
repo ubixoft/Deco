@@ -9,7 +9,6 @@ interface DeconfigEnv {
 }
 
 const BLOB_DO = "blob-1";
-
 export const BranchId = {
   build(name: string, projectId: string) {
     return `${projectId}-${name}`;
@@ -169,7 +168,7 @@ export interface WatchOptions {
   pathFilter?: string;
 }
 
-/**
+/**q
  * File change event sent through the watch stream.
  */
 export interface FileChangeEvent {
