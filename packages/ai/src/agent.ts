@@ -1400,7 +1400,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         memory: {
           ...this.memory,
           thread: {
-            title: await this.resolveThreadTitle(aiMessages[0].content, thread),
+            title:
+              options?.threadTitle ??
+              (await this.resolveThreadTitle(aiMessages[0].content, thread)),
             id: thread.threadId,
           },
           resource: thread.resourceId,
