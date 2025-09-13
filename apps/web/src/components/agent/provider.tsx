@@ -9,7 +9,6 @@ import {
   useAgentData,
   useAgentRoot,
   useIntegrations,
-  useThread,
   useThreadMessages,
   useUpdateAgent,
   WELL_KNOWN_AGENTS,
@@ -155,7 +154,7 @@ export function AgentProvider({
   const latestRulesRef = useRef<string[] | null>(null);
 
   const mergedUiOptions = { ...DEFAULT_UI_OPTIONS, ...uiOptions };
-  const { data: thread } = useThread(threadId);
+
   const { data: { messages: threadMessages } = { messages: [] } } =
     !mergedUiOptions.showThreadMessages
       ? { data: { messages: [] } }
@@ -296,7 +295,6 @@ export function AgentProvider({
             instructions: effectiveChatState.instructions,
             bypassOpenRouter,
             sendReasoning: preferences.sendReasoning ?? true,
-            threadTitle: thread?.title,
             tools: effectiveChatState.tools_set,
             maxSteps: effectiveChatState.max_steps,
             pdfSummarization: preferences.pdfSummarization ?? true,
