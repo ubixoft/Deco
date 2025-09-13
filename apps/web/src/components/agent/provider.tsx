@@ -9,8 +9,8 @@ import {
   useAgentData,
   useAgentRoot,
   useIntegrations,
-  useThread,
   useThreadMessages,
+  useThreads,
   useUpdateAgent,
   WELL_KNOWN_AGENTS,
   type Agent,
@@ -155,7 +155,7 @@ export function AgentProvider({
   const latestRulesRef = useRef<string[] | null>(null);
 
   const mergedUiOptions = { ...DEFAULT_UI_OPTIONS, ...uiOptions };
-  const { data: thread } = useThread(threadId);
+  const { data: threads } = useThreads();
   const { data: { messages: threadMessages } = { messages: [] } } =
     !mergedUiOptions.showThreadMessages
       ? { data: { messages: [] } }
@@ -172,6 +172,10 @@ export function AgentProvider({
     });
     return () => off();
   }, []);
+
+  const thread = useMemo(() => {
+    return threads?.threads.find((t) => t.id === threadId);
+  }, [threads, threadId]);
 
   // Merge additionalTools into serverAgent tools_set
   const mergedToolsSet = useMemo<Agent["tools_set"]>(() => {
