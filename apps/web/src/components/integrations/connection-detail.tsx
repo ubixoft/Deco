@@ -924,7 +924,8 @@ function ToolsInspector({
     );
   }, [data.instances, selectedIntegrationId]);
 
-  const connection = selectedIntegration?.connection || data?.info?.connection;
+  const connection =
+    selectedIntegration?.connection || data?.info?.connection || {};
 
   const tools = useTools(connection as MCPConnection, ignoreCache.current);
 
@@ -1337,7 +1338,7 @@ function AppDetail() {
 
   return (
     <div className="flex flex-col gap-6 p-6 h-full">
-      <div className="w-full bg-card flex flex-col gap-4 border-b pb-6">
+      <div className="w-full flex flex-col gap-4 border-b pb-6">
         <ConfigureConnectionInstanceForm
           appKey={appKey}
           key={selectedIntegration?.id}
