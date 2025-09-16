@@ -1,4 +1,4 @@
-import { createServerClient } from "@deco/ai/mcp";
+import { createServerClient, jsonSchemaToModel } from "@deco/ai/mcp";
 import { HttpServerTransport } from "@deco/mcp/http";
 import {
   DECO_CMS_WEB_URL,
@@ -15,6 +15,7 @@ import {
   compose,
   CONTRACTS_TOOLS,
   createMCPToolsStub,
+  createTool,
   DECONFIG_TOOLS,
   EMAIL_TOOLS,
   getIntegration,
@@ -25,14 +26,16 @@ import {
   type IntegrationWithTools,
   issuerFromContext,
   ListToolsMiddleware,
+  MCPClient,
   PolicyClient,
   PROJECT_TOOLS,
   IntegrationSub as ProxySub,
+  Tool,
   type ToolLike,
+  watchSSE,
   withMCPAuthorization,
   withMCPErrorHandling,
   wrapToolFn,
-  watchSSE,
 } from "@deco/sdk/mcp";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
@@ -143,14 +146,10 @@ const mapMCPErrorToHTTPExceptionOrThrow = (err: Error) => {
  */
 const createMCPHandlerFor = (
   tools:
-    | typeof GLOBAL_TOOLS
-    | typeof PROJECT_TOOLS
-    | typeof EMAIL_TOOLS
-    | typeof AGENT_TOOLS
-    | typeof CONTRACTS_TOOLS
-    | typeof DECONFIG_TOOLS,
+    | readonly Tool[]
+    | ((c: Context<AppEnv>) => Promise<Tool[] | readonly Tool[]>),
 ) => {
-  return async (c: Context) => {
+  return async (c: Context<AppEnv>) => {
     const group = c.req.query("group");
 
     const server = new McpServer(
@@ -158,7 +157,7 @@ const createMCPHandlerFor = (
       { capabilities: { tools: {} } },
     );
 
-    for (const tool of tools) {
+    for (const tool of await (typeof tools === "function" ? tools(c) : tools)) {
       if (group && tool.group !== group) {
         continue;
       }
@@ -460,6 +459,46 @@ app.get(`/:org/:project/deconfig/watch`, (ctx) => {
 
 app.all("/mcp", createMCPHandlerFor(GLOBAL_TOOLS));
 app.all("/:org/:project/mcp", createMCPHandlerFor(PROJECT_TOOLS));
+
+app.all(
+  `/:org/:project/${WellKnownMcpGroups.Tools}/mcp`,
+  createMCPHandlerFor(async (ctx) => {
+    const appCtx = honoCtxToAppCtx(ctx);
+    const client = MCPClient.forContext(appCtx);
+    startTime(ctx, "sandbox-list-tools");
+
+    using _ = appCtx.resourceAccess.grant();
+    const { tools } = await State.run(
+      appCtx,
+      async () => await client.SANDBOX_LIST_TOOLS({}),
+    );
+
+    endTime(ctx, "sandbox-list-tools");
+
+    const virtualTools = tools.map((tool) => {
+      return createTool({
+        name: tool.name,
+        group: WellKnownMcpGroups.Tools,
+        description: tool.description,
+        inputSchema: jsonSchemaToModel(tool.inputSchema),
+        outputSchema: jsonSchemaToModel(tool.outputSchema),
+        handler: async (ctx, appCtx) => {
+          const { result } = await State.run(
+            appCtx,
+            async () =>
+              await client.SANDBOX_RUN_TOOL({
+                name: tool.name,
+                input: ctx,
+              }),
+          );
+          return result;
+        },
+      });
+    });
+
+    return virtualTools;
+  }),
+);
 app.all("/:org/:project/agents/:agentId/mcp", createMCPHandlerFor(AGENT_TOOLS));
 
 // Tool call endpoint handlers

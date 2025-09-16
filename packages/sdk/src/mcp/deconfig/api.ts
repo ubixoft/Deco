@@ -13,6 +13,7 @@
 import { z } from "zod";
 import { DECO_CHAT_ISSUER } from "../../auth/jwt.ts";
 import { WellKnownMcpGroups } from "../../crud/groups.ts";
+import { doRetryable } from "../../do-commons.ts";
 import type { WithTool } from "../assertions.ts";
 import {
   assertHasWorkspace,
@@ -34,6 +35,7 @@ interface DeconfigState {
 type DeconfigContext = WithTool<AppContext> & {
   state: DeconfigState;
 };
+
 // Types from branch.ts - simplified for MCP usage
 export const BranchId = {
   build(name: string, projectId: string) {
@@ -83,6 +85,7 @@ const createDeconfigTool = createToolFactory<DeconfigContext>(
     }
 
     if (
+      c.user &&
       "aud" in c.user &&
       typeof c.user.aud === "string" &&
       c.user.iss === DECO_CHAT_ISSUER
@@ -101,6 +104,7 @@ const createDeconfigTool = createToolFactory<DeconfigContext>(
       "Git-like versioned configuration management with branches, files, and real-time collaboration.",
     icon: "https://assets.decocache.com/mcp/24cfa17a-a0a8-40dc-9313-b4c3bdb63af6/deconfig_v1.png",
   },
+  doRetryable,
 );
 
 // =============================================================================
@@ -154,7 +158,7 @@ export const createBranch = createDeconfigTool({
 
       // Branch from existing branch using Durable Object
       using sourceRpc = await branchRpcFor(c, sourceBranch);
-      await sourceRpc.branch(branchName);
+      using _ = await sourceRpc.branch(branchName);
     }
     // Create empty branch
     const branch = await crud.createBranch({
@@ -303,7 +307,7 @@ export const mergeBranch = createDeconfigTool({
     await assertWorkspaceResourceAccess(c);
 
     using targetRpc = await branchRpcFor(c, targetBranch);
-    const result = await targetRpc.merge(
+    using result = await targetRpc.merge(
       sourceBranch,
       strategy as MergeStrategy,
     );
@@ -453,7 +457,7 @@ export const putFile = createDeconfigTool({
     using branchRpc = await branchRpcFor(c, branch);
 
     // Use transactional write (works for both conditional and unconditional writes)
-    const result = await branchRpc.transactionalWrite({
+    using result = await branchRpc.transactionalWrite({
       patches: [
         {
           path: normalizedPath,
@@ -501,7 +505,7 @@ export const readFile = createDeconfigTool({
     const normalizedPath = normalizePath(path);
 
     using branchRpc = await branchRpcFor(c, branch);
-    const fileData = await branchRpc.getFile(normalizedPath);
+    using fileData = await branchRpc.getFile(normalizedPath);
 
     if (!fileData) {
       throw new Error(`File not found: ${normalizedPath}`);
@@ -620,8 +624,7 @@ export const listFiles = createDeconfigTool({
     await assertWorkspaceResourceAccess(c);
 
     using branchRpc = await branchRpcFor(c, branch);
-
-    const files = await branchRpc.getFiles(prefix);
+    using files = await branchRpc.getFiles(prefix);
 
     return {
       files,
