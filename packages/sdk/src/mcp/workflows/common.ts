@@ -77,6 +77,10 @@ export function mapWorkflowStatus(
   }
 }
 
+const normalizeStepName = (name: string) => {
+  return name.endsWith("-1") ? name.slice(0, -2) : name; // for the first occurrence of the step we should remove suffix -1
+};
+
 /**
  * Extracts step results from workflow steps and returns parsed outputs
  */
@@ -86,31 +90,35 @@ export function extractStepResults(
   const stepResults: Record<string, unknown> = {};
 
   steps.forEach((step) => {
+    if (!("name" in step)) {
+      return;
+    }
+    const stepName = normalizeStepName(step.name);
     // Only process step types that have name and output (UnionMember0, UnionMember3)
-    if (step.type === "step" && "name" in step && "output" in step) {
+    if (step.type === "step") {
       try {
         // Parse the output if it's a JSON string
         const parsedOutput =
           typeof step.output === "string"
             ? JSON.parse(step.output)
             : step.output;
-        stepResults[step.name] = parsedOutput;
+        stepResults[stepName] = parsedOutput;
       } catch {
         // If parsing fails, use the raw output
-        stepResults[step.name] = step.output;
+        stepResults[stepName] = step.output;
       }
     }
 
     // Handle waitForEvent steps that also have name and output
-    if (step.type === "waitForEvent" && "name" in step && "output" in step) {
+    if (step.type === "waitForEvent") {
       try {
         const parsedOutput =
           typeof step.output === "string"
             ? JSON.parse(step.output)
             : step.output;
-        stepResults[step.name] = parsedOutput;
+        stepResults[stepName] = parsedOutput;
       } catch {
-        stepResults[step.name] = step.output;
+        stepResults[stepName] = step.output;
       }
     }
   });
