@@ -24,14 +24,12 @@ export const RetriesSchema = z.object({
     .int()
     .min(0)
     .default(0)
-    .optional()
     .describe("Number of retry attempts for this step (default: 0)"),
   delay: z
     .number()
     .int()
     .min(0)
     .default(0)
-    .optional()
     .describe("Delay in milliseconds between retry attempts (default: 0)"),
   backoff: z
     .enum(["constant", "linear", "exponential"])
