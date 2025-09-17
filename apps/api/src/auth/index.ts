@@ -449,6 +449,22 @@ async function ensureHasAnyOrg({
     throw new InternalServerError("Failed to add role to member");
   }
 
+  const { error: defaultProjectError } = await db
+    .from("deco_chat_projects")
+    .insert([
+      {
+        org_id: team.id,
+        slug: "default",
+        title: `${team.name} Default project`,
+        description: `${team.name}'s Default project`,
+      },
+    ]);
+
+  if (defaultProjectError) {
+    console.error("Failed to create default project", defaultProjectError);
+    throw new InternalServerError("Failed to create default project");
+  }
+
   return { created: true, slug: team.slug };
 }
 
