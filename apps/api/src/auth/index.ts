@@ -470,6 +470,7 @@ async function assertUserHasPersonalOrg(ctx: AppContext) {
   });
 
   if (!result.created) {
+    ctx.header("X-Org-Already-Exists", "true");
     return;
   }
 
