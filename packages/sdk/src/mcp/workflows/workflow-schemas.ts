@@ -51,7 +51,7 @@ export const ToolCallStepDefinitionSchema = z.object({
     .describe("A clear description of what this tool call step does"),
   options: z
     .object({
-      retries: RetriesSchema,
+      retries: RetriesSchema.optional(),
       timeout: z
         .number()
         .positive()
