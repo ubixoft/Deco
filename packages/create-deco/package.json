@@ -1,6 +1,6 @@
 {
   "name": "create-deco",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Create a new deco app",
   "main": "index.js",
   "bin": {
@@ -20,7 +20,7 @@
   "author": "Deco team",
   "license": "MIT",
   "dependencies": {
-    "deco-cli": "^0.20.0"
+    "deco-cli": "^0.20.1"
   },
   "engines": {
     "node": ">=22.0.0"
