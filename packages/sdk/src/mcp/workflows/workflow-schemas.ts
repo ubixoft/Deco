@@ -18,6 +18,27 @@ export const MappingStepDefinitionSchema = z.object({
     ),
 });
 
+export const RetriesSchema = z.object({
+  limit: z
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .optional()
+    .describe("Number of retry attempts for this step (default: 0)"),
+  delay: z
+    .number()
+    .int()
+    .min(0)
+    .default(0)
+    .optional()
+    .describe("Delay in milliseconds between retry attempts (default: 0)"),
+  backoff: z
+    .enum(["constant", "linear", "exponential"])
+    .optional()
+    .describe("Backoff strategy for retry attempts (default: constant)"),
+});
+
 // Tool call step definition - executes a tool from an integration
 export const ToolCallStepDefinitionSchema = z.object({
   name: z
@@ -30,13 +51,7 @@ export const ToolCallStepDefinitionSchema = z.object({
     .describe("A clear description of what this tool call step does"),
   options: z
     .object({
-      retry: z
-        .number()
-        .int()
-        .min(0)
-        .default(0)
-        .optional()
-        .describe("Number of retry attempts for this step (default: 0)"),
+      retries: RetriesSchema,
       timeout: z
         .number()
         .positive()

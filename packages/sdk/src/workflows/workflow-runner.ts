@@ -105,13 +105,14 @@ export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
         `Invalid step type: ${(stepDef as unknown as { type: string }).type}`,
       );
     }
+    const config =
+      stepDef.type === "tool_call" && "options" in stepDef.def
+        ? (stepDef.def.options ?? {})
+        : {};
 
     return {
       name: stepDef.def.name,
-      config:
-        stepDef.type === "tool_call" && "options" in stepDef.def
-          ? (stepDef.def.options ?? {})
-          : {},
+      config,
       fn: runnable,
     };
   }
