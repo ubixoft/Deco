@@ -281,7 +281,10 @@ export const getWorkflowStatus = createTool({
         stepResults,
         finalResult: cfStatus.output,
         partialResult,
-        error: cfStatus.error ?? undefined,
+        error:
+          typeof cfStatus.error === "object"
+            ? JSON.stringify(cfStatus.error, null, 2)
+            : (cfStatus.error ?? undefined),
         logs: [], // CF Workflows doesn't expose individual step logs
         startTime: Date.now(), // CF Workflows doesn't expose start time in status
         endTime: undefined, // CF Workflows doesn't expose end time in status
