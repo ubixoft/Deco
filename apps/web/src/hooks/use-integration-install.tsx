@@ -1,3 +1,4 @@
+import { getRegistryApp } from "@deco/sdk";
 import {
   RegistryApp,
   useCreateAPIKey,
@@ -7,12 +8,9 @@ import {
   usePermissionDescriptions,
 } from "@deco/sdk/hooks";
 import type { Integration } from "@deco/sdk/models";
-import type { JSONSchema7 } from "json-schema";
-import { useState as _useState } from "react";
-import { useWorkspaceLink } from "./use-navigate-workspace.ts";
 import { useMutation } from "@tanstack/react-query";
+import type { JSONSchema7 } from "json-schema";
 import { createPolicyStatements, getAllScopes } from "../utils/scopes.ts";
-import { getRegistryApp } from "@deco/sdk";
 
 interface InstallState {
   scopes?: string[];
@@ -86,7 +84,6 @@ export const useInstallCreatingApiKeyAndIntegration = () => {
 export function useIntegrationInstall(appName?: string) {
   const { data: appSchema, isLoading: appSchemaLoading } =
     useMarketplaceAppSchema(appName);
-  const getLinkFor = useWorkspaceLink();
   const installMutation = useInstallFromMarketplace();
 
   const installCreatingApiKeyAndIntegration =
@@ -152,20 +149,6 @@ export function useIntegrationInstall(appName?: string) {
         scopes: installState.scopes ?? [],
         installId,
       });
-
-      const integration = installState.integration;
-      const connection = integration?.connection;
-      const isHTTP = connection?.type === "HTTP";
-      const isWellKnownMCP =
-        isHTTP &&
-        connection?.url.includes("mcp.deco.site") &&
-        integration?.name; // weak check FIXME @author Marcos V. Candeia.
-
-      if (!isWellKnownMCP) {
-        const redirectPath = getLinkFor(`/connection/unknown:::${installId}`);
-        globalThis.location.href = redirectPath;
-        return;
-      }
     } catch (error) {
       console.error("Failed to complete setup:", error);
       throw error;
