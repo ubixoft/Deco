@@ -59,8 +59,12 @@ export const getReqToken = async (req: Request, env: DefaultEnv) => {
   env.DECO_API_JWT_PUBLIC_KEY &&
     (await jwtVerify(authToken, parseJWK(env.DECO_API_JWT_PUBLIC_KEY), {
       issuer: "https://api.decocms.com",
+      algorithms: ["RS256"],
+      typ: "JWT",
     }).catch((err) => {
-      console.error(`[auth-token]: error validating: ${err}`);
+      console.error(
+        `[auth-token]: error validating: ${err} ${env.DECO_API_JWT_PUBLIC_KEY}`,
+      );
     }));
 
   return authToken;
