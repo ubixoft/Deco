@@ -183,6 +183,7 @@ const hostingDeploy = new Command("deploy")
     "--dry-run",
     "Write deploy manifest to local filesystem instead of deploying",
   )
+  .option("--no-promote", "Do not promote the deployment to production routes")
   .argument("[cwd]", "Working directory")
   .action(async (cwd, options) => {
     try {
@@ -206,6 +207,7 @@ const hostingDeploy = new Command("deploy")
         assetsDirectory,
         force: options.force,
         dryRun: options.dryRun,
+        promote: options.promote ?? true,
       });
     } catch (error) {
       console.error(

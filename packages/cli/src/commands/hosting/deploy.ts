@@ -35,6 +35,7 @@ interface Options {
   unlisted?: boolean;
   assetsDirectory?: string;
   force?: boolean;
+  promote?: boolean;
   dryRun?: boolean;
 }
 
@@ -48,6 +49,7 @@ export const deploy = async ({
   assetsDirectory,
   skipConfirmation,
   force,
+  promote = true,
   unlisted = true,
   dryRun = false,
 }: Options) => {
@@ -163,6 +165,7 @@ export const deploy = async ({
     bundle: hasTsFile,
     unlisted,
     force,
+    promote,
   };
 
   console.log("🚚 Deployment summary:");
@@ -170,6 +173,9 @@ export const deploy = async ({
   console.log(`  Files: ${files.length}`);
   console.log(`  ${envVarsStatus}`);
   console.log(`  ${wranglerConfigStatus}`);
+  if (promote) {
+    console.log(`  Promote mode: true (deployment will replace production)`);
+  }
 
   if (dryRun) {
     const manifestPath = join(cwd, "deploy-manifest.json");
@@ -240,4 +246,12 @@ export const deploy = async ({
   console.log(`\n🎉 Deployed! Available at:`);
   hosts.forEach((host) => console.log(`  ${host}`));
   console.log();
+
+  const previewUrl = promote ? null : hosts[0];
+  if (process.env.GITHUB_OUTPUT && previewUrl) {
+    await fs.appendFile(
+      process.env.GITHUB_OUTPUT,
+      `preview_url=${previewUrl}\n`,
+    );
+  }
 };
