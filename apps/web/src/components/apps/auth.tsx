@@ -299,7 +299,7 @@ const InlineCreateIntegrationForm = ({
   return (
     <div className="flex flex-col space-y-6 w-full">
       {!shouldShowForm && !shouldShowPermissions && (
-        <div className="flex flex-col items-center justify-center h-screen">
+        <div className="flex flex-col items-center justify-center h-full">
           <p className="text-sm text-muted-foreground">
             No configuration required
           </p>
