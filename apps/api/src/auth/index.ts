@@ -358,7 +358,7 @@ async function ensureHasAnyOrg({
 }): Promise<{ created: boolean; slug: string | null }> {
   const { data: existingOrg, error: existingOrgError } = await db
     .from("teams")
-    .select("id, members(id, user_id)")
+    .select("id, members!inner(id, user_id)")
     .eq("members.user_id", user.id)
     .is("members.deleted_at", null);
 
