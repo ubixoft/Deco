@@ -1,6 +1,6 @@
 import inquirer from "inquirer";
 import { promises as fs } from "fs";
-import { relative, join, posix } from "path";
+import { join, posix, relative } from "path";
 import { walk } from "../../lib/fs.js";
 import { createWorkspaceClient } from "../../lib/mcp.js";
 import { getCurrentEnvVars } from "../../lib/wrangler.js";
@@ -54,7 +54,9 @@ export const deploy = async ({
   dryRun = false,
 }: Options) => {
   console.log(
-    `\n🚀 ${dryRun ? "Preparing" : "Deploying"} '${appSlug}' to '${workspace}'${dryRun ? " (dry run)" : ""}...\n`,
+    `\n🚀 ${dryRun ? "Preparing" : "Deploying"} '${appSlug}' to '${workspace}'${
+      dryRun ? " (dry run)" : ""
+    }...\n`,
   );
 
   // Ensure the target directory exists

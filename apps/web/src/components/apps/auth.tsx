@@ -2,20 +2,20 @@ import {
   type Integration,
   RegistryAppNotFoundError,
   SDKProvider,
+  type Team,
   useCreateOAuthCodeForIntegration,
   useIntegrations,
-  type Team,
 } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { Combobox } from "@deco/ui/components/combobox.tsx";
-import { useEffect, useMemo, useState, Suspense } from "react";
-import { ChevronsUpDown, Check } from "lucide-react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@deco/ui/lib/utils.ts";
 import { Avatar } from "../common/avatar/index.tsx";
 import { AppsAuthLayout, OAuthSearchParams } from "./layout.tsx";
-import { useRegistryApp, type RegistryApp } from "@deco/sdk";
+import { type RegistryApp, useRegistryApp } from "@deco/sdk";
 import { IntegrationAvatar } from "../common/avatar/integration.tsx";
 import { ErrorBoundary } from "../../error-boundary.tsx";
 import { useInstallCreatingApiKeyAndIntegration } from "../../hooks/use-integration-install.tsx";
@@ -433,7 +433,7 @@ const SelectableInstallList = ({
         className="w-full h-16 justify-start px-3 py-3"
       >
         <Icon name="add" size={16} />
-        <span className="text-sm">Create new </span>
+        <span className="text-sm">Create new</span>
       </Button>
     </div>
   );

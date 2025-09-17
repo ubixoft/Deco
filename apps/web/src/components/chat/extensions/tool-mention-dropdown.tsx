@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useAgentSettingsToolsSet } from "../../../hooks/use-agent-settings-tools-set.ts";
 import { IntegrationAvatar } from "../../common/avatar/integration.tsx";
-import { type ToolOption, type ResourceOption } from "./tool-suggestion.ts";
+import { type ResourceOption, type ToolOption } from "./tool-suggestion.ts";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import {
   Tooltip,
@@ -262,8 +262,9 @@ export default forwardRef<
                   }
 
                   const sections: Array<{ label: string; list: number[] }> = [];
-                  if (toolIdxs.length)
+                  if (toolIdxs.length) {
                     sections.push({ label: "Tools", list: toolIdxs });
+                  }
                   // Sort resource categories by label for consistency
                   for (const label of Array.from(byType.keys()).sort()) {
                     const list = byType.get(label)!;

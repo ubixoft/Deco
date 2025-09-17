@@ -380,8 +380,7 @@ function handleSecretStringAnyOf(schemas: JSONSchema7[]): JSONSchema7 | null {
           .hideOption === true)
     ) {
       secretSchema = schema;
-    }
-    // Check if this is a string schema
+    } // Check if this is a string schema
     else if (schema.type === "string") {
       stringSchema = schema;
     }

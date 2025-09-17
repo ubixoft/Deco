@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import {
+  type ContractsCommitsItem,
   Integration,
   useIntegrations,
   useToolCall,
-  type ContractsCommitsItem,
 } from "@deco/sdk";
 import type { ContractState } from "@deco/sdk/mcp";
 import { MicroDollar } from "@deco/sdk/mcp/wallet";

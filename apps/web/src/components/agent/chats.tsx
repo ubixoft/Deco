@@ -1,4 +1,4 @@
-import { SDKProvider, UnauthorizedError, type ProjectLocator } from "@deco/sdk";
+import { type ProjectLocator, SDKProvider, UnauthorizedError } from "@deco/sdk";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { SidebarInset, SidebarProvider } from "@deco/ui/components/sidebar.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";

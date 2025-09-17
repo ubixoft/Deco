@@ -48,8 +48,8 @@ import { DECO_CMS_API_LOCAL } from "./lib/constants.js";
 import {
   getAppDomain,
   getConfig,
-  readWranglerConfig,
   getLocal,
+  readWranglerConfig,
   setLocal,
 } from "./lib/config.js";
 import { loginCommand } from "./commands/auth/login.js";
@@ -66,20 +66,20 @@ import { upgradeCommand } from "./commands/update/upgrade.js";
 import { updateCommand } from "./commands/update/update.js";
 import { addCommand } from "./commands/add/add.js";
 import {
-  callToolCommand,
   autocompleteIntegrations,
+  callToolCommand,
 } from "./commands/tools/call-tool.js";
 import { completionCommand } from "./commands/completion/completion.js";
 import { installCompletionCommand } from "./commands/completion/install.js";
 import {
   cloneCommand,
+  deleteCommand,
   getCommand,
+  listCommand,
+  pullCommand,
+  pushCommand,
   putCommand,
   watchCommand,
-  pushCommand,
-  pullCommand,
-  listCommand,
-  deleteCommand,
 } from "./commands/deconfig/index.js";
 import { detectRuntime } from "./lib/runtime.js";
 

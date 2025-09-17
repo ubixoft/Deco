@@ -1,4 +1,4 @@
-import { useAgents, useTeamMembers, useOrganizations } from "@deco/sdk";
+import { useAgents, useOrganizations, useTeamMembers } from "@deco/sdk";
 import { WELL_KNOWN_AGENT_IDS } from "@deco/sdk/constants";
 import {
   Tooltip,

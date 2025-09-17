@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@deco/ui/components/button.tsx";
 import {
@@ -77,8 +77,12 @@ export function DepositDialog() {
       createWalletCheckoutSession({
         locator: locator,
         amountUSDCents: amountInCents,
-        successUrl: `${location.origin}${workspaceLink("/monitor/billing?deposit_success=true")}`,
-        cancelUrl: `${location.origin}${workspaceLink("/monitor/billing?deposit_success=false")}`,
+        successUrl: `${location.origin}${workspaceLink(
+          "/monitor/billing?deposit_success=true",
+        )}`,
+        cancelUrl: `${location.origin}${workspaceLink(
+          "/monitor/billing?deposit_success=false",
+        )}`,
       }),
   });
 

@@ -2,8 +2,8 @@ import type { ThreadFilterOptions } from "@deco/sdk";
 import {
   useAgents,
   useAuditEvents,
-  useTeamMembers,
   useOrganizations,
+  useTeamMembers,
 } from "@deco/sdk";
 import {
   Alert,

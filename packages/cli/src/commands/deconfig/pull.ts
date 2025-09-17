@@ -1,11 +1,11 @@
 import {
   existsSync,
   mkdirSync,
-  writeFileSync,
   readFileSync,
   unlinkSync,
+  writeFileSync,
 } from "fs";
-import { join, dirname, relative } from "path";
+import { dirname, join, relative } from "path";
 import process from "node:process";
 import { fetchFileContent } from "./base.js";
 import { walk } from "../../lib/fs.js";
@@ -40,7 +40,9 @@ export async function pullCommand(options: PullOptions): Promise<void> {
   } = options;
 
   console.log(
-    `📥 Pulling changes from branch "${branchName}" to "${localPath}"${dryRun ? " (dry run)" : ""}...`,
+    `📥 Pulling changes from branch "${branchName}" to "${localPath}"${
+      dryRun ? " (dry run)" : ""
+    }...`,
   );
 
   // Ensure local directory exists
@@ -151,7 +153,9 @@ export async function pullCommand(options: PullOptions): Promise<void> {
         toDelete.forEach((path) => console.log(`   - ${path}`));
       }
       console.log(
-        `\n✅ Dry run completed. ${toDownload.length + toUpdate.length + toDelete.length} changes detected.`,
+        `\n✅ Dry run completed. ${
+          toDownload.length + toUpdate.length + toDelete.length
+        } changes detected.`,
       );
       return;
     }

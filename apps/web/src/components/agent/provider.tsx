@@ -1,10 +1,12 @@
 import type { LanguageModelV1FinishReason } from "@ai-sdk/provider";
 import { useChat } from "@ai-sdk/react";
 import {
+  type Agent,
   AgentSchema,
   DECO_CMS_API_URL,
   dispatchMessages,
   getTraceDebugId,
+  type Integration,
   Toolset,
   useAgentData,
   useAgentRoot,
@@ -13,8 +15,6 @@ import {
   useThreads,
   useUpdateAgent,
   WELL_KNOWN_AGENTS,
-  type Agent,
-  type Integration,
 } from "@deco/sdk";
 import {
   AlertDialog,
@@ -30,14 +30,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { UIMessage } from "ai";
 import {
   createContext,
+  type PropsWithChildren,
+  type RefObject,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
-  useEffect,
-  type PropsWithChildren,
-  type RefObject,
 } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import { useBlocker } from "react-router";

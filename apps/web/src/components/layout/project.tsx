@@ -17,7 +17,7 @@ import {
 import { Toaster } from "@deco/ui/components/sonner.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import { DockviewReadyEvent } from "dockview-react";
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { Link, Outlet, useParams } from "react-router";
 import { useLocalStorage } from "../../hooks/use-local-storage.ts";
 import { useWorkspaceLink } from "../../hooks/use-navigate-workspace.ts";
@@ -29,7 +29,7 @@ import {
   DecopilotTabs,
   toggleDecopilotTab,
 } from "../decopilot/index.tsx";
-import Docked, { useDock, type Tab } from "../dock/index.tsx";
+import Docked, { type Tab, useDock } from "../dock/index.tsx";
 import { ProfileModalProvider, useProfileModal } from "../profile-modal.tsx";
 import { AppSidebar } from "../sidebar/index.tsx";
 import { WithWorkspaceTheme } from "../theme.tsx";

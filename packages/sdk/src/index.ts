@@ -34,8 +34,19 @@ export * from "./hooks/tools.ts";
 export * from "./hooks/trigger.ts";
 export * from "./hooks/wallet.ts";
 export * from "./hooks/workflows.ts";
+export * from "./hooks/workflow-builder.ts";
 export * from "./hooks/roles.ts";
 export * from "./hooks/registry.ts";
+export * from "./hooks/sandbox-workflows.ts";
+export * from "./hooks/workflow-step-generator.ts";
+export * from "./hooks/create-workflow.ts";
+export * from "./hooks/workflow-step-executor.ts";
+
+// Schemas for sandbox workflows (exported for consumers like the web app)
+// Export new workflow types
+export * from "./mcp/workflows/types.ts";
+// Legacy export for compatibility (to be removed)
+export { WorkflowDefinitionSchema } from "./mcp/workflows/types.ts";
 
 export * from "./models/agent.ts";
 export * from "./models/mcp.ts";

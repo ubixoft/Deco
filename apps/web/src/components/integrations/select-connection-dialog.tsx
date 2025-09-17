@@ -1,7 +1,7 @@
 import {
   getRegistryApp,
-  useMarketplaceIntegrations,
   type Integration,
+  useMarketplaceIntegrations,
 } from "@deco/sdk";
 import { AppName } from "@deco/sdk/common";
 import { Button } from "@deco/ui/components/button.tsx";
@@ -17,14 +17,14 @@ import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import {
-  useEffect,
-  useMemo,
-  useState,
-  useRef,
   createContext,
-  useContext,
   Dispatch,
   SetStateAction,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import { useSearchParams } from "react-router";
 import { trackEvent } from "../../hooks/analytics.ts";
@@ -39,8 +39,8 @@ import { IntegrationIcon } from "./common.tsx";
 import { InstalledConnections } from "./installed-connections.tsx";
 import {
   Marketplace,
-  NEW_CUSTOM_CONNECTION,
   type MarketplaceIntegration,
+  NEW_CUSTOM_CONNECTION,
 } from "./marketplace.tsx";
 import { OAuthCompletionDialog } from "./oauth-completion-dialog.tsx";
 import { UseFormReturn } from "react-hook-form";
@@ -121,8 +121,9 @@ export function ConfirmMarketplaceInstallDialog({
 
   const { dependencies: maybeAppDependencyList, app: maybeAppList } =
     useMemo(() => {
-      if (!integrationState.schema?.properties)
+      if (!integrationState.schema?.properties) {
         return { dependencies: null, app: null };
+      }
 
       const result = { dependencies: [] as string[], app: [] as string[] };
 

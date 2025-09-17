@@ -138,7 +138,9 @@ function InternalResourceDetailWithIntegration({
     );
   }
 
-  const dataUrl = `data:${content.mimeType ?? "application/octet-stream"};base64,${content.data ?? ""}`;
+  const dataUrl = `data:${
+    content.mimeType ?? "application/octet-stream"
+  };base64,${content.data ?? ""}`;
   return (
     <div className="p-4">
       <iframe src={dataUrl} className="w-full h-[70vh] border rounded" />

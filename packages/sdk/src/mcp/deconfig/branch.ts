@@ -168,7 +168,7 @@ export interface WatchOptions {
   pathFilter?: string;
 }
 
-/**q
+/** q
  * File change event sent through the watch stream.
  */
 export interface FileChangeEvent {
@@ -539,8 +539,9 @@ export class Branch extends DurableObject<DeconfigEnv> {
 
       // Send events for added/modified files
       for (const [path, metadata] of Object.entries(added)) {
-        if (options.pathFilter && !path.startsWith(options.pathFilter))
+        if (options.pathFilter && !path.startsWith(options.pathFilter)) {
           continue;
+        }
 
         const event: FileChangeEvent = {
           type: this.state.tree[path] ? "modified" : "added",
@@ -558,8 +559,9 @@ export class Branch extends DurableObject<DeconfigEnv> {
 
       // Send events for deleted files
       for (const path of deleted) {
-        if (options.pathFilter && !path.startsWith(options.pathFilter))
+        if (options.pathFilter && !path.startsWith(options.pathFilter)) {
           continue;
+        }
 
         const event: FileChangeEvent = {
           type: "deleted",

@@ -148,7 +148,9 @@ export async function callToolCommand(
         payload = JSON.parse(options.payload);
       } catch (error) {
         throw new Error(
-          `Invalid JSON payload: ${error instanceof Error ? error.message : String(error)}`,
+          `Invalid JSON payload: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
         );
       }
     }

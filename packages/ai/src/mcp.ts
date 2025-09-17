@@ -1,16 +1,16 @@
 // deno-lint-ignore-file no-explicit-any
 import {
   CallToolResultSchema,
-  MCPTool,
   type DecoConnection,
   type HTTPConnection,
   type Integration,
   type MCPConnection,
+  MCPTool,
 } from "@deco/sdk";
 import { createSessionTokenCookie } from "@deco/sdk/auth";
 import { WebCache } from "@deco/sdk/cache";
 import { SWRCache } from "@deco/sdk/cache/swr";
-import { fromWorkspaceString, MCPClient, type AppContext } from "@deco/sdk/mcp";
+import { type AppContext, fromWorkspaceString, MCPClient } from "@deco/sdk/mcp";
 import { slugify } from "@deco/sdk/memory";
 import {
   createServerClient,

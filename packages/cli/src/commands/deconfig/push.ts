@@ -24,7 +24,9 @@ export async function pushCommand(options: PushOptions): Promise<void> {
   } = options;
 
   console.log(
-    `📤 Pushing files from "${localPath}" to branch "${branchName}"${dryRun ? " (dry run)" : ""}...`,
+    `📤 Pushing files from "${localPath}" to branch "${branchName}"${
+      dryRun ? " (dry run)" : ""
+    }...`,
   );
 
   try {

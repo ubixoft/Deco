@@ -19,7 +19,7 @@ import {
   createWalletClient,
   WellKnownTransactions,
 } from "@deco/sdk/mcp/wallet";
-import { InternalServerError, assertPrincipalIsUser } from "@deco/sdk/mcp";
+import { assertPrincipalIsUser, InternalServerError } from "@deco/sdk/mcp";
 import { WELL_KNOWN_PLANS } from "@deco/sdk";
 
 const AUTH_CALLBACK_OAUTH = "/auth/callback/oauth";

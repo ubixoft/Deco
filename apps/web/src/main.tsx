@@ -202,7 +202,9 @@ function ErrorFallback() {
     }
 
     const next = new URL(`${pathname}${search}`, globalThis.location.origin);
-    globalThis.location.href = `/login?next=${encodeURIComponent(next.toString())}`;
+    globalThis.location.href = `/login?next=${encodeURIComponent(
+      next.toString(),
+    )}`;
   }, [isUnauthorized, pathname, search]);
 
   if (isUnauthorized) {

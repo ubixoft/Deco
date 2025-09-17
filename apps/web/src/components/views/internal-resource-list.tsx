@@ -20,6 +20,12 @@ import {
 } from "@deco/ui/components/dropdown-menu.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@deco/ui/components/tooltip.tsx";
 import { useViewMode } from "@deco/ui/hooks/use-view-mode.ts";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -28,6 +34,7 @@ import { EmptyState } from "../common/empty-state.tsx";
 import { ListPageHeader } from "../common/list-page-header.tsx";
 import { Table, type TableColumn } from "../common/table/index.tsx";
 import { useParams } from "react-router";
+import { ResourceCreateDialog } from "./resource-create-dialog.tsx";
 
 export function InternalResourceList({ name }: { name: string }) {
   const { integrationId } = useParams();
@@ -72,6 +79,9 @@ export function InternalResourceListWithIntegration({
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   async function runSearch(term: string) {
     setLoading(true);
@@ -161,45 +171,76 @@ export function InternalResourceListWithIntegration({
       const selected = views.find((v) => v.resourceName === name);
       const targetViewName = selected?.name ?? `${name.toUpperCase()}_DETAIL`;
       const targetUrl = selected?.url
-        ? `${selected.url}${selected.url.includes("?") ? "&" : "?"}uri=${encodeURIComponent(it.uri)}`
-        : `internal://resource/detail?name=${encodeURIComponent(name)}&uri=${encodeURIComponent(it.uri)}`;
+        ? `${selected.url}${selected.url.includes("?") ? "&" : "?"}uri=${encodeURIComponent(
+            it.uri,
+          )}`
+        : `internal://resource/detail?name=${encodeURIComponent(name)}&uri=${encodeURIComponent(
+            it.uri,
+          )}`;
       navigateWorkspace(
-        `/views/${integrationId}/${targetViewName}?viewUrl=${encodeURIComponent(targetUrl)}`,
+        `/views/${integrationId}/${targetViewName}?viewUrl=${encodeURIComponent(
+          targetUrl,
+        )}`,
       );
     } catch (_) {
       // fallback: internal detail
       const targetViewName = `${name.toUpperCase()}_DETAIL`;
-      const targetUrl = `internal://resource/detail?name=${encodeURIComponent(name)}&uri=${encodeURIComponent(it.uri)}`;
+      const targetUrl = `internal://resource/detail?name=${encodeURIComponent(
+        name,
+      )}&uri=${encodeURIComponent(it.uri)}`;
       navigateWorkspace(
-        `/views/${integrationId}/${targetViewName}?viewUrl=${encodeURIComponent(targetUrl)}`,
+        `/views/${integrationId}/${targetViewName}?viewUrl=${encodeURIComponent(
+          targetUrl,
+        )}`,
       );
     }
   }
 
-  async function createItem() {
+  function openCreateDialog() {
     if (!caps.hasCreate) return;
-    const resourceName = globalThis.prompt("Name (unique)") ?? "";
-    if (!resourceName) return;
-    const title = globalThis.prompt("Title (optional)") ?? undefined;
-    const description =
-      globalThis.prompt("Description (optional)") ?? undefined;
-    const data = globalThis.prompt("Content (text)");
-    if (data == null) return;
-    setLoading(true);
+    setCreateError(null); // Clear any previous errors
+    setIsCreateDialogOpen(true);
+  }
+
+  async function handleCreateResource(data: {
+    resourceName: string;
+    title?: string;
+    description?: string;
+    content: { data: string; type: "text" };
+  }) {
+    setIsCreating(true);
+    setCreateError(null);
     try {
-      await callTool(integration?.connection, {
+      const response = await callTool(integration?.connection, {
         name: "DECO_CHAT_RESOURCES_CREATE",
         arguments: {
           name,
-          resourceName,
-          title,
-          description,
-          content: { data, type: "text" },
+          resourceName: data.resourceName,
+          title: data.title,
+          description: data.description,
+          content: data.content,
         },
       });
+
+      if (response.isError) {
+        // Extract error message from response.content[0].text
+        const content = response.content as Record<string, unknown>;
+        const errorMessage =
+          (content as unknown as Array<{ text?: string }>)?.[0]?.text ||
+          "Failed to create resource";
+        setCreateError(errorMessage);
+        return; // Don't close dialog or refresh on error
+      }
+
+      // Success - close dialog and refresh
+      setIsCreateDialogOpen(false);
       await runSearch(q);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "An unexpected error occurred";
+      setCreateError(errorMessage);
     } finally {
-      setLoading(false);
+      setIsCreating(false);
     }
   }
 
@@ -297,19 +338,37 @@ export function InternalResourceListWithIntegration({
         onChange: (e) =>
           setSearchParams({ q: (e.target as HTMLInputElement).value }),
         onKeyDown: (e) => {
-          if (e.key === "Enter")
+          if (e.key === "Enter") {
             runSearch((e.target as HTMLInputElement).value);
+          }
         },
       }}
       view={{ viewMode, onChange: setViewMode }}
       actionsRight={
-        caps.hasCreate ? (
-          <div className="pl-3 ml-2 border-l border-border">
-            <Button onClick={createItem} variant="special">
+        <div className="pl-3 ml-2 border-l border-border flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => runSearch(q)}
+                  variant="outline"
+                  size="icon"
+                  disabled={loading}
+                >
+                  <Icon name="refresh" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refresh</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {caps.hasCreate && (
+            <Button onClick={openCreateDialog} variant="special">
               Create
             </Button>
-          </div>
-        ) : null
+          )}
+        </div>
       }
     />
   );
@@ -441,12 +500,22 @@ export function InternalResourceListWithIntegration({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem onClick={() => openItem(row)}>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          openItem(row);
+                        }}
+                      >
                         Open
                       </DropdownMenuItem>
                       {caps.hasCreate ? (
                         <DropdownMenuItem
-                          onClick={() => duplicateItem(row)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            duplicateItem(row);
+                          }}
                           disabled={isDuplicating}
                         >
                           {isDuplicating ? "Duplicating..." : "Duplicate"}
@@ -457,7 +526,11 @@ export function InternalResourceListWithIntegration({
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             variant="destructive"
-                            onClick={() => deleteItem(row)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              deleteItem(row);
+                            }}
                           >
                             Delete
                           </DropdownMenuItem>
@@ -512,6 +585,16 @@ export function InternalResourceListWithIntegration({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ResourceCreateDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        resourceName={name}
+        onSubmit={handleCreateResource}
+        isLoading={isCreating}
+        error={createError}
+        onClearError={() => setCreateError(null)}
+      />
     </div>
   );
 }

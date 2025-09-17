@@ -1,47 +1,23 @@
-import {
-  callFunction,
-  createSandboxRuntime,
-  inspect,
-  installConsole,
-  QuickJSHandle,
-} from "@deco/cf-sandbox";
-import { Validator } from "jsonschema";
+import { callFunction, inspect } from "@deco/cf-sandbox";
 import z from "zod";
-import { createToolGroup, MCPClientStub } from "../context.ts";
-import { slugify } from "../deconfig/api.ts";
+import { assertWorkspaceResourceAccess, MCPClient } from "../index.ts";
 import {
-  assertWorkspaceResourceAccess,
-  MCPClient,
-  ProjectTools,
-} from "../index.ts";
-
-// Utility functions for consistent naming
-const toolNameSlugify = (txt: string) => slugify(txt).toUpperCase();
-const fileNameSlugify = (txt: string) => slugify(txt).toLowerCase();
-
-// Cache for compiled validators
-const validatorCache = new Map<string, Validator>();
-
-function validate(instance: unknown, schema: Record<string, unknown>) {
-  const schemaKey = JSON.stringify(schema);
-  let validator = validatorCache.get(schemaKey);
-
-  if (!validator) {
-    validator = new Validator();
-    validator.addSchema(schema);
-
-    validatorCache.set(schemaKey, validator);
-  }
-
-  return validator.validate(instance, schema);
-}
+  asEnv,
+  createTool,
+  evalCodeAndReturnDefaultHandle,
+  fileNameSlugify,
+  processExecuteCode,
+  toolNameSlugify,
+  validate,
+  validateExecuteCode,
+} from "./utils.ts";
 
 /**
- * Reads a tool definition from the workspace
+ * Reads a tool definition from the workspace and inlines the function code
  * @param name - The name of the tool
  * @param client - The MCP client
  * @param branch - The branch to read from
- * @returns The tool definition or null if not found
+ * @returns The tool definition with inlined function code or null if not found
  */
 async function readTool(
   name: string,
@@ -58,16 +34,44 @@ async function readTool(
       format: "json",
     });
 
-    return result.content as z.infer<typeof ToolDefinitionSchema>;
+    const tool = result.content as z.infer<typeof ToolDefinitionSchema>;
+
+    // Inline the tool function code
+    const toolFunctionPath = tool.execute.replace("file://", "");
+    const toolFunctionResult = await client.READ_FILE({
+      branch,
+      path: toolFunctionPath,
+      format: "plainString",
+    });
+
+    return {
+      name: tool.name,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      outputSchema: tool.outputSchema,
+      execute: toolFunctionResult.content, // Inline the code in the execute field
+    };
   } catch {
     return null;
   }
 }
 
-export const createTool = createToolGroup("Sandbox", {
-  name: "Code Sandbox",
-  description: "Run JavaScript code",
-  icon: "https://assets.decocache.com/mcp/81d602bb-45e2-4361-b52a-23379520a34d/sandbox.png",
+export const ToolDefinitionSchema = z.object({
+  name: z.string().describe("The name of the tool"),
+  description: z.string().describe("The description of the tool"),
+  inputSchema: z
+    .object({})
+    .passthrough()
+    .describe("The JSON schema of the input of the tool"),
+  outputSchema: z
+    .object({})
+    .passthrough()
+    .describe("The JSON schema of the output of the tool"),
+  execute: z
+    .string()
+    .describe(
+      "Either a file:// URL to an existing function file, or inline ES module code with default export function. If inline code is provided, it will be saved to /src/functions/{name}.ts",
+    ),
 });
 
 const SANDBOX_CREATE_TOOL_DESCRIPTION = `Create a new tool in the sandbox with JSON Schema validation.
@@ -115,66 +119,7 @@ TOOL_NAME is the name of the tool to call from that integration (you can retriev
 tool_arguments is the arguments to pass to the tool
 `;
 
-const ToolDefinitionSchema = z.object({
-  name: z.string().describe("The name of the tool"),
-  description: z.string().describe("The description of the tool"),
-  inputSchema: z
-    .object({})
-    .passthrough()
-    .describe("The JSON schema of the input of the tool"),
-  outputSchema: z
-    .object({})
-    .passthrough()
-    .describe("The JSON schema of the output of the tool"),
-  execute: z
-    .string()
-    .describe(
-      "Either a file:// URL to an existing function file, or inline ES module code with default export function. If inline code is provided, it will be saved to /src/functions/{name}.ts",
-    ),
-});
-
-export const evalCodeAndReturnDefaultHandle = async (
-  code: string,
-  runtimeId: string,
-) => {
-  // Create sandbox runtime to validate the function
-  const runtime = await createSandboxRuntime(runtimeId, {
-    memoryLimitBytes: 64 * 1024 * 1024, // 64MB
-    stackSizeBytes: 1 << 20, // 1MB,
-  });
-
-  const ctx = runtime.newContext({ interruptAfterMs: 100 });
-
-  // Install built-ins
-  const guestConsole = installConsole(ctx);
-
-  // Validate the function by evaluating it as an ES module
-  const result = ctx.evalCode(code, "index.js", {
-    strict: true,
-    strip: true,
-    type: "module",
-  });
-
-  let exportsHandle: QuickJSHandle;
-  if (ctx.runtime.hasPendingJob()) {
-    const promise = ctx.resolvePromise(ctx.unwrapResult(result));
-    ctx.runtime.executePendingJobs();
-    exportsHandle = ctx.unwrapResult(await promise);
-  } else {
-    exportsHandle = ctx.unwrapResult(result);
-  }
-
-  const defaultHandle = ctx.getProp(exportsHandle, "default");
-
-  return {
-    ctx,
-    defaultHandle,
-    guestConsole,
-    [Symbol.dispose]: ctx.dispose.bind(ctx),
-  };
-};
-
-const sandboxCreateTool = createTool({
+export const upsertTool = createTool({
   name: "SANDBOX_UPSERT_TOOL",
   description: SANDBOX_CREATE_TOOL_DESCRIPTION,
   inputSchema: ToolDefinitionSchema,
@@ -198,43 +143,22 @@ const sandboxCreateTool = createTool({
     const toolName = toolNameSlugify(name);
 
     try {
-      // Determine if execute is a file:// URL or inline code
-      const isFileUrl = execute.startsWith("file://");
-      let functionCode: string;
-      let functionPath: string;
+      // Process the execute code
+      const functionPath = `/src/functions/${filename}.ts`;
+      const { functionCode, functionPath: finalFunctionPath } =
+        await processExecuteCode(execute, functionPath, client, branch);
 
-      if (isFileUrl) {
-        // It's already a file:// URL, use it as is
-        functionPath = execute.replace("file://", "");
-
-        // Read the existing file to validate it
-        const fileResult = await client.READ_FILE({
-          branch,
-          path: functionPath,
-        });
-        functionCode = fileResult.content;
-      } else {
-        // It's inline code, save it to a file
-        functionPath = `/src/functions/${filename}.ts`;
-        functionCode = execute;
-
-        await client.PUT_FILE({
-          branch,
-          path: functionPath,
-          content: functionCode,
-        });
-      }
-
-      using evaluation = await evalCodeAndReturnDefaultHandle(
+      // Validate the function code
+      const validation = await validateExecuteCode(
         functionCode,
         runtimeId,
+        "Tool",
       );
-      const { ctx, defaultHandle } = evaluation;
 
-      if (ctx.typeof(defaultHandle) !== "function") {
+      if (!validation.success) {
         return {
           success: false,
-          error: "Module must export a default function",
+          error: validation.error,
         };
       }
 
@@ -246,7 +170,7 @@ const sandboxCreateTool = createTool({
         description,
         inputSchema,
         outputSchema,
-        execute: `file://${functionPath}`,
+        execute: `file://${finalFunctionPath}`,
       };
 
       await client.PUT_FILE({
@@ -265,75 +189,7 @@ const sandboxCreateTool = createTool({
   },
 });
 
-// Transform current workspace as callable integration environment
-const asEnv = async (client: MCPClientStub<ProjectTools>) => {
-  const { items } = await client.INTEGRATIONS_LIST({});
-
-  const env: Record<
-    string,
-    Record<string, (args: unknown) => Promise<unknown>>
-  > = {};
-
-  for (const item of items) {
-    // @ts-expect-error Somehow tools are not typed
-    const tools = item.tools;
-
-    if (!Array.isArray(tools)) {
-      continue;
-    }
-
-    env[item.id] = Object.fromEntries(
-      // deno-lint-ignore no-explicit-any
-      tools.map((tool: any) => [
-        tool.name,
-        async (args: unknown) => {
-          const inputValidation = validate(args, tool.inputSchema);
-
-          if (!inputValidation.valid) {
-            throw new Error(
-              `Input validation failed: ${inspect(inputValidation)}`,
-            );
-          }
-
-          const response = await client.INTEGRATIONS_CALL_TOOL({
-            connection: item.connection,
-            params: {
-              name: tool.name,
-              arguments: args as Record<string, unknown>,
-            },
-          });
-
-          if (response.isError) {
-            throw new Error(
-              `Tool ${tool.name} returned an error: ${inspect(response)}`,
-            );
-          }
-
-          if (response.structuredContent && tool.outputSchema) {
-            const outputValidation = validate(
-              response.structuredContent,
-              tool.outputSchema,
-            );
-
-            if (!outputValidation.valid) {
-              throw new Error(
-                `Output validation failed: ${inspect(outputValidation)}`,
-              );
-            }
-
-            return response.structuredContent;
-          }
-
-          return response.structuredContent || response.content;
-        },
-      ]),
-    );
-  }
-
-  return env;
-};
-
-const sandboxRunTool = createTool({
+export const runTool = createTool({
   name: "SANDBOX_RUN_TOOL",
   description: "Run a tool in the sandbox",
   inputSchema: z.object({
@@ -373,35 +229,21 @@ const sandboxRunTool = createTool({
       return { error: `Input validation failed: ${inspect(inputValidation)}` };
     }
 
-    // Load the function code from the file
-    const functionPath = tool.execute.replace("file://", "");
-    if (!functionPath) {
-      return { error: "Tool function file not found" };
-    }
-
-    const functionResult = await client.READ_FILE({
-      branch,
-      path: functionPath,
-      format: "plainString",
-    });
-
-    const functionCode = functionResult.content;
-
+    // Use the inlined function code
     using evaluation = await evalCodeAndReturnDefaultHandle(
-      functionCode,
+      tool.execute,
       runtimeId,
     );
     const { ctx, defaultHandle, guestConsole } = evaluation;
 
     try {
-      const env = await envPromise;
       // Call the function using the callFunction utility
       const callHandle = await callFunction(
         ctx,
         defaultHandle,
         undefined,
         input,
-        { env },
+        { env: await envPromise },
       );
 
       const callResult = ctx.dump(ctx.unwrapResult(callHandle));
@@ -423,7 +265,7 @@ const sandboxRunTool = createTool({
   },
 });
 
-const getTool = createTool({
+export const getTool = createTool({
   name: "SANDBOX_GET_TOOL",
   description: "Get a tool from the sandbox",
   inputSchema: z.object({ name: z.string().describe("The name of the tool") }),
@@ -444,7 +286,7 @@ const getTool = createTool({
   },
 });
 
-const deleteTool = createTool({
+export const deleteTool = createTool({
   name: "SANDBOX_DELETE_TOOL",
   description: "Delete a tool in the sandbox",
   inputSchema: z.object({ name: z.string().describe("The name of the tool") }),
@@ -474,7 +316,7 @@ const deleteTool = createTool({
   },
 });
 
-const sandboxListTools = createTool({
+export const listTools = createTool({
   name: "SANDBOX_LIST_TOOLS",
   description: "List all tools in the sandbox",
   inputSchema: z.object({}),
@@ -512,11 +354,3 @@ const sandboxListTools = createTool({
     }
   },
 });
-
-export const SANDBOX_TOOLS = [
-  sandboxCreateTool,
-  getTool,
-  deleteTool,
-  sandboxRunTool,
-  sandboxListTools,
-];

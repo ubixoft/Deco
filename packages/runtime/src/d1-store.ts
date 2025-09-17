@@ -1,6 +1,6 @@
 import {
-  D1Store as MastraD1Store,
   D1ClientConfig as MastraD1StoreConfig,
+  D1Store as MastraD1Store,
 } from "@mastra/cloudflare-d1";
 
 export class D1Store extends MastraD1Store {

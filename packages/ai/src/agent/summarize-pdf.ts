@@ -204,7 +204,9 @@ export async function summarizePDFMessages(
           url: pdfAttachment.url,
           name: pdfAttachment.name || "document",
           contentType: "application/pdf",
-          content: `<pdf_summary original="${pdfAttachment.name || "document"}">\n${combinedSummary}\n</pdf_summary>`,
+          content: `<pdf_summary original="${
+            pdfAttachment.name || "document"
+          }">\n${combinedSummary}\n</pdf_summary>`,
         };
 
         if (!message.annotations) {

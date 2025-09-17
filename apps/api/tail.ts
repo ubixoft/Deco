@@ -120,8 +120,12 @@ function convertEventToRequestLog(event: TailEvent): any {
   }
 
   const bodyString = hasRequest
-    ? `${event.event!.request!.method} ${event.event!.request!.url} - ${event.event?.response?.status ?? "no response"} - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`
-    : `DO ${event.entrypoint || "unknown"}.${event.event?.rpcMethod || "unknown"} - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`;
+    ? `${event.event!.request!.method} ${event.event!.request!.url} - ${
+        event.event?.response?.status ?? "no response"
+      } - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`
+    : `DO ${event.entrypoint || "unknown"}.${
+        event.event?.rpcMethod || "unknown"
+      } - ${event.wallTime}ms (CPU: ${event.cpuTime}ms)`;
 
   return {
     resourceLogs: [
@@ -190,16 +194,18 @@ function convertTailLogs(event: TailEvent): any {
       },
     );
   } else {
-    if (event.event?.rpcMethod)
+    if (event.event?.rpcMethod) {
       attributes.push({
         key: "rpc.method",
         value: { stringValue: event.event.rpcMethod },
       });
-    if (event.entrypoint)
+    }
+    if (event.entrypoint) {
       attributes.push({
         key: "entrypoint",
         value: { stringValue: event.entrypoint },
       });
+    }
   }
 
   return {
@@ -274,16 +280,18 @@ function convertTailExceptions(event: TailEvent): any {
       },
     );
   } else {
-    if (event.event?.rpcMethod)
+    if (event.event?.rpcMethod) {
       attributes.push({
         key: "rpc.method",
         value: { stringValue: event.event.rpcMethod },
       });
-    if (event.entrypoint)
+    }
+    if (event.entrypoint) {
       attributes.push({
         key: "entrypoint",
         value: { stringValue: event.entrypoint },
       });
+    }
   }
 
   return {
@@ -339,16 +347,18 @@ function convertTailTraces(event: TailEvent): any {
       },
     );
   } else {
-    if (event.event?.rpcMethod)
+    if (event.event?.rpcMethod) {
       attributes.push({
         key: "rpc.method",
         value: { stringValue: event.event.rpcMethod },
       });
-    if (event.entrypoint)
+    }
+    if (event.entrypoint) {
       attributes.push({
         key: "entrypoint",
         value: { stringValue: event.entrypoint },
       });
+    }
   }
 
   return {

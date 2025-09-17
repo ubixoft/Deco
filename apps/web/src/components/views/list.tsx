@@ -1,9 +1,9 @@
 import {
-  useAddView,
-  useRemoveView,
-  useIntegrationViews,
   buildAddViewPayload,
   findPinnedView,
+  useAddView,
+  useIntegrationViews,
+  useRemoveView,
 } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Card, CardContent } from "@deco/ui/components/card.tsx";

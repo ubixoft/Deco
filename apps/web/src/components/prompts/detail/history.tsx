@@ -1,15 +1,15 @@
 import {
+  type ProjectLocator,
   type Prompt,
   type PromptVersion,
   renamePromptVersion,
   type TeamMember,
+  useOrganizations,
   usePromptVersions,
   type User,
   useSDK,
   useTeamMembers,
-  useOrganizations,
   useUpdatePrompt,
-  type ProjectLocator,
 } from "@deco/sdk";
 import {
   Avatar,

@@ -2,14 +2,17 @@
 export * from "./src/actors.ts";
 export { WorkspaceDatabase } from "./src/durable-objects/workspace-database.ts";
 // DECONFIG DurableObjects (re-exported from SDK)
-export { Branch, Blobs } from "./src/durable-objects/deconfig.ts";
+export { Blobs, Branch } from "./src/durable-objects/deconfig.ts";
+export {
+  KbFileProcessorWorkflow,
+  WorkflowRunner,
+} from "./src/workflows/index.ts";
 import { contextStorage } from "@deco/sdk/fetch";
 import { Hosts } from "@deco/sdk/hosts";
 import { instrument } from "@deco/sdk/observability";
 import { env } from "cloudflare:workers";
 import { default as app } from "./src/app.ts";
 import { email } from "./src/email.ts";
-import { KbFileProcessorWorkflow } from "./src/workflows/kb-file-processor-workflow.ts";
 import { tail } from "./tail.ts";
 
 // Choose instrumented app depending on runtime
@@ -85,6 +88,3 @@ export default {
     });
   },
 };
-
-// Export the workflow
-export { KbFileProcessorWorkflow };

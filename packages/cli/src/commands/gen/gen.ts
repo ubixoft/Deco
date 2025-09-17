@@ -3,7 +3,7 @@ import { compile } from "json-schema-to-typescript";
 import { generateName } from "json-schema-to-typescript/dist/src/utils.js";
 import { MD5 } from "object-hash";
 import prettier from "prettier";
-import { readWranglerConfig, type DecoBinding } from "../../lib/config.js";
+import { type DecoBinding, readWranglerConfig } from "../../lib/config.js";
 import { createWorkspaceClient } from "../../lib/mcp.js";
 import { parser as scopeParser } from "../../lib/parse-binding-tool.js";
 
@@ -191,7 +191,9 @@ export const genEnv = async ({
   selfUrl,
 }: Options) => {
   const wrangler = await readWranglerConfig();
-  const appName = `@${wrangler.scope ?? workspaceSlug(workspace)}/${wrangler.name}`;
+  const appName = `@${
+    wrangler.scope ?? workspaceSlug(workspace)
+  }/${wrangler.name}`;
   const client = await createWorkspaceClient({ workspace, local });
   const apiClient = await createWorkspaceClient({ local });
 

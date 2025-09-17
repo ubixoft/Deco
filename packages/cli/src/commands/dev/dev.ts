@@ -4,9 +4,9 @@ import { join, resolve } from "path";
 import { writeFile } from "fs/promises";
 import chalk from "chalk";
 import {
+  getAppDomain,
   getConfig,
   readWranglerConfig,
-  getAppDomain,
 } from "../../lib/config.js";
 import { ensureDevEnvironment } from "../../lib/wrangler.js";
 import { genEnv } from "../gen/gen.js";
