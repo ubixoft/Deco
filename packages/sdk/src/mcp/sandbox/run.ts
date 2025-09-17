@@ -14,54 +14,54 @@ export async function runMapping(
   client: MCPClientStub<ProjectTools>,
   runtimeId: string = "default",
 ): Promise<Rpc.Serializable<unknown>> {
-  try {
-    // Load and execute the mapping step function
-    using stepEvaluation = await evalCodeAndReturnDefaultHandle(
-      step.execute,
-      runtimeId,
-    );
-    const {
-      ctx: stepCtx,
-      defaultHandle: stepDefaultHandle,
-      guestConsole: stepConsole,
-    } = stepEvaluation;
+  // Load and execute the mapping step function
+  using stepEvaluation = await evalCodeAndReturnDefaultHandle(
+    step.execute,
+    runtimeId,
+  );
+  const {
+    ctx: stepCtx,
+    defaultHandle: stepDefaultHandle,
+    guestConsole: stepConsole,
+  } = stepEvaluation;
 
-    // Create step context with WellKnownOptions
-    const stepContext = {
-      readWorkflowInput() {
-        return workflowInput;
-      },
-      readStepResult(stepName: string) {
-        if (!state.steps[stepName]) {
-          throw new Error(`Step '${stepName}' has not been executed yet`);
-        }
-        return state.steps[stepName];
-      },
-      env: await asEnv(client),
-    };
+  // Create step context with WellKnownOptions
+  const stepContext = {
+    sleep: async (name: string, duration: number) => {
+      await state.sleep(name, duration);
+    },
+    sleepUntil: async (name: string, date: Date | number) => {
+      await state.sleepUntil(name, date);
+    },
+    readWorkflowInput() {
+      return workflowInput;
+    },
+    readStepResult(stepName: string) {
+      if (!state.steps[stepName]) {
+        throw new Error(`Step '${stepName}' has not been executed yet`);
+      }
+      return state.steps[stepName];
+    },
+    env: await asEnv(client),
+  };
 
-    // Call the mapping function
-    const stepCallHandle = await callFunction(
-      stepCtx,
-      stepDefaultHandle,
-      undefined,
-      stepContext,
-      {},
-    );
+  // Call the mapping function
+  const stepCallHandle = await callFunction(
+    stepCtx,
+    stepDefaultHandle,
+    undefined,
+    stepContext,
+    {},
+  );
 
-    const result = stepCtx.dump(stepCtx.unwrapResult(stepCallHandle));
+  const result = stepCtx.dump(stepCtx.unwrapResult(stepCallHandle));
 
-    // Log any console output from the step execution
-    if (stepConsole.logs.length > 0) {
-      console.log(`Mapping step '${step.name}' logs:`, stepConsole.logs);
-    }
-
-    return result as Rpc.Serializable<unknown>;
-  } catch (error) {
-    throw new Error(
-      `Mapping step '${step.name}' execution failed: ${inspect(error)}`,
-    );
+  // Log any console output from the step execution
+  if (stepConsole.logs.length > 0) {
+    console.log(`Mapping step '${step.name}' logs:`, stepConsole.logs);
   }
+
+  return result as Rpc.Serializable<unknown>;
 }
 
 export async function runTool(

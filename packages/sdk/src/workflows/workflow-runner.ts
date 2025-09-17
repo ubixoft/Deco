@@ -33,6 +33,7 @@ export interface WorkflowState<T = unknown> {
   input: T;
   steps: Record<string, unknown>;
   sleep: (name: string, duration: number) => Promise<void>;
+  sleepUntil: (name: string, date: Date | number) => Promise<void>;
 }
 
 export interface WorkflowStep {
@@ -144,6 +145,8 @@ export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
         (await cfStep.do(step.name, step.config ?? {}, async () => {
           const runResult = await step.fn(prev, {
             ...workflowState,
+            sleepUntil: (name, date) =>
+              cfStep.sleepUntil(`${step.name}-${name}`, date),
             sleep: (name, duration) =>
               cfStep.sleep(`${step.name}-${name}`, duration),
           });

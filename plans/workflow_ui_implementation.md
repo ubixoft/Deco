@@ -1975,6 +1975,8 @@ export default async function(ctx) {
 - ctx.readWorkflowInput() - Returns original workflow input
 - ctx.getStepResult("step-id") - Returns result from previous step
 - ctx.env.INTEGRATION_ID.tool_name(args) - Call tools
+- ctx.sleep(name, duration)
+- ctx.sleepUntil(name, date)
 
 3. AVAILABLE TOOLS:
 ${

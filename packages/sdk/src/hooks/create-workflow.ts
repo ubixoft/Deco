@@ -47,6 +47,12 @@ export function useCreateWorkflow() {
   
   // You can access previous step results:
   // const previousResult = await ctx.getStepResult("step-name");
+
+  // You can sleep for a duration:
+  // await ctx.sleep("step-name", 1000);
+
+  // You can sleep until a specific date:
+  // await ctx.sleepUntil("step-name", new Date("2025-01-01"));
   
   // Return the result for the next step
   return {

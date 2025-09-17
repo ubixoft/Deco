@@ -51,6 +51,8 @@ export default async function(ctx) {
   // ctx contains WellKnownOptions helper functions:
   // - await ctx.readWorkflowInput(): Returns the initial workflow input
   // - await ctx.readStepResult(stepName): Returns output from a previous step
+  // - await ctx.sleep(name, duration): Sleeps for a specified duration
+  // - await ctx.sleepUntil(name, date): Sleeps until a specified date or timestamp
   
   // Transform data between tool calls
   const input = await ctx.readWorkflowInput();
@@ -210,6 +212,8 @@ The context object in mapping step execute functions includes:
 interface WellKnownOptions {
   readWorkflowInput(): Promise<WorkflowInputSchema>;
   readStepResult(stepName: string): Promise<StepOutputSchema>;
+  sleep(name: string, duration: number): Promise<void>;
+  sleepUntil(name: string, date: Date | number): Promise<void>;
 }
 \`\`\`
 
