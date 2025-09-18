@@ -21,12 +21,11 @@ interface Mention {
 /**
  * Extracts prompt mentions from a system prompt
  */
-export function extractMentionsFromString(systemPrompt: string): Mention[] {
-  const unescapedSystemPrompt = unescapeHTML(systemPrompt);
+function extractMentionsFromString(systemPrompt: string): Mention[] {
   const mentions: Mention[] = [];
   let match;
 
-  while ((match = MENTION_REGEX.exec(unescapedSystemPrompt)) !== null) {
+  while ((match = MENTION_REGEX.exec(systemPrompt)) !== null) {
     const type = match[2] as Mentionables;
     if (mentionableTypes.includes(type)) {
       mentions.push({
@@ -43,6 +42,10 @@ export function toMention(id: string, type: Mentionables = "prompt") {
   return `<span data-type="mention" data-id=${id} data-mention-type=${type}></span>`;
 }
 
+const hasMentions = (content: string) => {
+  return content.includes("<span") || content.includes("&lt;span");
+};
+
 // TODO: Resolve all types of mentions
 export async function resolveMentions(
   content: string,
@@ -55,9 +58,16 @@ export async function resolveMentions(
     parentPromptId?: string;
   },
 ): Promise<string> {
-  const contentWithoutComments = content.replaceAll(COMMENT_REGEX, "");
+  if (!hasMentions(content)) {
+    return content;
+  }
 
-  const mentions = extractMentionsFromString(content);
+  // Unescape HTML at the beginning to ensure all regex operations work on unescaped content
+  const unescapedContent = unescapeHTML(content);
+
+  const contentWithoutComments = unescapedContent.replaceAll(COMMENT_REGEX, "");
+
+  const mentions = extractMentionsFromString(unescapedContent);
 
   const promptIds = mentions
     .filter((mention) => mention.type === "prompt")
