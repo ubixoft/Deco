@@ -1,11 +1,15 @@
+import type { Integration } from "@deco/sdk";
+import { useMarketplaceIntegrations, useRegistryApp } from "@deco/sdk";
+import { AppName } from "@deco/sdk/common";
+import { Button } from "@deco/ui/components/button.tsx";
 import {
   FormControl,
   FormDescription,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@deco/ui/components/form.tsx";
+import { Icon } from "@deco/ui/components/icon.tsx";
 import {
   Select,
   SelectContent,
@@ -13,21 +17,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@deco/ui/components/select.tsx";
+import { Spinner } from "@deco/ui/components/spinner.tsx";
+import { useState } from "react";
 import type { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
-import type { OptionItem } from "../index.tsx";
-import { IntegrationIcon } from "../../integrations/common.tsx";
-import { Button } from "@deco/ui/components/button.tsx";
+import {
+  integrationNeedsApproval,
+  useIntegrationInstallState,
+} from "../../../hooks/use-integration-install.tsx";
 import { useOptionsLoader } from "../../../hooks/use-options-loader.ts";
-import { useMarketplaceIntegrations, useRegistryApp } from "@deco/sdk";
+import { IntegrationIcon } from "../../integrations/common.tsx";
+import type { MarketplaceIntegration } from "../../integrations/marketplace";
 import {
   ConfirmMarketplaceInstallDialog,
   useOauthModalContext,
+  useUIInstallIntegration,
 } from "../../integrations/select-connection-dialog.tsx";
-import type { MarketplaceIntegration } from "../../integrations/marketplace";
-import { useState } from "react";
-import type { Integration } from "@deco/sdk";
-import { Icon } from "@deco/ui/components/icon.tsx";
-import { AppName } from "@deco/sdk/common";
+import type { OptionItem } from "../index.tsx";
 
 const CONNECT_ACCOUNT_VALUE = "__connect_account__";
 
@@ -47,30 +52,27 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
   form,
   disabled,
   typeValue,
-  title,
-  isRequired,
 }: TypeSelectFieldProps<T>) {
   const {
     data: options,
     isPending,
     refetch: refetchOptions,
   } = useOptionsLoader(typeValue);
-  // TODO (@igorbrasileiro): remove fallback when we migrate to the new oauth modal
-  const { onOpenOauthModal, ...oauthModalContext } = useOauthModalContext() ?? {
-    onOpenOauthModal: () => {},
-    base: true,
-  };
+  const { onOpenOauthModal } = useOauthModalContext();
   const { data: marketplace } = useMarketplaceIntegrations();
   const [installingIntegration, setInstallingIntegration] =
     useState<MarketplaceIntegration | null>(null);
-  const { data: app } = useRegistryApp({ clientId: typeValue });
+  const { data: app } = useRegistryApp({ clientId: typeValue, mode: "sync" });
+
+  // Get integration state to check if we need to show dialog or install directly
+  const integrationState = useIntegrationInstallState(typeValue);
 
   const selectedOption = options.find(
     // deno-lint-ignore no-explicit-any
     (option: OptionItem) => option.value === form.getValues(name as any)?.value,
   );
 
-  const handleAddIntegration = (e?: React.MouseEvent) => {
+  const handleAddIntegration = async (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
 
@@ -87,12 +89,26 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
           (integration) => integration.name === typeValue,
         );
 
-    if (integration) {
-      setInstallingIntegration(integration);
+    if (!integration) return;
+    // Check if we should install directly (no schema or empty scopes)
+    const needsApproval = integrationNeedsApproval(integrationState);
+
+    // If no schema exists or scopes are empty, install directly
+    if (!needsApproval) {
+      try {
+        await install({
+          integration,
+        });
+        return;
+      } catch {
+        /** empty block */
+      }
     }
+    // Show dialog for integrations with schema or scopes
+    setInstallingIntegration(integration);
   };
 
-  const handleIntegrationSelect = async ({
+  const handleIntegrationInstalled = async ({
     connection,
     authorizeOauthUrl,
   }: {
@@ -118,6 +134,13 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
     setInstallingIntegration(null);
   };
 
+  // Setup direct install functionality
+  const { install, isLoading: isInstallingLoading } = useUIInstallIntegration({
+    onConfirm: handleIntegrationInstalled,
+    validate: () =>
+      Promise.resolve(!integrationNeedsApproval(integrationState)),
+  });
+
   return (
     <>
       <FormField
@@ -125,12 +148,6 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
         name={name as unknown as FieldPath<T>}
         render={({ field }) => (
           <FormItem className="space-y-2">
-            {"base" in oauthModalContext && oauthModalContext.base && (
-              <FormLabel>
-                {title}
-                {isRequired && <span className="text-destructive ml-1">*</span>}
-              </FormLabel>
-            )}
             <div className="flex items-center gap-4">
               {options?.length > 0 ? (
                 <Select
@@ -154,7 +171,18 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
                 >
                   <FormControl>
                     <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select an integration">
+                      <SelectValue
+                        placeholder={
+                          isInstallingLoading ? (
+                            <>
+                              <Spinner />
+                              Connecting...
+                            </>
+                          ) : (
+                            "Select an integration"
+                          )
+                        }
+                      >
                         {field.value?.value && selectedOption && (
                           <div className="flex items-center gap-3 max-w-50">
                             <IntegrationIcon
@@ -192,21 +220,41 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
                     <SelectItem
                       key={CONNECT_ACCOUNT_VALUE}
                       value={CONNECT_ACCOUNT_VALUE}
+                      disabled={
+                        integrationState.isLoading || isInstallingLoading
+                      }
                     >
                       <span className="flex items-center justify-center w-8 h-8">
-                        <Icon name="add" size={24} />
+                        {integrationState.isLoading ? (
+                          <Spinner />
+                        ) : (
+                          <Icon name="add" size={24} />
+                        )}
                       </span>
-                      <span className="font-medium text-sm">Create new</span>
+                      <span className="font-medium text-sm">
+                        Connect new account
+                      </span>
                     </SelectItem>
                   </SelectContent>
                 </Select>
               ) : (
                 <Button
-                  disabled={isPending}
+                  disabled={
+                    isPending ||
+                    integrationState.isLoading ||
+                    isInstallingLoading
+                  }
                   onClick={handleAddIntegration}
                   variant="special"
                 >
-                  Connect account
+                  {isInstallingLoading ? (
+                    <>
+                      <Spinner />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>{integrationState.isLoading && <Spinner />} Connect app</>
+                  )}
                 </Button>
               )}
             </div>
@@ -220,11 +268,13 @@ export function TypeSelectField<T extends FieldValues = FieldValues>({
         )}
       />
 
-      <ConfirmMarketplaceInstallDialog
-        integration={installingIntegration}
-        setIntegration={setInstallingIntegration}
-        onConfirm={handleIntegrationSelect}
-      />
+      {installingIntegration && (
+        <ConfirmMarketplaceInstallDialog
+          integration={installingIntegration}
+          setIntegration={setInstallingIntegration}
+          onConfirm={handleIntegrationInstalled}
+        />
+      )}
     </>
   );
 }

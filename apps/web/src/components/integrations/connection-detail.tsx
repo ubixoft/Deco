@@ -30,7 +30,14 @@ import {
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { toast } from "@deco/ui/components/sonner.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams } from "react-router";
 import { DefaultBreadcrumb, PageLayout } from "../layout/project.tsx";
 import { useCurrentTeam } from "../sidebar/team-selector.tsx";
@@ -41,7 +48,7 @@ import {
   useGroupedApp,
 } from "./apps.ts";
 import { IntegrationIcon } from "./common.tsx";
-
+import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useUpdateIntegration, useWriteFile } from "@deco/sdk";
 import {
   Accordion,
@@ -81,11 +88,16 @@ import {
   ConfirmMarketplaceInstallDialog,
   OauthModalContextProvider,
   OauthModalState,
+  useUIInstallIntegration,
 } from "./select-connection-dialog.tsx";
 import { ToolCallForm } from "./tool-call-form.tsx";
 import { ToolCallResult } from "./tool-call-result.tsx";
 import type { MCPToolCallResult } from "./types.ts";
 import { Label } from "@deco/ui/components/label.tsx";
+import {
+  integrationNeedsApproval,
+  useIntegrationInstallState,
+} from "../../hooks/use-integration-install.tsx";
 
 function ConnectionInstanceActions({
   onDelete,
@@ -179,6 +191,14 @@ function useIconUpload(form: ReturnType<typeof useForm<Integration>>) {
   };
 }
 
+const COMPLETION_DIALOG_DEFAULT_STATE = {
+  open: false,
+  url: "",
+  integrationName: "",
+  openIntegrationOnFinish: true,
+  connection: null,
+};
+
 function ConfigureConnectionInstanceForm({
   instance,
   setDeletingId,
@@ -187,6 +207,8 @@ function ConfigureConnectionInstanceForm({
   setSelectedIntegrationId,
   data,
   appKey,
+  setOauthCompletionDialog,
+  oauthCompletionDialog,
 }: {
   instance?: Integration;
   setDeletingId: (id: string | null) => void;
@@ -195,6 +217,8 @@ function ConfigureConnectionInstanceForm({
   setSelectedIntegrationId: (id: string) => void;
   data: ReturnType<typeof useGroupedApp>;
   appKey: string;
+  setOauthCompletionDialog: Dispatch<SetStateAction<OauthModalState>>;
+  oauthCompletionDialog: OauthModalState;
 }) {
   const [isEditing, setIsEditing] = useState(false);
 
@@ -284,14 +308,6 @@ function ConfigureConnectionInstanceForm({
   const navigateWorkspace = useNavigateWorkspace();
   const [installingIntegration, setInstallingIntegration] =
     useState<MarketplaceIntegration | null>(null);
-  const [oauthCompletionDialog, setOauthCompletionDialog] =
-    useState<OauthModalState>({
-      open: false,
-      url: "",
-      integrationName: "",
-      openIntegrationOnFinish: true,
-      connection: null,
-    });
   const hasBigDescription = useMemo(() => {
     return (
       data.info?.description &&
@@ -300,8 +316,45 @@ function ConfigureConnectionInstanceForm({
   }, [data.info?.description]);
   const [isExpanded, setIsExpanded] = useState(!hasBigDescription);
 
+  const handleIntegrationInstalled = ({
+    authorizeOauthUrl,
+    connection,
+  }: {
+    authorizeOauthUrl: string | null;
+    connection: Integration;
+  }) => {
+    function onSelect() {
+      const key = getConnectionAppKey(connection);
+      const appKey = AppKeys.build(key);
+      navigateWorkspace(`/connection/${appKey}`);
+    }
+
+    if (authorizeOauthUrl) {
+      const popup = globalThis.open(authorizeOauthUrl, "_blank");
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        setOauthCompletionDialog({
+          openIntegrationOnFinish: true,
+          open: true,
+          url: authorizeOauthUrl,
+          integrationName: installingIntegration?.name || "the service",
+          connection: connection,
+        });
+      } else {
+        onSelect();
+      }
+    }
+  };
+
+  const integrationState = useIntegrationInstallState(data.info?.name);
+  // Setup direct install functionality
+  const { install, isLoading: isInstallingLoading } = useUIInstallIntegration({
+    onConfirm: handleIntegrationInstalled,
+    validate: () => form.trigger(),
+  });
+
   const handleAddConnection = () => {
-    setInstallingIntegration({
+    const needsApproval = integrationNeedsApproval(integrationState);
+    const integrationMarketplace = {
       id: data.info?.id ?? "",
       provider: data.info?.provider ?? "unknown",
       name: data.info?.name ?? "",
@@ -310,7 +363,15 @@ function ConfigureConnectionInstanceForm({
       verified: data.info?.verified ?? false,
       connection: data.info?.connection ?? { type: "HTTP", url: "" },
       friendlyName: data.info?.friendlyName ?? "",
-    });
+    };
+    if (!needsApproval) {
+      install({
+        integration: integrationMarketplace,
+      });
+      return;
+    }
+
+    setInstallingIntegration(integrationMarketplace);
   };
 
   const description = isExpanded
@@ -361,10 +422,17 @@ function ConfigureConnectionInstanceForm({
           (!data.instances || data.instances?.length === 0) ? (
             <Button
               variant="special"
-              className="w-[250px]"
+              className="w-[250px] hidden md:flex"
               onClick={handleAddConnection}
+              disabled={integrationState.isLoading || isInstallingLoading}
             >
-              <span className="hidden md:inline">Install app</span>
+              {isInstallingLoading ? (
+                <>
+                  <Spinner /> Connecting...
+                </>
+              ) : (
+                <>{integrationState.isLoading && <Spinner />} Connect app</>
+              )}
             </Button>
           ) : null}
           <OauthModalContextProvider.Provider
@@ -374,31 +442,7 @@ function ConfigureConnectionInstanceForm({
               integration={installingIntegration}
               setIntegration={setInstallingIntegration}
               onConfirm={({ authorizeOauthUrl, connection }) => {
-                function onSelect() {
-                  const key = getConnectionAppKey(connection);
-                  const appKey = AppKeys.build(key);
-                  navigateWorkspace(`/connection/${appKey}`);
-                }
-
-                if (authorizeOauthUrl) {
-                  const popup = globalThis.open(authorizeOauthUrl, "_blank");
-                  if (
-                    !popup ||
-                    popup.closed ||
-                    typeof popup.closed === "undefined"
-                  ) {
-                    setOauthCompletionDialog({
-                      openIntegrationOnFinish: true,
-                      open: true,
-                      url: authorizeOauthUrl,
-                      integrationName:
-                        installingIntegration?.name || "the service",
-                      connection: connection,
-                    });
-                  } else {
-                    onSelect();
-                  }
-                }
+                handleIntegrationInstalled({ authorizeOauthUrl, connection });
 
                 data.refetch();
               }}
@@ -506,7 +550,18 @@ function ConfigureConnectionInstanceForm({
                       }}
                     >
                       <SelectTrigger className="w-[300px]">
-                        <SelectValue placeholder="Select instance" />
+                        <SelectValue
+                          placeholder={
+                            isInstallingLoading ? (
+                              <>
+                                <Spinner />
+                                Installing...
+                              </>
+                            ) : (
+                              "Select instance"
+                            )
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {deduplicatedInstances?.map((instance) => (
@@ -519,13 +574,16 @@ function ConfigureConnectionInstanceForm({
                           key="create-new"
                           value="create-new"
                           className="cursor-pointer"
+                          disabled={
+                            integrationState.isLoading || isInstallingLoading
+                          }
                         >
                           <Icon
                             name="add"
                             size={16}
                             className="flex-shrink-0"
                           />
-                          Create new
+                          Create new account
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -1322,6 +1380,8 @@ function AppDetail() {
   const data = useGroupedApp({
     appKey,
   });
+  const [oauthCompletionDialog, setOauthCompletionDialog] =
+    useState<OauthModalState>(COMPLETION_DIALOG_DEFAULT_STATE);
 
   const [selectedIntegrationId, setSelectedIntegrationId] = useState<
     string | null
@@ -1350,6 +1410,8 @@ function AppDetail() {
           selectedIntegration={selectedIntegration}
           setSelectedIntegrationId={setSelectedIntegrationId}
           data={data}
+          setOauthCompletionDialog={setOauthCompletionDialog}
+          oauthCompletionDialog={oauthCompletionDialog}
         />
 
         {deletingId && (

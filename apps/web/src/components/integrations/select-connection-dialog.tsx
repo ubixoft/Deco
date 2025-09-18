@@ -30,7 +30,11 @@ import {
 import { useSearchParams } from "react-router";
 import { trackEvent } from "../../hooks/analytics.ts";
 import { useCreateCustomConnection } from "../../hooks/use-create-custom-connection.ts";
-import { useIntegrationInstall } from "../../hooks/use-integration-install.tsx";
+import {
+  type IntegrationState,
+  useIntegrationInstall,
+  useIntegrationInstallState,
+} from "../../hooks/use-integration-install.tsx";
 import {
   useNavigateWorkspace,
   useWorkspaceLink,
@@ -73,36 +77,14 @@ export const OauthModalContextProvider = createContext<
 export const useOauthModalContext = () => {
   const context = useContext(OauthModalContextProvider);
   if (!context) {
-    console.warn(
+    throw new Error(
       "useOauthModalContext must be used within a OauthModalContextProvider",
     );
   }
   return context;
 };
 
-function IntegrationWorkspaceIconForMarketplace({
-  integration,
-}: {
-  integration: MarketplaceIntegration | null;
-}) {
-  return (
-    <div className="absolute -translate-y-1/2">
-      <IntegrationIcon
-        icon={integration?.icon}
-        name={integration?.friendlyName ?? integration?.name}
-        size="xl"
-      />
-    </div>
-  );
-}
-
-export function ConfirmMarketplaceInstallDialog({
-  integration,
-  setIntegration,
-  onConfirm,
-}: {
-  integration: MarketplaceIntegration | null;
-  setIntegration: (integration: MarketplaceIntegration | null) => void;
+interface HandleInstallUI {
   onConfirm: ({
     connection,
     authorizeOauthUrl,
@@ -110,15 +92,17 @@ export function ConfirmMarketplaceInstallDialog({
     connection: Integration;
     authorizeOauthUrl: string | null;
   }) => void;
-}) {
-  const open = useMemo(() => !!integration, [integration]);
-  const { install, integrationState, isLoading } = useIntegrationInstall(
-    integration?.name,
-  );
-  const formRef = useRef<UseFormReturn<Record<string, unknown>> | null>(null);
-  const buildWorkspaceUrl = useWorkspaceLink();
-  const navigateWorkspace = useNavigateWorkspace();
-  const [stepIndex, setStepIndex] = useState(0);
+}
+
+const INITIAL_STEP_INDEX = 0;
+export const useIntegrationInstallStep = ({
+  integrationState,
+  install,
+}: {
+  integrationState: IntegrationState;
+  install: () => Promise<void>;
+}) => {
+  const [stepIndex, setStepIndex] = useState(INITIAL_STEP_INDEX);
 
   const { dependencies: maybeAppDependencyList, app: maybeAppList } =
     useMemo(() => {
@@ -180,8 +164,65 @@ export function ConfirmMarketplaceInstallDialog({
     }
   }, [totalSteps, stepIndex, integrationState.schema]);
 
-  const handleConnect = async () => {
-    if (!integration) return;
+  const handleNextDependency = () => {
+    // for cases where the app doesn't have dependencies (schema doesn't exist)
+    if (!integrationState.schema) {
+      install();
+      return;
+    }
+
+    if (stepIndex < totalSteps - 1) {
+      // Move to next dependency
+      setStepIndex((prev) => prev + 1);
+    } else {
+      // All dependencies and apps configured, install the main app
+      install();
+    }
+  };
+
+  const handleBack = () => {
+    setStepIndex((prev) => Math.max(prev - 1, 0));
+  };
+  const resetSteps = () => {
+    setStepIndex(INITIAL_STEP_INDEX);
+  };
+
+  const dependencyName = maybeAppDependencyList?.[stepIndex];
+
+  return {
+    stepIndex,
+    currentSchema,
+    totalSteps,
+    isDepencencyStep,
+    maybeAppList,
+    resetSteps,
+    handleNextDependency,
+    handleBack,
+    dependencyName,
+  };
+};
+
+interface UseUIInstallIntegrationProps extends HandleInstallUI {
+  validate: () => Promise<boolean>;
+}
+
+export const useUIInstallIntegration = ({
+  onConfirm,
+  validate,
+}: UseUIInstallIntegrationProps) => {
+  const { install, isLoading } = useIntegrationInstall();
+  const buildWorkspaceUrl = useWorkspaceLink();
+  const navigateWorkspace = useNavigateWorkspace();
+
+  const handleConnect = async ({
+    integration,
+    mainFormData = {},
+  }: {
+    integration: MarketplaceIntegration | null;
+    mainFormData?: Record<string, unknown>;
+  }) => {
+    const isValid = await validate();
+    if (!integration || !isValid) return;
 
     const returnUrl = new URL(
       buildWorkspaceUrl("/connections/success"),
@@ -189,7 +230,6 @@ export function ConfirmMarketplaceInstallDialog({
     );
 
     // Combine all dependency form data with main form data
-    const mainFormData = formRef.current?.getValues() ?? {};
     try {
       const result = await install(
         {
@@ -221,13 +261,11 @@ export function ConfirmMarketplaceInstallDialog({
           connection: result.integration,
           authorizeOauthUrl: result.redirectUrl,
         });
-        setIntegration(null);
       } else if (result.stateSchema) {
         onConfirm({
           connection: result.integration,
           authorizeOauthUrl: null,
         });
-        setIntegration(null);
       } else if (!result.stateSchema) {
         let link = `/connection/${integration.provider}:::${integration.name}`;
         const isDecoApp = integration.name.startsWith("@deco/");
@@ -240,7 +278,6 @@ export function ConfirmMarketplaceInstallDialog({
           link = `/connection/deco:::${integration.friendlyName}`;
         }
         navigateWorkspace(link);
-        setIntegration(null);
       }
     } catch (error) {
       trackEvent("integration_install", {
@@ -251,36 +288,53 @@ export function ConfirmMarketplaceInstallDialog({
     }
   };
 
+  return { install: handleConnect, isLoading };
+};
+
+interface ConfirmMarketplaceInstallDialogProps extends HandleInstallUI {
+  integration: MarketplaceIntegration | null;
+  setIntegration: (integration: MarketplaceIntegration | null) => void;
+}
+
+export function ConfirmMarketplaceInstallDialog({
+  integration,
+  setIntegration,
+  onConfirm,
+}: ConfirmMarketplaceInstallDialogProps) {
+  const open = useMemo(() => !!integration, [integration]);
+  const integrationState = useIntegrationInstallState(integration?.name);
+  const formRef = useRef<UseFormReturn<Record<string, unknown>> | null>(null);
+  const { install, isLoading } = useUIInstallIntegration({
+    onConfirm: (props) => {
+      onConfirm(props);
+      setIntegration(null);
+    },
+    validate: () => formRef.current?.trigger() ?? Promise.resolve(true),
+  });
+  const {
+    stepIndex,
+    currentSchema,
+    totalSteps,
+    dependencyName,
+    resetSteps,
+    handleNextDependency,
+    handleBack,
+  } = useIntegrationInstallStep({
+    integrationState,
+    install: () => {
+      return install({
+        integration,
+        mainFormData: formRef.current?.getValues(),
+      });
+    },
+  });
+
   // Reset step when dialog closes/opens
   useEffect(() => {
     if (open) {
-      setStepIndex(0);
+      resetSteps();
     }
   }, [open]);
-
-  const handleNextDependency = () => {
-    // for cases where the app doesn't have dependencies (schema doesn't exist)
-    if (!integrationState.schema) {
-      handleConnect();
-      return;
-    }
-
-    if (!maybeAppDependencyList) return;
-
-    if (stepIndex < totalSteps - 1) {
-      // Move to next dependency
-      setStepIndex((prev) => prev + 1);
-    } else {
-      // All dependencies and apps configured, install the main app
-      handleConnect();
-    }
-  };
-
-  const handleBack = () => {
-    if (stepIndex > 0) {
-      setStepIndex((prev) => prev - 1);
-    }
-  };
 
   if (!integration) return null;
 
@@ -291,7 +345,7 @@ export function ConfirmMarketplaceInstallDialog({
         <div className="min-h-135 max-h-135 h-full lg:max-h-[60vh] border-b">
           <DependencyStep
             integration={integration}
-            dependencyName={maybeAppDependencyList?.[stepIndex]}
+            dependencyName={dependencyName}
             dependencySchema={currentSchema}
             currentStep={stepIndex + 1}
             totalSteps={totalSteps}
@@ -300,42 +354,64 @@ export function ConfirmMarketplaceInstallDialog({
           />
         </div>
         <DialogFooter className="px-4 pb-4">
-          {stepIndex > 0 && (
-            <Button variant="outline" disabled={isLoading} onClick={handleBack}>
-              Back
-            </Button>
-          )}
-          <Button
-            variant="special"
-            onClick={
-              isLoading || integrationState.isLoading
-                ? undefined
-                : handleNextDependency
-            }
-            disabled={isLoading || integrationState.isLoading}
-          >
-            {isLoading || integrationState.isLoading
-              ? "Connecting..."
-              : stepIndex < totalSteps - 1
-                ? "Continue"
-                : "Allow access"}
-          </Button>
+          <InstallStepsButtons
+            stepIndex={stepIndex}
+            isLoading={isLoading}
+            hasNextStep={stepIndex < totalSteps - 1}
+            integrationState={integrationState}
+            handleNextDependency={handleNextDependency}
+            handleBack={handleBack}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-// Dependency Configuration Step
-function DependencyStep({
-  integration,
-  dependencyName,
-  dependencySchema,
-  currentStep,
-  totalSteps,
-  formRef,
+export function InstallStepsButtons({
+  stepIndex,
+  isLoading,
+  hasNextStep,
   integrationState,
+  handleNextDependency,
+  handleBack,
 }: {
+  stepIndex: number;
+  isLoading: boolean;
+  hasNextStep: boolean;
+  integrationState: {
+    isLoading: boolean;
+  };
+  handleNextDependency: () => void;
+  handleBack: () => void;
+}) {
+  return (
+    <>
+      {stepIndex > 0 && (
+        <Button variant="outline" disabled={isLoading} onClick={handleBack}>
+          Back
+        </Button>
+      )}
+      <Button
+        variant="special"
+        onClick={
+          isLoading || integrationState.isLoading
+            ? undefined
+            : handleNextDependency
+        }
+        disabled={isLoading || integrationState.isLoading}
+      >
+        {isLoading || integrationState.isLoading
+          ? "Connecting..."
+          : hasNextStep
+            ? "Continue"
+            : "Allow access"}
+      </Button>
+    </>
+  );
+}
+
+interface DependencyStepProps {
   integration: MarketplaceIntegration;
   dependencyName?: string;
   dependencySchema?: JSONSchema7;
@@ -345,7 +421,19 @@ function DependencyStep({
   integrationState: {
     permissions?: Array<{ scope: string; description: string; app?: string }>;
   };
-}) {
+  mode?: "column" | "grid";
+}
+
+export function DependencyStep({
+  integration,
+  dependencyName,
+  dependencySchema,
+  currentStep,
+  totalSteps,
+  formRef,
+  integrationState,
+  mode = "grid",
+}: DependencyStepProps) {
   const dependencyIntegration = useMemo(() => {
     if (!dependencySchema || !dependencyName) return null;
 
@@ -362,6 +450,7 @@ function DependencyStep({
 
   const { data: app } = useRegistryApp({
     clientId: dependencyIntegration || "",
+    mode: "sync",
   });
 
   const integrationData = useMemo(() => {
@@ -382,78 +471,103 @@ function DependencyStep({
   );
 
   const schema = dependencySchema;
+  const isColumn = mode === "column";
 
-  return (
-    <GridContainer className="lg:max-h-[60vh] max-h-135 min-h-135">
-      {/* Left side: App icons and info */}
-      <GridLeftColumn>
-        <div className="pb-4 px-4 h-full">
-          <IntegrationWorkspaceIconForMarketplace integration={integration} />
+  const integrationIcon = (
+    <IntegrationIcon
+      icon={integration?.icon}
+      name={integration?.friendlyName ?? integration?.name}
+      size="xl"
+    />
+  );
 
-          <div className="h-full flex flex-col justify-between pt-16">
-            <h3 className="text-xl text-base-foreground">
-              <span className="font-bold">
-                {integration.friendlyName ?? integration.name}
-              </span>{" "}
-              needs access to the following permissions:
-            </h3>
+  const stepsIndicator = totalSteps > 1 && (
+    <div className="shrink-0 flex items-center gap-2.5">
+      <div className="font-mono text-sm uppercase text-foreground">
+        <span className="text-muted-foreground">{currentStep}</span> /{" "}
+        {totalSteps}
+      </div>
+    </div>
+  );
+  const appInfoView = (
+    <div className={cn(!isColumn && "h-full pb-4 px-4")}>
+      {!isColumn && (
+        <div className="absolute -translate-y-1/2">{integrationIcon}</div>
+      )}
 
-            {/* Warning at bottom left */}
-            {/* TODO: identify when integration consume from wallet */}
-            <div>
-              <WalletBalanceAlert />
-            </div>
-          </div>
+      <div
+        className={cn(
+          "h-full flex flex-col",
+          !isColumn && "pt-16 justify-between",
+          isColumn && "gap-5",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {isColumn ? integrationIcon : null}
+          <h3 className="text-xl text-base-foreground text-left">
+            <span className="font-bold">
+              {integration.friendlyName ?? integration.name}
+            </span>{" "}
+            needs access to the following permissions:
+          </h3>
+          {isColumn && stepsIndicator}
         </div>
-      </GridLeftColumn>
 
-      {/* Right side: Dependency configuration */}
-      <GridRightColumn>
-        <div className="h-full flex flex-col gap-2 pr-4 pt-4">
-          {/* Header with step indicator */}
-          <div className="flex items-center justify-between py-2 border-b">
-            <div className="font-mono text-sm text-foreground uppercase tracking-wide">
-              connect requirements
-            </div>
-            {totalSteps > 1 && (
-              <div className="flex items-center gap-2.5">
-                <div className="font-mono text-sm uppercase text-foreground">
-                  <span className="text-muted-foreground">{currentStep}</span> /{" "}
-                  {totalSteps}
-                </div>
-              </div>
-            )}
-          </div>
+        {/* Warning at bottom left */}
+        {/* TODO: identify when integration consume from wallet */}
+        <div>
+          <WalletBalanceAlert />
+        </div>
+      </div>
+    </div>
+  );
+  const appSettingsView = (
+    <div
+      className={cn(
+        "h-full flex flex-col gap-2",
+        !isColumn && "pr-4 pt-4",
+        isColumn && "border rounded-[12px] p-4",
+      )}
+    >
+      {/* Header with step indicator */}
+      <div className="flex items-center justify-between py-2 border-b">
+        <div className="font-mono text-sm text-foreground uppercase tracking-wide">
+          connect requirements
+        </div>
+        {!isColumn && stepsIndicator}
+      </div>
 
-          {/* Dependency integration info */}
-          <div className="flex-grow flex flex-col gap-5 py-2">
-            {/* Configuration Form */}
-            <div className="max-h-[200px] overflow-y-auto">
-              {schema && (
-                <div className="flex justify-between items-center gap-2">
-                  {integrationData && (
-                    <div className="flex items-center gap-2">
-                      <IntegrationIcon
-                        icon={integrationData?.icon}
-                        name={
-                          integrationData?.friendlyName ?? integrationData?.name
-                        }
-                        size="lg"
-                      />
-                      {integrationData?.friendlyName ?? integrationData?.name}
-                    </div>
-                  )}
-                  <IntegrationBindingForm schema={schema} formRef={formRef} />
+      {/* Dependency integration info */}
+      <div className="flex-grow flex flex-col gap-5 py-2">
+        {/* Configuration Form */}
+        <div className="max-h-[200px] overflow-y-auto">
+          {schema && (
+            <div className="flex justify-between items-center gap-2">
+              {integrationData && (
+                <div className="flex items-center gap-2">
+                  <IntegrationIcon
+                    icon={integrationData?.icon}
+                    name={
+                      integrationData?.friendlyName ?? integrationData?.name
+                    }
+                    size="lg"
+                  />
+                  {integrationData?.friendlyName ?? integrationData?.name}
                 </div>
               )}
+              <IntegrationBindingForm schema={schema} formRef={formRef} />
             </div>
-            {/* Permissions Section */}
-            <div className="flex-grow flex flex-col gap-2">
+          )}
+        </div>
+        {/* Permissions Section */}
+        {permissionsFromThisDependency &&
+          permissionsFromThisDependency.length > 0 && (
+            <div className="flex-grow flex flex-col gap-2 text-left">
               <div className="font-mono text-sm text-secondary-foreground uppercase">
                 permissions
               </div>
               <ScrollArea className="flex-grow h-0">
-                {permissionsFromThisDependency?.map((permission, index) => (
+                {permissionsFromThisDependency.map((permission, index) => (
                   <div key={index} className="flex gap-4 items-start px-2 py-3">
                     <div className="flex gap-2.5 h-5 items-center justify-start">
                       <Icon
@@ -474,9 +588,27 @@ function DependencyStep({
                 ))}
               </ScrollArea>
             </div>
-          </div>
-        </div>
-      </GridRightColumn>
+          )}
+      </div>
+    </div>
+  );
+
+  if (isColumn) {
+    return (
+      <div className="h-full flex flex-col gap-5">
+        {appInfoView}
+        {appSettingsView}
+      </div>
+    );
+  }
+
+  return (
+    <GridContainer className="lg:max-h-[60vh] max-h-135 min-h-135">
+      {/* Left side: App icons and info */}
+      <GridLeftColumn>{appInfoView}</GridLeftColumn>
+
+      {/* Right side: Dependency configuration */}
+      <GridRightColumn>{appSettingsView}</GridRightColumn>
     </GridContainer>
   );
 }

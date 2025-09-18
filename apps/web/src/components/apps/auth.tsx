@@ -1,45 +1,45 @@
 import {
   type Integration,
+  Locator,
+  type RegistryApp,
   RegistryAppNotFoundError,
   SDKProvider,
   type Team,
   useCreateOAuthCodeForIntegration,
   useIntegrations,
+  useRegistryApp,
 } from "@deco/sdk";
+import { useMarketplaceIntegrations, useOrganizations } from "@deco/sdk/hooks";
 import { Button } from "@deco/ui/components/button.tsx";
+import { Combobox } from "@deco/ui/components/combobox.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { Combobox } from "@deco/ui/components/combobox.tsx";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@deco/ui/lib/utils.ts";
-import { Avatar } from "../common/avatar/index.tsx";
-import { AppsAuthLayout, OAuthSearchParams } from "./layout.tsx";
-import { type RegistryApp, useRegistryApp } from "@deco/sdk";
-import { IntegrationAvatar } from "../common/avatar/integration.tsx";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { Suspense, useMemo, useRef, useState } from "react";
+import { UseFormReturn } from "react-hook-form";
 import { ErrorBoundary } from "../../error-boundary.tsx";
-import { useInstallCreatingApiKeyAndIntegration } from "../../hooks/use-integration-install.tsx";
-import { FormProvider, useForm } from "react-hook-form";
-import { Badge } from "@deco/ui/components/badge.tsx";
-import { Separator } from "@deco/ui/components/separator.tsx";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@deco/ui/components/accordion.tsx";
-import JsonSchemaForm from "../json-schema/index.tsx";
-import { generateDefaultValues } from "../json-schema/utils/generate-default-values.ts";
-import {
-  useMarketplaceAppSchema,
-  useOrganizations,
-  usePermissionDescriptions,
-} from "@deco/sdk/hooks";
-import type { JSONSchema7 } from "json-schema";
-import { getAllScopes } from "../../utils/scopes.ts";
-import { VerifiedBadge } from "../integrations/marketplace.tsx";
-import { Locator } from "@deco/sdk";
+  useInstallCreatingApiKeyAndIntegration,
+  useIntegrationInstallState,
+} from "../../hooks/use-integration-install.tsx";
 import { useUser } from "../../hooks/use-user.ts";
+import { Avatar } from "../common/avatar/index.tsx";
+import { IntegrationAvatar } from "../common/avatar/integration.tsx";
+import {
+  MarketplaceIntegration,
+  VerifiedBadge,
+} from "../integrations/marketplace.tsx";
+import { OAuthCompletionDialog } from "../integrations/oauth-completion-dialog.tsx";
+import {
+  DependencyStep,
+  InstallStepsButtons,
+  OauthModalContextProvider,
+  OauthModalState,
+  useIntegrationInstallStep,
+  useUIInstallIntegration,
+} from "../integrations/select-connection-dialog.tsx";
+import { AppsAuthLayout, OAuthSearchParams } from "./layout.tsx";
 
 const preSelectTeam = (teams: Team[], workspace_hint: string | undefined) => {
   if (teams.length === 1) {
@@ -243,152 +243,6 @@ const SelectOrganization = ({
   );
 };
 
-const InlineCreateIntegrationForm = ({
-  appName,
-  onFormSubmit,
-  onBack,
-  backEnabled,
-}: {
-  appName: string;
-  onFormSubmit: ({
-    formData,
-    scopes,
-  }: {
-    formData: Record<string, unknown>;
-    scopes: string[];
-  }) => Promise<void>;
-  onBack: () => void;
-  backEnabled: boolean;
-}) => {
-  const { data } = useMarketplaceAppSchema(appName);
-  const scopes = data?.scopes ?? [];
-  const schema = data?.schema as JSONSchema7 | undefined;
-
-  const form = useForm({
-    defaultValues: schema ? generateDefaultValues(schema) : {},
-  });
-
-  // Get permission descriptions
-  const allScopes = getAllScopes(scopes, schema);
-  const { permissions } = usePermissionDescriptions(allScopes);
-
-  const shouldShowPermissions = useMemo(() => {
-    return permissions.length > 0;
-  }, [permissions]);
-
-  const shouldShowForm = useMemo(() => {
-    return schema?.properties && Object.keys(schema.properties).length > 0;
-  }, [schema]);
-
-  // Update form defaults when schema changes
-  useEffect(() => {
-    if (schema) {
-      form.reset(generateDefaultValues(schema));
-    }
-  }, [schema, form]);
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = form.getValues();
-    await onFormSubmit({
-      formData,
-      scopes,
-    });
-  };
-
-  return (
-    <div className="flex flex-col space-y-6 w-full">
-      {!shouldShowForm && !shouldShowPermissions && (
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-sm text-muted-foreground">
-            No configuration required
-          </p>
-        </div>
-      )}
-
-      {/* Permissions Section */}
-      {shouldShowPermissions && (
-        <Accordion type="single" collapsible defaultValue="permissions">
-          <AccordionItem value="permissions">
-            <AccordionTrigger className="text-sm">
-              <div className="flex items-center gap-2">
-                <span>Permissions Required</span>
-                <Badge variant="secondary" className="text-xs">
-                  {permissions.length}
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="pt-2">
-                <div className="border rounded-lg p-4 max-h-[300px] overflow-y-auto">
-                  <div className="space-y-4">
-                    <div className="grid gap-2">
-                      {permissions.map((permission, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
-                        >
-                          <div className="flex-shrink-0 text-success">✓</div>
-                          <div className="flex-1">
-                            <div className="text-sm font-medium">
-                              {permission.description}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              <Badge variant="outline" className="text-xs">
-                                {permission.scope}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
-
-      {/* Configuration Form */}
-      {shouldShowForm && schema && (
-        <>
-          <Separator />
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Configuration</h3>
-            <FormProvider {...form}>
-              <JsonSchemaForm
-                schema={schema}
-                form={form}
-                onSubmit={handleFormSubmit}
-                submitButton={
-                  <FooterButtons
-                    backLabel={backEnabled ? "Back" : "Change project"}
-                    onClickBack={onBack}
-                    onClickContinue={handleFormSubmit}
-                    continueDisabled={form.formState.isSubmitting}
-                    continueLoading={form.formState.isSubmitting}
-                  />
-                }
-              />
-            </FormProvider>
-          </div>
-        </>
-      )}
-
-      {shouldShowForm ? null : (
-        <FooterButtons
-          backLabel={backEnabled ? "Back" : "Change project"}
-          onClickBack={onBack}
-          onClickContinue={handleFormSubmit}
-          continueDisabled={form.formState.isSubmitting}
-          continueLoading={form.formState.isSubmitting}
-        />
-      )}
-    </div>
-  );
-};
-
 const SelectableInstallList = ({
   installedIntegrations,
   setSelectedIntegration,
@@ -436,6 +290,87 @@ const SelectableInstallList = ({
         <span className="text-sm">Create new</span>
       </Button>
     </div>
+  );
+};
+
+const _InlineInstallation = ({
+  integration,
+  onConfirm,
+}: {
+  integration: MarketplaceIntegration;
+  onConfirm: (data: {
+    authorizeOauthUrl: string | null;
+    connection: Integration;
+  }) => void;
+}) => {
+  const integrationState = useIntegrationInstallState(integration?.name);
+  const formRef = useRef<UseFormReturn<Record<string, unknown>> | null>(null);
+  const { install, isLoading } = useUIInstallIntegration({
+    onConfirm,
+    validate: () => formRef.current?.trigger() ?? Promise.resolve(true),
+  });
+  const {
+    stepIndex,
+    currentSchema,
+    totalSteps,
+    dependencyName,
+    handleNextDependency,
+    handleBack,
+  } = useIntegrationInstallStep({
+    integrationState,
+    install: () =>
+      install({ integration, mainFormData: formRef.current?.getValues() }),
+  });
+
+  return (
+    <>
+      <DependencyStep
+        integration={integration}
+        dependencyName={dependencyName}
+        dependencySchema={currentSchema}
+        currentStep={stepIndex + 1}
+        totalSteps={totalSteps}
+        formRef={formRef}
+        integrationState={integrationState}
+        mode="column"
+      />
+      <div className="flex justify-end px-4 py-2 gap-2">
+        <InstallStepsButtons
+          stepIndex={stepIndex}
+          isLoading={isLoading}
+          hasNextStep={stepIndex < totalSteps - 1}
+          integrationState={integrationState}
+          handleNextDependency={handleNextDependency}
+          handleBack={handleBack}
+        />
+      </div>
+    </>
+  );
+};
+
+const InlineInstallation = ({
+  integrationName,
+  onConfirm,
+}: {
+  integrationName: string;
+  onConfirm: (data: {
+    authorizeOauthUrl: string | null;
+    connection: Integration;
+  }) => void;
+}) => {
+  const { data: marketplace } = useMarketplaceIntegrations();
+  const integration = useMemo(() => {
+    return marketplace?.integrations.find(
+      (integration) => integration.name === integrationName,
+    );
+  }, [marketplace, integrationName]);
+
+  if (!integration) {
+    return null;
+  }
+
+  return (
+    <_InlineInstallation integration={integration} onConfirm={onConfirm} />
   );
 };
 
@@ -501,25 +436,14 @@ const SelectProjectAppInstance = ({
     useState<Integration | null>(() => installedIntegrations[0] ?? null);
   const [inlineCreatingIntegration, setInlineCreatingIntegration] =
     useState<boolean>(() => installedIntegrations.length === 0);
-
-  const handleFormSubmit = async ({
-    formData,
-    scopes,
-  }: {
-    formData: Record<string, unknown>;
-    scopes: string[];
-  }) => {
-    const integration = await installCreatingApiKeyAndIntegration.mutateAsync({
-      clientId,
-      app,
-      formData,
-      scopes,
+  const [oauthCompletionDialog, setOauthCompletionDialog] =
+    useState<OauthModalState>({
+      open: false,
+      url: "",
+      integrationName: "",
+      connection: null,
+      openIntegrationOnFinish: true,
     });
-
-    await createOAuthCodeAndRedirectBackToApp({
-      integrationId: integration.id,
-    });
-  };
 
   const createOAuthCodeAndRedirectBackToApp = async ({
     integrationId,
@@ -538,39 +462,41 @@ const SelectProjectAppInstance = ({
   return (
     <div className="flex flex-col items-center justify-start h-full w-full py-6 overflow-y-auto">
       <div className="text-center space-y-6 max-w-md w-full m-auto">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center justify-center gap-2">
-            <div className="relative">
-              <Avatar
-                shape="square"
-                url={org.avatar_url}
-                fallback={org.name}
-                objectFit="contain"
-                size="xl"
-              />
-            </div>
+        {inlineCreatingIntegration ? null : (
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center justify-center gap-2">
+              <div className="relative">
+                <Avatar
+                  shape="square"
+                  url={org.avatar_url}
+                  fallback={org.name}
+                  objectFit="contain"
+                  size="xl"
+                />
+              </div>
 
-            <div className="relative -mx-4 z-50 bg-background border border-border rounded-lg w-8 h-8 flex items-center justify-center">
-              <Icon
-                name="sync_alt"
-                size={24}
-                className="text-muted-foreground"
-              />
-            </div>
+              <div className="relative -mx-4 z-50 bg-background border border-border rounded-lg w-8 h-8 flex items-center justify-center">
+                <Icon
+                  name="sync_alt"
+                  size={24}
+                  className="text-muted-foreground"
+                />
+              </div>
 
-            <div className="relative">
-              <IntegrationAvatar
-                url={app.icon}
-                fallback={app.friendlyName ?? app.name}
-                size="xl"
-              />
+              <div className="relative">
+                <IntegrationAvatar
+                  url={app.icon}
+                  fallback={app.friendlyName ?? app.name}
+                  size="xl"
+                />
+              </div>
             </div>
+            <h1 className="text-xl font-semibold flex items-start gap-2">
+              <span>Authorize {app.friendlyName ?? app.name}</span>
+              <div className="mt-2">{app.verified && <VerifiedBadge />}</div>
+            </h1>
           </div>
-          <h1 className="text-xl font-semibold flex items-start gap-2">
-            <span>Authorize {app.friendlyName ?? app.name}</span>
-            <div className="mt-2">{app.verified && <VerifiedBadge />}</div>
-          </h1>
-        </div>
+        )}
 
         {inlineCreatingIntegration ? (
           <Suspense
@@ -578,22 +504,58 @@ const SelectProjectAppInstance = ({
               <div className="flex flex-col items-center space-y-4 w-full">
                 <Spinner size="sm" />
                 <p className="text-sm text-muted-foreground">
-                  Loading app permissions...
+                  Loading app settings...
                 </p>
               </div>
             }
           >
-            <InlineCreateIntegrationForm
-              appName={clientId}
-              onFormSubmit={handleFormSubmit}
-              onBack={() => {
-                if (installedIntegrations.length > 0) {
-                  setInlineCreatingIntegration(false);
-                } else {
-                  selectAnotherProject();
-                }
+            <OauthModalContextProvider.Provider
+              value={{ onOpenOauthModal: setOauthCompletionDialog }}
+            >
+              <div className="h-[80vh]">
+                <InlineInstallation
+                  integrationName={clientId}
+                  // create callback
+                  onConfirm={({ connection, authorizeOauthUrl }) => {
+                    if (authorizeOauthUrl) {
+                      const popup = globalThis.open(
+                        authorizeOauthUrl,
+                        "_blank",
+                      );
+                      if (
+                        !popup ||
+                        popup.closed ||
+                        typeof popup.closed === "undefined"
+                      ) {
+                        setOauthCompletionDialog({
+                          openIntegrationOnFinish: true,
+                          open: true,
+                          url: authorizeOauthUrl,
+                          integrationName: connection?.name || "the service",
+                          connection: connection,
+                        });
+                      }
+                    }
+                    createOAuthCodeAndRedirectBackToApp({
+                      integrationId: connection.id,
+                    });
+                  }}
+                />
+              </div>
+            </OauthModalContextProvider.Provider>
+            <OAuthCompletionDialog
+              open={oauthCompletionDialog.open}
+              onOpenChange={(open) => {
+                setOauthCompletionDialog((prev) => ({ ...prev, open }));
+                // if (
+                //   oauthCompletionDialog.connection &&
+                //   oauthCompletionDialog.openIntegrationOnFinish
+                // ) {
+                //   onSelect?.(oauthCompletionDialog.connection);
+                // }
               }}
-              backEnabled={installedIntegrations.length > 0}
+              authorizeOauthUrl={oauthCompletionDialog.url}
+              integrationName={oauthCompletionDialog.integrationName}
             />
           </Suspense>
         ) : (
@@ -644,7 +606,7 @@ function AppsOAuth({
 }: OAuthSearchParams) {
   const { data: registryApp } = useRegistryApp({ clientId: client_id });
   const { data: orgs } = useOrganizations();
-  const [org, setOrg] = useState<Team | null>(
+  const [org, setOrg] = useState<Team | null>(() =>
     preSelectTeam(orgs, workspace_hint),
   );
 
