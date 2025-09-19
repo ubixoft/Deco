@@ -53,7 +53,15 @@ import {
 import { listKnowledgeBases } from "../knowledge/api.ts";
 import { getRegistryApp, listRegistryApps } from "../registry/api.ts";
 import { createServerClient } from "../utils.ts";
-import { agents, integrations, projects, organizations } from "../schema.ts";
+import {
+  agents,
+  integrations,
+  projects,
+  organizations,
+  registryApps,
+  registryTools,
+  registryScopes,
+} from "../schema.ts";
 import { and, eq, or } from "drizzle-orm";
 import { getProjectIdFromContext } from "../projects/util.ts";
 
@@ -533,10 +541,25 @@ export const getIntegration = createIntegrationManagementTool({
               access_id: integrations.access_id,
               project_id: projects.id,
               org_id: organizations.id,
+              // Registry app fields
+              registry_app_name: registryApps.name,
+              registry_scope_name: registryScopes.scope_name,
+              // Tool fields
+              tool_id: registryTools.id,
+              tool_name: registryTools.name,
+              tool_description: registryTools.description,
+              tool_input_schema: registryTools.input_schema,
+              tool_output_schema: registryTools.output_schema,
             })
             .from(integrations)
             .leftJoin(projects, eq(integrations.project_id, projects.id))
             .leftJoin(organizations, eq(projects.org_id, organizations.id))
+            .leftJoin(registryApps, eq(integrations.app_id, registryApps.id))
+            .leftJoin(
+              registryScopes,
+              eq(registryApps.scope_id, registryScopes.id),
+            )
+            .leftJoin(registryTools, eq(registryApps.id, registryTools.app_id))
             .where(
               and(
                 eq(integrations.id, uuid),
@@ -551,8 +574,36 @@ export const getIntegration = createIntegrationManagementTool({
                 ),
               ),
             )
-            .limit(1)
-            .then((r) => r[0])
+            .then((rows) => {
+              if (!rows.length) return null;
+
+              // Group tools by integration
+              const baseRow = rows[0];
+              const tools = rows
+                .filter((row) => row.tool_id) // Only include rows with tools
+                .map((row) => ({
+                  name: row.tool_name!,
+                  description: row.tool_description,
+                  input_schema: row.tool_input_schema,
+                  output_schema: row.tool_output_schema,
+                }));
+
+              return {
+                ...baseRow,
+                deco_chat_apps_registry: baseRow.registry_app_name
+                  ? {
+                      name: baseRow.registry_app_name,
+                      deco_chat_registry_scopes: baseRow.registry_scope_name
+                        ? {
+                            scope_name: baseRow.registry_scope_name,
+                          }
+                        : null,
+                      deco_chat_apps_registry_tools:
+                        tools.length > 0 ? tools : null,
+                    }
+                  : null,
+              };
+            })
         : c.drizzle
             .select({
               id: agents.id,
@@ -610,7 +661,12 @@ export const getIntegration = createIntegrationManagementTool({
       return { ...baseIntegration, tools: null }; // Agents don't have tools for now
     }
 
-    const integrationData = data as unknown as QueryResult<
+    // Cast the data to match the expected format for compatibility
+    const integrationData = {
+      ...data,
+      deco_chat_apps_registry:
+        "deco_chat_apps_registry" in data ? data.deco_chat_apps_registry : null,
+    } as unknown as QueryResult<
       "deco_chat_integrations",
       typeof SELECT_INTEGRATION_QUERY
     >;

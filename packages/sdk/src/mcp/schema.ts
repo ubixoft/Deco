@@ -10,6 +10,7 @@ import {
   uniqueIndex,
   real,
   pgEnum,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { WELL_KNOWN_PLANS } from "../plan";
 import { sql } from "drizzle-orm";
@@ -182,6 +183,139 @@ export const agents = pgTable("deco_chat_agents", {
 });
 
 /**
+ * create table public.deco_chat_apps_registry (
+  id uuid not null default gen_random_uuid (),
+  workspace text not null,
+  scope_id uuid not null,
+  name text not null,
+  description text null,
+  icon text null,
+  connection jsonb not null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  unlisted boolean not null default false,
+  friendly_name text null,
+  verified boolean null default false,
+  metadata jsonb null,
+  project_id uuid null,
+  constraint deco_chat_apps_registry_pkey primary key (id),
+  constraint unique_registry_app_scope_name unique (scope_id, name),
+  constraint deco_chat_apps_registry_scope_id_fkey foreign KEY (scope_id) references deco_chat_registry_scopes (id) on delete CASCADE,
+  constraint fk_deco_chat_apps_registry_project_id foreign KEY (project_id) references deco_chat_projects (id) on delete set null
+) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_apps_workspace on public.deco_chat_apps_registry using btree (workspace) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_apps_scope_id on public.deco_chat_apps_registry using btree (scope_id) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_apps_name on public.deco_chat_apps_registry using btree (name) TABLESPACE pg_default;
+ */
+
+export const registryApps = pgTable(
+  "deco_chat_apps_registry",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid ()`),
+    workspace: text("workspace").notNull(),
+    scope_id: uuid("scope_id")
+      .notNull()
+      .references(() => registryScopes.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    icon: text("icon"),
+    connection: jsonb("connection").notNull(),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+    unlisted: boolean("unlisted").notNull().default(false),
+    friendly_name: text("friendly_name"),
+    verified: boolean("verified").default(false),
+    metadata: jsonb("metadata"),
+    project_id: uuid("project_id").references(() => projects.id),
+  },
+  (table) => [
+    uniqueIndex("unique_registry_app_scope_name").on(
+      table.scope_id,
+      table.name,
+    ),
+  ],
+);
+
+/**
+ * create table public.deco_chat_apps_registry_tools (
+  id uuid not null default gen_random_uuid (),
+  app_id uuid not null,
+  name text not null,
+  description text null,
+  input_schema jsonb null,
+  output_schema jsonb null,
+  metadata jsonb null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  constraint deco_chat_apps_registry_tools_pkey primary key (id),
+  constraint unique_registry_tool_app_name unique (app_id, name),
+  constraint deco_chat_apps_registry_tools_app_id_fkey foreign KEY (app_id) references deco_chat_apps_registry (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_tools_app_id on public.deco_chat_apps_registry_tools using btree (app_id) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_tools_name on public.deco_chat_apps_registry_tools using btree (name) TABLESPACE pg_default;
+ */
+
+export const registryTools = pgTable(
+  "deco_chat_apps_registry_tools",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid ()`),
+    app_id: uuid("app_id")
+      .notNull()
+      .references(() => registryApps.id),
+    name: text("name").notNull(),
+    description: text("description"),
+    input_schema: jsonb("input_schema"),
+    output_schema: jsonb("output_schema"),
+    metadata: jsonb("metadata"),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("unique_registry_tool_app_name").on(table.app_id, table.name),
+  ],
+);
+
+/**
+ * create table public.deco_chat_registry_scopes (
+  id uuid not null default gen_random_uuid (),
+  scope_name text not null,
+  workspace text not null,
+  created_at timestamp with time zone not null default now(),
+  updated_at timestamp with time zone not null default now(),
+  project_id uuid null,
+  constraint deco_chat_registry_scopes_pkey primary key (id),
+  constraint deco_chat_registry_scopes_scope_name_key unique (scope_name),
+  constraint fk_deco_chat_registry_scopes_project_id foreign KEY (project_id) references deco_chat_projects (id) on delete set null
+) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_scopes_scope_name on public.deco_chat_registry_scopes using btree (scope_name) TABLESPACE pg_default;
+
+create index IF not exists idx_registry_scopes_workspace on public.deco_chat_registry_scopes using btree (workspace) TABLESPACE pg_default;
+ */
+
+export const registryScopes = pgTable(
+  "deco_chat_registry_scopes",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid ()`),
+    scope_name: text("scope_name").notNull().unique(),
+    workspace: text("workspace").notNull(),
+    created_at: timestamp("created_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
+    project_id: uuid("project_id").references(() => projects.id),
+  },
+  (table) => [
+    uniqueIndex("deco_chat_registry_scopes_scope_name_key").on(
+      table.scope_name,
+    ),
+  ],
+);
+
+/**
  * create table public.deco_chat_integrations (
   id uuid not null default gen_random_uuid (),
   name text not null,
@@ -213,6 +347,6 @@ export const integrations = pgTable("deco_chat_integrations", {
   workspace: text("workspace").notNull(),
   access: text("access"),
   access_id: uuid("access_id").references(() => access.id),
-  //   app_id: uuid("app_id").references(() => apps.id),
+  app_id: uuid("app_id").references(() => registryApps.id),
   project_id: uuid("project_id").references(() => projects.id),
 });
