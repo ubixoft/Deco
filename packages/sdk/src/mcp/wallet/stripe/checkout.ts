@@ -224,6 +224,7 @@ export const createCheckoutSession = async ({
     success_url: successUrl,
     cancel_url: cancelUrl,
     custom_fields: [...(args.custom_fields ?? []), ...MANDATORY_CUSTOM_FIELDS],
+    billing_address_collection: "required",
     metadata: {
       ...args.metadata,
       ...metadata,
