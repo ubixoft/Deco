@@ -53,7 +53,7 @@ import {
 import { listKnowledgeBases } from "../knowledge/api.ts";
 import { getRegistryApp, listRegistryApps } from "../registry/api.ts";
 import { createServerClient } from "../utils.ts";
-import { agents, integrations } from "../schema.ts";
+import { agents, integrations, projects, organizations } from "../schema.ts";
 import { and, eq } from "drizzle-orm";
 import { getProjectIdFromContext } from "../projects/util.ts";
 
@@ -521,8 +521,22 @@ export const getIntegration = createIntegrationManagementTool({
     const selectPromise =
       type === "i"
         ? c.drizzle
-            .select()
+            .select({
+              id: integrations.id,
+              name: integrations.name,
+              description: integrations.description,
+              icon: integrations.icon,
+              connection: integrations.connection,
+              created_at: integrations.created_at,
+              workspace: integrations.workspace,
+              access: integrations.access,
+              access_id: integrations.access_id,
+              project_id: projects.id,
+              org_id: organizations.id,
+            })
             .from(integrations)
+            .leftJoin(projects, eq(integrations.project_id, projects.id))
+            .leftJoin(organizations, eq(projects.org_id, organizations.id))
             .where(
               and(
                 eq(integrations.id, uuid),
@@ -532,8 +546,21 @@ export const getIntegration = createIntegrationManagementTool({
             .limit(1)
             .then((r) => r[0])
         : c.drizzle
-            .select()
+            .select({
+              id: agents.id,
+              name: agents.name,
+              description: agents.description,
+              avatar: agents.avatar,
+              created_at: agents.created_at,
+              workspace: agents.workspace,
+              access: agents.access,
+              access_id: agents.access_id,
+              project_id: projects.id,
+              org_id: organizations.id,
+            })
             .from(agents)
+            .leftJoin(projects, eq(agents.project_id, projects.id))
+            .leftJoin(organizations, eq(projects.org_id, organizations.id))
             .where(
               and(
                 eq(agents.id, uuid),
@@ -635,7 +662,8 @@ export const createIntegration = createIntegrationManagementTool({
         .where(
           and(
             eq(integrations.id, payload.id),
-            matchByWorkspaceOrProjectLocator(c.workspace.value, c.locator),
+            // TODO: update to use project locator
+            eq(integrations.workspace, c.workspace.value),
           ),
         )
         .returning();
