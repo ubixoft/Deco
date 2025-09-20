@@ -158,6 +158,7 @@ export const getAgent = createTool({
   name: "AGENTS_GET",
   description: "Get an agent by id",
   inputSchema: z.object({ id: z.string() }),
+  outputSchema: AgentSchema,
   handler: async ({ id }, c) => {
     assertHasWorkspace(c);
 
@@ -202,12 +203,13 @@ export const createAgent = createTool({
   name: "AGENTS_CREATE",
   description: "Create a new agent",
   inputSchema: AgentSchema.partial(),
+  outputSchema: AgentSchema,
   handler: async (agent, c) => {
     assertHasWorkspace(c);
 
     await assertWorkspaceResourceAccess(c);
 
-    const data = await c.drizzle
+    const [data] = await c.drizzle
       .insert(agents)
       .values({
         ...NEW_AGENT_TEMPLATE,
@@ -235,6 +237,7 @@ export const updateAgent = createAgentSetupTool({
     id: z.string(),
     agent: AgentSchema.partial(),
   }),
+  outputSchema: AgentSchema,
   handler: async ({ id, agent }, c) => {
     assertHasWorkspace(c);
 
@@ -266,6 +269,7 @@ export const deleteAgent = createTool({
   name: "AGENTS_DELETE",
   description: "Delete an agent by id",
   inputSchema: z.object({ id: z.string() }),
+  outputSchema: z.object({ deleted: z.boolean() }),
   handler: async ({ id }, c) => {
     assertHasWorkspace(c);
 
