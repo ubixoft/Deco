@@ -271,14 +271,25 @@ export const deleteAgent = createTool({
 
     await assertWorkspaceResourceAccess(c);
 
-    await c.drizzle
-      .delete(agents)
+    // this could be a cte
+    const agentExists = await c.drizzle
+      .select({ id: agents.id })
+      .from(agents)
+      .leftJoin(projects, eq(agents.project_id, projects.id))
+      .leftJoin(organizations, eq(projects.org_id, organizations.id))
       .where(
         and(
           eq(agents.id, id),
           matchByWorkspaceOrProjectLocator(c.workspace.value, c.locator),
         ),
-      );
+      )
+      .limit(1);
+
+    if (!agentExists.length) {
+      throw new NotFoundError("Agent not found");
+    }
+
+    await c.drizzle.delete(agents).where(eq(agents.id, id));
 
     const triggers = await listTriggers.handler({ agentId: id });
 
