@@ -1349,11 +1349,17 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       // Process instructions if provided in options
       let processedInstructions = options?.instructions;
       if (processedInstructions) {
+        const [resolveInstructionsTimings, resolveInstructionsSpan] = [
+          timings.start("resolve-instructions-mentions"),
+          tracer?.startSpan("resolve-instructions-mentions"),
+        ];
         processedInstructions = await resolveMentions(
           processedInstructions,
           this.workspace,
           this.metadata?.mcpClient,
         );
+        resolveInstructionsTimings.end();
+        resolveInstructionsSpan?.end();
       }
 
       const response = await agent.stream(aiMessages, {
