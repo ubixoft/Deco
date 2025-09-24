@@ -5,6 +5,7 @@ import {
   isApiDecoChatMCPConnection as shouldPatchDecoChatMCPConnection,
 } from "@deco/ai/mcp";
 import { CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { AppName } from "../../common/index.ts";
 import {
@@ -20,7 +21,6 @@ import {
   INNATE_INTEGRATIONS,
   type Integration,
   IntegrationSchema,
-  InternalServerError,
   Locator,
   type MCPConnection,
   NEW_INTEGRATION_TEMPLATE,
@@ -51,19 +51,18 @@ import {
   WellKnownBindings,
 } from "../index.ts";
 import { listKnowledgeBases } from "../knowledge/api.ts";
+import { getProjectIdFromContext } from "../projects/util.ts";
 import { getRegistryApp, listRegistryApps } from "../registry/api.ts";
-import { createServerClient } from "../utils.ts";
 import {
   agents,
   integrations,
-  projects,
   organizations,
+  projects,
   registryApps,
-  registryTools,
   registryScopes,
+  registryTools,
 } from "../schema.ts";
-import { and, eq, or } from "drizzle-orm";
-import { getProjectIdFromContext } from "../projects/util.ts";
+import { createServerClient } from "../utils.ts";
 
 const SELECT_INTEGRATION_QUERY = `
           *,
@@ -387,22 +386,134 @@ export const listIntegrations = createIntegrationManagementTool({
 
     await assertWorkspaceResourceAccess(c);
 
-    const [integrations, agents, knowledgeBases] = await Promise.all([
-      c.db
-        .from("deco_chat_integrations")
-        .select(SELECT_INTEGRATION_QUERY)
-        .ilike("workspace", workspace),
-      c.db.from("deco_chat_agents").select("*").ilike("workspace", workspace),
+    const [integrationsData, agentsData, knowledgeBases] = await Promise.all([
+      // Query integrations with all necessary joins
+      c.drizzle
+        .select({
+          id: integrations.id,
+          name: integrations.name,
+          description: integrations.description,
+          icon: integrations.icon,
+          connection: integrations.connection,
+          created_at: integrations.created_at,
+          workspace: integrations.workspace,
+          access: integrations.access,
+          access_id: integrations.access_id,
+          app_id: integrations.app_id,
+          project_id: integrations.project_id,
+          // Registry app fields
+          registry_app_name: registryApps.name,
+          registry_scope_name: registryScopes.scope_name,
+          // Tool fields
+          tool_id: registryTools.id,
+          tool_name: registryTools.name,
+          tool_description: registryTools.description,
+          tool_input_schema: registryTools.input_schema,
+          tool_output_schema: registryTools.output_schema,
+        })
+        .from(integrations)
+        .leftJoin(projects, eq(integrations.project_id, projects.id))
+        .leftJoin(organizations, eq(projects.org_id, organizations.id))
+        .leftJoin(registryApps, eq(integrations.app_id, registryApps.id))
+        .leftJoin(registryScopes, eq(registryApps.scope_id, registryScopes.id))
+        .leftJoin(registryTools, eq(registryApps.id, registryTools.app_id))
+        .where(
+          or(
+            eq(integrations.workspace, workspace),
+            c.locator
+              ? and(
+                  eq(projects.slug, c.locator.project),
+                  eq(organizations.slug, c.locator.org),
+                )
+              : undefined,
+          ),
+        )
+        .then((rows) => {
+          const byIntegration = new Map<
+            string,
+            QueryResult<
+              "deco_chat_integrations",
+              typeof SELECT_INTEGRATION_QUERY
+            >
+          >();
+          for (const row of rows) {
+            const tool = row.tool_id
+              ? {
+                  name: row.tool_name!,
+                  description: row.tool_description,
+                  input_schema: row.tool_input_schema,
+                  output_schema: row.tool_output_schema,
+                }
+              : null;
+            const existing = byIntegration.get(row.id);
+            if (!existing) {
+              byIntegration.set(row.id, {
+                ...row,
+                created_at:
+                  row.created_at?.toISOString() || new Date().toISOString(),
+                deco_chat_apps_registry: row.registry_app_name
+                  ? {
+                      name: row.registry_app_name,
+                      deco_chat_registry_scopes: row.registry_scope_name
+                        ? { scope_name: row.registry_scope_name }
+                        : null,
+                      deco_chat_apps_registry_tools: tool ? [tool] : [],
+                    }
+                  : null,
+                connection: row.connection as Json,
+              } as unknown as QueryResult<
+                "deco_chat_integrations",
+                typeof SELECT_INTEGRATION_QUERY
+              >);
+            } else if (tool && existing.deco_chat_apps_registry) {
+              (
+                existing.deco_chat_apps_registry
+                  .deco_chat_apps_registry_tools as unknown[]
+              ).push(tool);
+            }
+          }
+          return Array.from(byIntegration.values());
+        }),
+      // Query agents
+      c.drizzle
+        .select({
+          id: agents.id,
+          name: agents.name,
+          avatar: agents.avatar,
+          instructions: agents.instructions,
+          description: agents.description,
+          tools_set: agents.tools_set,
+          max_steps: agents.max_steps,
+          max_tokens: agents.max_tokens,
+          model: agents.model,
+          memory: agents.memory,
+          views: agents.views,
+          created_at: agents.created_at,
+          workspace: agents.workspace,
+          temperature: agents.temperature,
+          visibility: agents.visibility,
+          access: agents.access,
+          access_id: agents.access_id,
+          project_id: projects.id,
+          org_id: organizations.id,
+        })
+        .from(agents)
+        .leftJoin(projects, eq(agents.project_id, projects.id))
+        .leftJoin(organizations, eq(projects.org_id, organizations.id))
+        .where(
+          or(
+            eq(agents.workspace, workspace),
+            c.locator
+              ? and(
+                  eq(projects.slug, c.locator.project),
+                  eq(organizations.slug, c.locator.org),
+                )
+              : undefined,
+          ),
+        )
+        .then((result) => ({ data: result })),
       listKnowledgeBases.handler({}),
     ]);
-
-    const error = integrations.error || agents.error;
-
-    if (error) {
-      throw new InternalServerError(
-        error.message || "Failed to list integrations",
-      );
-    }
     const roles =
       c.workspace.root === "users"
         ? []
@@ -410,14 +521,14 @@ export const listIntegrations = createIntegrationManagementTool({
     const userRoles: string[] = roles?.map((role) => role?.name);
 
     // TODO: This is a temporary solution to filter integrations and agents by access.
-    const filteredIntegrations = integrations.data.filter(
+    const filteredIntegrations = integrationsData.filter(
       (integration) =>
         !integration.access ||
         userRoles?.includes(integration.access) ||
         userRoles?.some((role) => IMPORTANT_ROLES.includes(role)),
     );
 
-    const filteredAgents = agents.data.filter(
+    const filteredAgents = agentsData.data.filter(
       (agent) =>
         !agent.access ||
         userRoles?.includes(agent.access) ||
@@ -785,6 +896,7 @@ export const updateIntegration = createIntegrationManagementTool({
   handler: async ({ id, integration }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c);
+    assertHasLocator(c);
 
     const { uuid, type } = parseId(id);
 
@@ -794,9 +906,13 @@ export const updateIntegration = createIntegrationManagementTool({
 
     const { name, description, icon, connection, access, appId } = integration;
 
-    const { data, error } = await c.db
-      .from("deco_chat_integrations")
-      .update({
+    // For UPDATE queries with joins, we need to use a different approach
+    // First, let's get the project ID if we have a locator
+    const projectId = c.locator ? await getProjectIdFromContext(c) : null;
+
+    const [data] = await c.drizzle
+      .update(integrations)
+      .set({
         name,
         description,
         icon,
@@ -804,16 +920,17 @@ export const updateIntegration = createIntegrationManagementTool({
         access,
         app_id: appId,
         id: uuid,
-        workspace: c.workspace.value,
       })
-      .eq("id", uuid)
-      .eq("workspace", c.workspace.value)
-      .select()
-      .single();
-
-    if (error) {
-      throw new InternalServerError(error.message);
-    }
+      .where(
+        and(
+          eq(integrations.id, uuid),
+          or(
+            eq(integrations.workspace, c.workspace.value),
+            projectId ? eq(integrations.project_id, projectId) : undefined,
+          ),
+        ),
+      )
+      .returning();
 
     if (!data) {
       throw new NotFoundError("Integration not found");
@@ -842,15 +959,21 @@ export const deleteIntegration = createIntegrationManagementTool({
       throw new UserInputError("Cannot delete an agent integration");
     }
 
-    const { error } = await c.db
-      .from("deco_chat_integrations")
-      .delete()
-      .eq("id", uuid)
-      .eq("workspace", c.workspace.value);
+    // For UPDATE queries with joins, we need to use a different approach
+    // First, let's get the project ID if we have a locator
+    const projectId = c.locator ? await getProjectIdFromContext(c) : null;
 
-    if (error) {
-      throw new InternalServerError(error.message);
-    }
+    await c.drizzle
+      .delete(integrations)
+      .where(
+        and(
+          eq(integrations.id, uuid),
+          or(
+            eq(integrations.workspace, c.workspace.value),
+            projectId ? eq(integrations.project_id, projectId) : undefined,
+          ),
+        ),
+      );
 
     return { success: true };
   },
