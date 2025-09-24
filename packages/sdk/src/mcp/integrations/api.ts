@@ -22,6 +22,7 @@ import {
   type Integration,
   IntegrationSchema,
   Locator,
+  LocatorStructured,
   type MCPConnection,
   NEW_INTEGRATION_TEMPLATE,
   ProjectLocator,
@@ -35,7 +36,7 @@ import type { QueryResult } from "../../storage/supabase/client.ts";
 import { KnowledgeBaseID } from "../../utils/index.ts";
 import {
   IMPORTANT_ROLES,
-  matchByWorkspaceOrProjectLocator,
+  matchByWorkspaceOrProjectLocatorForAgents,
 } from "../agents/api.ts";
 import {
   assertHasLocator,
@@ -77,6 +78,26 @@ const SELECT_INTEGRATION_QUERY = `
             )
           )
         ` as const;
+
+/**
+ * Returns a Drizzle OR condition that filters Integrations by workspace or project locator.
+ * This version works with queries that don't include the agents table.
+ */
+export const matchByWorkspaceOrProjectLocatorForIntegrations = (
+  workspace: string,
+  locator?: LocatorStructured,
+) => {
+  return or(
+    eq(integrations.workspace, workspace),
+    locator
+      ? and(
+          eq(projects.slug, locator.project),
+          eq(organizations.slug, locator.org),
+        )
+      : undefined,
+  );
+};
+
 // Tool factories for each group
 const mapIntegration = (
   integration: QueryResult<
@@ -418,15 +439,7 @@ export const listIntegrations = createIntegrationManagementTool({
         .leftJoin(registryScopes, eq(registryApps.scope_id, registryScopes.id))
         .leftJoin(registryTools, eq(registryApps.id, registryTools.app_id))
         .where(
-          or(
-            eq(integrations.workspace, workspace),
-            c.locator
-              ? and(
-                  eq(projects.slug, c.locator.project),
-                  eq(organizations.slug, c.locator.org),
-                )
-              : undefined,
-          ),
+          matchByWorkspaceOrProjectLocatorForIntegrations(workspace, c.locator),
         )
         .then((rows) => {
           const byIntegration = new Map<
@@ -500,17 +513,7 @@ export const listIntegrations = createIntegrationManagementTool({
         .from(agents)
         .leftJoin(projects, eq(agents.project_id, projects.id))
         .leftJoin(organizations, eq(projects.org_id, organizations.id))
-        .where(
-          or(
-            eq(agents.workspace, workspace),
-            c.locator
-              ? and(
-                  eq(projects.slug, c.locator.project),
-                  eq(organizations.slug, c.locator.org),
-                )
-              : undefined,
-          ),
-        )
+        .where(matchByWorkspaceOrProjectLocatorForAgents(workspace, c.locator))
         .then((result) => ({ data: result })),
       listKnowledgeBases.handler({}),
     ]);
@@ -674,14 +677,9 @@ export const getIntegration = createIntegrationManagementTool({
             .where(
               and(
                 eq(integrations.id, uuid),
-                or(
-                  eq(integrations.workspace, c.workspace.value),
-                  c.locator
-                    ? and(
-                        eq(projects.slug, c.locator.project),
-                        eq(organizations.slug, c.locator.org),
-                      )
-                    : undefined,
+                matchByWorkspaceOrProjectLocatorForIntegrations(
+                  c.workspace.value,
+                  c.locator,
                 ),
               ),
             )
@@ -734,7 +732,10 @@ export const getIntegration = createIntegrationManagementTool({
             .where(
               and(
                 eq(agents.id, uuid),
-                matchByWorkspaceOrProjectLocator(c.workspace.value, c.locator),
+                matchByWorkspaceOrProjectLocatorForAgents(
+                  c.workspace.value,
+                  c.locator,
+                ),
               ),
             )
             .limit(1)
@@ -840,14 +841,9 @@ export const createIntegration = createIntegrationManagementTool({
           .where(
             and(
               eq(integrations.id, payload.id),
-              or(
-                eq(integrations.workspace, c.workspace.value),
-                c.locator
-                  ? and(
-                      eq(projects.slug, c.locator.project),
-                      eq(organizations.slug, c.locator.org),
-                    )
-                  : undefined,
+              matchByWorkspaceOrProjectLocatorForIntegrations(
+                c.workspace.value,
+                c.locator,
               ),
             ),
           )
@@ -862,8 +858,10 @@ export const createIntegration = createIntegrationManagementTool({
         .where(
           and(
             eq(integrations.id, existingIntegration.id),
-            // TODO: update to use project locator
-            eq(integrations.workspace, c.workspace.value),
+            matchByWorkspaceOrProjectLocatorForIntegrations(
+              c.workspace.value,
+              c.locator,
+            ),
           ),
         )
         .returning();
