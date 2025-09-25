@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import {
   AgentSchema,
@@ -80,15 +80,12 @@ export const matchByWorkspaceOrProjectLocatorForAgents = (
   workspace: string,
   locator?: LocatorStructured,
 ) => {
-  return or(
-    eq(agents.workspace, workspace),
-    locator
-      ? and(
-          eq(projects.slug, locator.project),
-          eq(organizations.slug, locator.org),
-        )
-      : undefined,
-  );
+  return locator && locator?.project !== "default"
+    ? and(
+        eq(projects.slug, locator.project),
+        eq(organizations.slug, locator.org),
+      )
+    : eq(agents.workspace, workspace);
 };
 
 const AGENT_FIELDS_SELECT = {

@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { StatementSchema } from "../../auth/policy.ts";
 import { userFromJWT } from "../../auth/user.ts";
@@ -60,15 +60,12 @@ export const matchByWorkspaceOrProjectLocatorForApiKeys = (
   workspace: string,
   locator?: LocatorStructured,
 ) => {
-  return or(
-    eq(apiKeys.workspace, workspace),
-    locator
-      ? and(
-          eq(projects.slug, locator.project),
-          eq(organizations.slug, locator.org),
-        )
-      : undefined,
-  );
+  return locator && locator?.project !== "default"
+    ? and(
+        eq(projects.slug, locator.project),
+        eq(organizations.slug, locator.org),
+      )
+    : eq(apiKeys.workspace, workspace);
 };
 
 export const listApiKeys = createTool({
