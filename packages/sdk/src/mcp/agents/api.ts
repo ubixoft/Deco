@@ -12,9 +12,13 @@ import {
   type WithTool,
 } from "../assertions.ts";
 import { type AppContext, createToolGroup } from "../context.ts";
-import { ForbiddenError, NotFoundError } from "../index.ts";
+import {
+  ForbiddenError,
+  NotFoundError,
+  InternalServerError,
+} from "../index.ts";
 import { getProjectIdFromContext } from "../projects/util.ts";
-import { agents, organizations, projects } from "../schema.ts";
+import { agents, organizations, projects, userActivity } from "../schema.ts";
 import { deleteTrigger, listTriggers } from "../triggers/api.ts";
 
 const createTool = createToolGroup("Agent", {
@@ -118,7 +122,12 @@ export const listAgents = createTool({
   description: "List all agents",
   inputSchema: z.object({}),
   outputSchema: z.object({
-    items: z.array(AgentSchema),
+    items: z.array(
+      AgentSchema.extend({
+        lastAccess: z.string().nullable().optional(),
+        lastAccessor: z.string().nullable().optional(),
+      }),
+    ),
   }),
   handler: async (_, c: WithTool<AppContext>) => {
     assertHasWorkspace(c);
@@ -148,9 +157,75 @@ export const listAgents = createTool({
         userRoles?.some((role) => IMPORTANT_ROLES.includes(role)),
     );
 
+    const agentIds = filteredAgents
+      .map((a) => a.id)
+      .filter((id) => !(id in WELL_KNOWN_AGENTS));
+
+    let latestByAgent: Record<
+      string,
+      { created_at: string; user_id: string } | undefined
+    > = {};
+    if (agentIds.length > 0) {
+      try {
+        const rows = await c.drizzle
+          .select({
+            createdAt: userActivity.created_at,
+            userId: userActivity.user_id,
+            value: userActivity.value,
+          })
+          .from(userActivity)
+          .where(
+            and(
+              eq(userActivity.resource, "agent"),
+              eq(userActivity.key, "id"),
+              inArray(userActivity.value, agentIds),
+            ),
+          )
+          .orderBy(desc(userActivity.created_at));
+
+        latestByAgent = rows.reduce(
+          (acc, row) => {
+            const value = row.value ?? undefined;
+            if (!value) return acc;
+            if (acc[value]) return acc;
+
+            const createdAt =
+              row.createdAt instanceof Date
+                ? row.createdAt.toISOString()
+                : (row.createdAt ?? undefined);
+
+            if (!createdAt) return acc;
+
+            acc[value] = {
+              created_at: createdAt,
+              user_id: row.userId,
+            };
+
+            return acc;
+          },
+          {} as Record<
+            string,
+            { created_at: string; user_id: string } | undefined
+          >,
+        );
+      } catch (error) {
+        throw new InternalServerError(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    }
+
     return {
       items: filteredAgents
-        .map((item) => AgentSchema.safeParse(item)?.data)
+        .map((raw) => {
+          const base = AgentSchema.parse(raw);
+          const latest = latestByAgent[base.id];
+          return {
+            ...base,
+            lastAccess: latest?.created_at ?? null,
+            lastAccessor: latest?.user_id ?? null,
+          };
+        })
         .filter((a) => !!a),
     };
   },

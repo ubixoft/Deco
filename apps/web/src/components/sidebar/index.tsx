@@ -48,6 +48,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarMenuAction,
   useSidebar,
 } from "@deco/ui/components/sidebar.tsx";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
@@ -737,43 +738,146 @@ function WorkspaceViews() {
       })}
       {Object.entries(fromIntegration).map(([integrationId, views]) => {
         const integration = integrationMap.get(integrationId);
+        const isSingleView = views.length === 1;
+
+        if (isSingleView) {
+          const [view] = views;
+          const href = buildViewHrefFromView(view as View);
+
+          return (
+            <SidebarMenuItem key={integrationId}>
+              <WithActive to={href}>
+                {({ isActive }) => (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive}
+                    className="w-full pr-8"
+                  >
+                    <Link
+                      to={href}
+                      className="group/item"
+                      onClick={() => {
+                        trackEvent("sidebar_navigation_click", {
+                          item: view.title,
+                        });
+                        isMobile && toggleSidebar();
+                      }}
+                    >
+                      <div className="relative">
+                        <IntegrationAvatar
+                          size="xs"
+                          url={integration?.icon}
+                          fallback={integration?.name}
+                          className="!w-[18px] !h-[18px] !rounded-md"
+                        />
+                        {integration && integrationId !== "custom" && (
+                          <SidebarMenuAction
+                            asChild
+                            className="absolute inset-0 hidden items-center justify-center rounded-md border border-border/80 bg-background/95 shadow-sm transition-opacity group-hover/item:flex"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setAddViewsDialogState({
+                                open: true,
+                                integration,
+                              });
+                            }}
+                            aria-label={`Add view to ${integration?.name ?? "integration"}`}
+                            showOnHover
+                          >
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              className="flex h-full w-full items-center justify-center"
+                              onKeyDown={(event) => {
+                                if (
+                                  event.key === "Enter" ||
+                                  event.key === " "
+                                ) {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  setAddViewsDialogState({
+                                    open: true,
+                                    integration,
+                                  });
+                                }
+                              }}
+                            >
+                              <Icon
+                                name="add"
+                                size={14}
+                                className="text-muted-foreground"
+                              />
+                            </span>
+                          </SidebarMenuAction>
+                        )}
+                      </div>
+                      <span className="truncate">
+                        {view.title ?? integration?.name ?? "Custom"}
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                )}
+              </WithActive>
+            </SidebarMenuItem>
+          );
+        }
 
         return (
           <SidebarMenuItem key={integrationId}>
             <Collapsible asChild defaultOpen className="group/collapsible">
-              <div>
+              <div className="group/integration-header relative">
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton className="w-full group/integration-header">
-                    <IntegrationAvatar
-                      size="xs"
-                      url={integration?.icon}
-                      fallback={integration?.name}
-                      className="!w-[18px] !h-[18px] !rounded-md"
-                    />
+                  <SidebarMenuButton className="w-full pr-8">
+                    <div className="relative">
+                      <IntegrationAvatar
+                        size="xs"
+                        url={integration?.icon}
+                        fallback={integration?.name}
+                        className="!w-[18px] !h-[18px] !rounded-md"
+                      />
+                      {integration && integrationId !== "custom" && (
+                        <SidebarMenuAction
+                          asChild
+                          className="absolute inset-0 hidden items-center justify-center rounded-md border border-border/80 bg-background/95 shadow-sm transition-opacity group-hover/integration-header:flex"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setAddViewsDialogState({
+                              open: true,
+                              integration,
+                            });
+                          }}
+                          aria-label={`Add view to ${integration?.name ?? "integration"}`}
+                          showOnHover
+                        >
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="flex h-full w-full items-center justify-center"
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setAddViewsDialogState({
+                                  open: true,
+                                  integration,
+                                });
+                              }
+                            }}
+                          >
+                            <Icon
+                              name="add"
+                              size={14}
+                              className="text-muted-foreground"
+                            />
+                          </span>
+                        </SidebarMenuAction>
+                      )}
+                    </div>
                     <span className="truncate">
                       {integration?.name ?? "Custom"}
                     </span>
-                    {integration && integrationId !== "custom" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hidden group-hover/integration-header:flex transition-opacity ml-auto mr-1 h-5 w-5"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setAddViewsDialogState({
-                            open: true,
-                            integration,
-                          });
-                        }}
-                      >
-                        <Icon
-                          name="add"
-                          size={14}
-                          className="text-muted-foreground"
-                        />
-                      </Button>
-                    )}
                     <Icon
                       name="chevron_right"
                       size={18}
@@ -810,9 +914,9 @@ function WorkspaceViews() {
                                   name="unpin"
                                   size={18}
                                   className="text-muted-foreground/75 opacity-0 group-hover/item:opacity-50 hover:opacity-100 transition-opacity cursor-pointer ml-auto"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
                                     handleRemoveView(view);
                                   }}
                                 />
@@ -866,8 +970,8 @@ export function AppSidebar() {
     <Sidebar variant="sidebar">
       <SidebarHeader />
 
-      <SidebarContent className="flex flex-col h-full overflow-x-hidden">
-        <div className="flex flex-col flex-1 min-h-0">
+      <SidebarContent className="flex h-full flex-col overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col overflow-y-auto overflow-x-hidden">
           <div className="flex-none">
             <SidebarGroup className="font-medium">
               <SidebarGroupContent>
@@ -917,13 +1021,11 @@ export function AppSidebar() {
           </div>
 
           {!isCollapsed && (
-            <>
-              <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <Suspense fallback={<SidebarThreads.Skeleton />}>
-                  <SidebarThreads />
-                </Suspense>
-              </div>
-            </>
+            <div className="mt-4 flex-none">
+              <Suspense fallback={<SidebarThreads.Skeleton />}>
+                <SidebarThreads />
+              </Suspense>
+            </div>
           )}
         </div>
 
