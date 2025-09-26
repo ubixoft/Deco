@@ -2,12 +2,12 @@ import { z } from "zod";
 
 export const DEFAULT_VIEWS: View[] = [
   {
-    id: "connections",
-    title: "My Apps",
+    id: "apps",
+    title: "Apps",
     icon: "linked_services",
     type: "default",
     metadata: {
-      path: "/connections",
+      path: "/apps",
     },
   },
   {
@@ -56,12 +56,12 @@ export const DEFAULT_VIEWS: View[] = [
     },
   },
   {
-    id: "monitor",
-    title: "Monitor",
-    icon: "monitoring",
+    id: "activity",
+    title: "Activity",
+    icon: "forum",
     type: "default",
     metadata: {
-      path: "/monitor",
+      path: "/activity",
     },
   },
 ];

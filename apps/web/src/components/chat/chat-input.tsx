@@ -15,13 +15,11 @@ import { ContextResources, UploadedFile } from "./context-resources.tsx";
 import { useAgent } from "../agent/provider.tsx";
 import { ModelSelector } from "./model-selector.tsx";
 import { RichTextArea } from "./rich-text.tsx";
-import ToolsButton from "./tools-button.tsx";
 
 export function ChatInput({ disabled }: { disabled?: boolean } = {}) {
   const { chat, uiOptions } = useAgent();
   const { stop, input, handleInputChange, handleSubmit, status } = chat;
-  const { showModelSelector, showThreadTools, showContextResources } =
-    uiOptions;
+  const { showModelSelector, showContextResources } = uiOptions;
   const isLoading = status === "submitted" || status === "streaming";
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const { preferences, setPreferences } = useUserPreferences();
@@ -143,7 +141,6 @@ export function ChatInput({ disabled }: { disabled?: boolean } = {}) {
                       }
                     />
                   )}
-                  {showThreadTools && <ToolsButton />}
                   <AudioButton onMessage={handleRichTextChange} />
                   <Button
                     type={isLoading ? "button" : "submit"}

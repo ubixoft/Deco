@@ -1,6 +1,10 @@
 import { type ProjectLocator, SDKProvider, UnauthorizedError } from "@deco/sdk";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
-import { SidebarInset, SidebarProvider } from "@deco/ui/components/sidebar.tsx";
+import {
+  SidebarInset,
+  SidebarLayout,
+  SidebarProvider,
+} from "@deco/ui/components/sidebar.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { Suspense, useMemo } from "react";
 import { useSearchParams } from "react-router";
@@ -9,10 +13,7 @@ import { ChatInput } from "../chat/chat-input.tsx";
 import { ChatMessages } from "../chat/chat-messages.tsx";
 import { AgentProvider } from "./provider.tsx";
 import { EmptyState } from "../common/empty-state.tsx";
-import { PageLayout } from "../layout/project.tsx";
 import { ChatHeader } from "./chat-header.tsx";
-import AgentPreview from "./preview.tsx";
-import ThreadView from "./thread.tsx";
 
 const MainChat = () => {
   return (
@@ -25,24 +26,6 @@ const MainChat = () => {
       </div>
     </div>
   );
-};
-
-const TABS = {
-  chat: {
-    Component: MainChat,
-    title: "Chat",
-    initialOpen: true,
-  },
-  chatView: {
-    Component: ThreadView,
-    title: "Thread",
-    hideFromViews: true,
-  },
-  preview: {
-    Component: AgentPreview,
-    title: "Preview",
-    hideFromViews: true,
-  },
 };
 
 export const getPublicChatLink = (
@@ -124,21 +107,22 @@ function Page() {
               showContextResources: false,
             }}
           >
-            <SidebarProvider
-              style={
-                {
-                  "--sidebar-width": "16rem",
-                  "--sidebar-width-mobile": "14rem",
-                } as Record<string, string>
-              }
-            >
-              <SidebarInset>
-                <PageLayout
-                  tabs={TABS}
-                  breadcrumb={<ChatHeader />}
-                  hideViewsButton
-                />
-              </SidebarInset>
+            <SidebarProvider>
+              <SidebarLayout
+                style={
+                  {
+                    "--sidebar-width": "13rem",
+                    "--sidebar-width-mobile": "11rem",
+                  } as Record<string, string>
+                }
+              >
+                <SidebarInset>
+                  <div className="w-full h-12 border border-b px-8">
+                    <ChatHeader />
+                  </div>
+                  <MainChat />
+                </SidebarInset>
+              </SidebarLayout>
             </SidebarProvider>
           </AgentProvider>
         </SDKProvider>

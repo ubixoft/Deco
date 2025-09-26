@@ -1,4 +1,4 @@
-import { SDKProvider } from "@deco/sdk";
+import { Locator, SDKProvider } from "@deco/sdk";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -8,35 +8,32 @@ import {
   BreadcrumbSeparator,
 } from "@deco/ui/components/breadcrumb.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
-import { Icon } from "@deco/ui/components/icon.tsx";
+import {
+  ResizablePanel,
+  ResizablePanelGroup,
+  ResizableHandle,
+} from "@deco/ui/components/resizable.tsx";
 import {
   SidebarInset,
+  SidebarLayout,
   SidebarProvider,
-  useSidebar,
 } from "@deco/ui/components/sidebar.tsx";
 import { Toaster } from "@deco/ui/components/sonner.tsx";
-import { cn } from "@deco/ui/lib/utils.ts";
-import { DockviewReadyEvent } from "dockview-react";
-import { Fragment, type ReactNode, useMemo, useState } from "react";
+import { useIsMobile } from "@deco/ui/hooks/use-mobile.ts";
+import { Fragment, type ReactNode, Suspense, useState } from "react";
 import { Link, Outlet, useParams } from "react-router";
 import { useLocalStorage } from "../../hooks/use-local-storage.ts";
 import { useWorkspaceLink } from "../../hooks/use-navigate-workspace.ts";
-import { useUserPreferences } from "../../hooks/use-user-preferences.ts";
 import { useUser } from "../../hooks/use-user.ts";
 import RegisterActivity from "../common/register-activity.tsx";
-import {
-  DecopilotChat,
-  DecopilotTabs,
-  toggleDecopilotTab,
-  useDecopilotParams,
-} from "../decopilot/index.tsx";
-import Docked, { type Tab, useDock } from "../dock/index.tsx";
 import { ProfileModalProvider, useProfileModal } from "../profile-modal.tsx";
-import { AppSidebar } from "../sidebar/index.tsx";
+import { ProjectSidebar } from "../sidebar/index.tsx";
 import { WithWorkspaceTheme } from "../theme.tsx";
-import { useIsMobile } from "@deco/ui/hooks/use-mobile.ts";
-import { ErrorBoundary } from "../../error-boundary.tsx";
-import { Locator } from "@deco/sdk";
+import { TopbarLayout } from "./home.tsx";
+import { BreadcrumbOrgSwitcher } from "./org-project-switcher.tsx";
+import { DecopilotChat } from "../decopilot/index.tsx";
+import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
+import { Spinner } from "@deco/ui/components/spinner.tsx";
 
 export function BaseRouteLayout({ children }: { children: ReactNode }) {
   // remove?
@@ -55,12 +52,33 @@ export function BaseRouteLayout({ children }: { children: ReactNode }) {
   );
 }
 
-export function ProjectLayout() {
-  const { value: defaultOpen, update: setDefaultOpen } = useLocalStorage({
-    key: "deco-chat-sidebar",
-    defaultValue: true,
+export function useDecopilotOpen() {
+  const { value: open, update: setOpen } = useLocalStorage({
+    key: "deco-cms-decopilot",
+    defaultValue: false,
   });
-  const [open, setOpen] = useState(defaultOpen);
+
+  const toggle = () => {
+    setOpen(!open);
+  };
+
+  return {
+    open,
+    setOpen,
+    toggle,
+  };
+}
+
+export function ProjectLayout() {
+  const { value: defaultSidebarOpen, update: setDefaultSidebarOpen } =
+    useLocalStorage({
+      key: "deco-chat-sidebar",
+      defaultValue: true,
+    });
+  const [sidebarOpen, setSidebarOpen] = useState(defaultSidebarOpen);
+
+  const { open: decopilotOpen } = useDecopilotOpen();
+
   const { org, project } = useParams();
 
   const {
@@ -82,24 +100,65 @@ export function ProjectLayout() {
           handlePhoneSaved={handlePhoneSaved}
         >
           <SidebarProvider
-            open={open}
+            open={sidebarOpen}
             onOpenChange={(open) => {
-              setDefaultOpen(open);
-              setOpen(open);
+              setDefaultSidebarOpen(open);
+              setSidebarOpen(open);
             }}
-            className="h-full bg-sidebar"
-            style={
-              {
-                "--sidebar-width": "16rem",
-                "--sidebar-width-mobile": "14rem",
-              } as Record<string, string>
-            }
           >
-            <AppSidebar />
-            <SidebarInset className="h-full flex-col bg-sidebar">
-              <Outlet />
-            </SidebarInset>
-            <RegisterActivity orgSlug={org} projectSlug={project} />
+            <div className="flex flex-col h-full">
+              <TopbarLayout
+                breadcrumb={[
+                  {
+                    label: (
+                      <Suspense fallback={<BreadcrumbOrgSwitcher.Skeleton />}>
+                        <BreadcrumbOrgSwitcher />
+                      </Suspense>
+                    ),
+                    link: `/${org}`,
+                  },
+                ]}
+              >
+                <SidebarLayout
+                  className="h-full bg-sidebar"
+                  style={
+                    {
+                      "--sidebar-width": "13rem",
+                      "--sidebar-width-mobile": "11rem",
+                    } as Record<string, string>
+                  }
+                >
+                  <ProjectSidebar />
+                  <SidebarInset className="h-full flex-col bg-sidebar">
+                    <ResizablePanelGroup direction="horizontal">
+                      <ResizablePanel>
+                        {/* Topbar height is 48px */}
+                        <ScrollArea className="h-[calc(100vh-48px)]">
+                          <Suspense
+                            fallback={
+                              <div className="h-[calc(100vh-48px)] w-full grid place-items-center">
+                                <Spinner />
+                              </div>
+                            }
+                          >
+                            <Outlet />
+                          </Suspense>
+                        </ScrollArea>
+                      </ResizablePanel>
+                      {decopilotOpen && (
+                        <>
+                          <ResizableHandle withHandle />
+                          <ResizablePanel defaultSize={30}>
+                            <DecopilotChat />
+                          </ResizablePanel>
+                        </>
+                      )}
+                    </ResizablePanelGroup>
+                  </SidebarInset>
+                </SidebarLayout>
+              </TopbarLayout>
+              <RegisterActivity orgSlug={org} projectSlug={project} />
+            </div>
           </SidebarProvider>
         </ProfileModalProvider>
       </WithWorkspaceTheme>
@@ -107,147 +166,51 @@ export function ProjectLayout() {
   );
 }
 
-export interface PageLayoutProps {
-  breadcrumb?: ReactNode;
-  actionButtons?: ReactNode;
-  tabs: Record<string, Tab>;
-  hideViewsButton?: boolean;
-}
+// // Listen for toggle decopilot events
+// useEffect(() => {
+//   const handleToggleDecopilot = () => {
+//     if (!dockApi) {
+//       return;
+//     }
 
-const ToggleDecopilotButton = () => {
-  const { api } = useDock();
-  const { preferences, setPreferences } = useUserPreferences();
+//     const isNowOpen = toggleDecopilotTab(dockApi);
 
-  const handleToggle = () => {
-    if (!api) {
-      return;
-    }
+//     // Update user preference based on the action being taken
+//     // If we're opening the tab, set preference to true
+//     // If we're closing the tab, set preference to false
+//     setPreferences({
+//       ...preferences,
+//       showDecopilot: isNowOpen,
+//     });
+//   };
 
-    const isNowOpen = toggleDecopilotTab(api);
+//   globalThis.addEventListener("toggle-decopilot", handleToggleDecopilot);
 
-    // Update user preference based on the action being taken
-    // If we're opening the tab, set preference to true
-    // If we're closing the tab, set preference to false
-    setPreferences({
-      ...preferences,
-      showDecopilot: isNowOpen,
-    });
-  };
+//   return () => {
+//     globalThis.removeEventListener("toggle-decopilot", handleToggleDecopilot);
+//   };
+// }, [dockApi, preferences, setPreferences]);
 
-  return (
-    <Button size="icon" variant="ghost" onClick={handleToggle}>
-      <Icon name="chat" className="text-muted-foreground" />
-    </Button>
-  );
+const useIsProjectContext = () => {
+  const { org, project } = useParams();
+  return !!org && !!project;
 };
 
-export function PageLayout({
-  breadcrumb,
-  actionButtons,
-  tabs,
-  hideViewsButton,
-}: PageLayoutProps) {
-  const { toggleSidebar, open } = useSidebar();
-  const { preferences } = useUserPreferences();
-  const { initialInput, autoSend } = useDecopilotParams();
-  const withDecopilot = useMemo(
-    () => ({
-      ...tabs,
-      [DecopilotChat.displayName]: {
-        title: "Decopilot Chat",
-        Component: DecopilotChat,
-      },
-    }),
-    [tabs],
-  );
+export const ToggleDecopilotButton = () => {
+  const isProjectContext = useIsProjectContext();
+  const { toggle } = useDecopilotOpen();
 
-  const onReady = (event: DockviewReadyEvent) => {
-    if (preferences.showDecopilot || (autoSend && initialInput)) {
-      toggleDecopilotTab(event.api);
-    }
-  };
-
-  return (
-    <Docked.Provider tabs={withDecopilot}>
-      <div className={cn("bg-sidebar", "grid grid-cols-3 md:grid-cols-2 px-0")}>
-        <div className="p-2 md:p-0 md:hidden">
-          <Button
-            onClick={toggleSidebar}
-            size="icon"
-            variant="ghost"
-            className={cn("p-1")}
-          >
-            <Icon name="menu" />
-          </Button>
-        </div>
-        <div
-          id="chat-header-start-slot"
-          className={cn(
-            "peer",
-            "flex items-center gap-2",
-            "mb-0 md:-mb-2 empty:mb-0",
-            "min-h-14 empty:min-h-0",
-            "justify-self-center md:justify-self-start",
-          )}
-        >
-          {breadcrumb}
-        </div>
-        <div
-          id="chat-header-end-slot"
-          className={cn(
-            "flex items-center gap-2",
-            "mb-0 md:-mb-2 empty:mb-0",
-            "min-h-14 empty:min-h-0",
-            "justify-self-end",
-          )}
-        >
-          {actionButtons}
-          <ToggleDecopilotButton />
-        </div>
-        {!open && (
-          <div className="peer-empty:flex items-center justify-center hidden fixed left-0 top-0 z-10 h-14 px-3">
-            <Button
-              onClick={toggleSidebar}
-              size="icon"
-              variant="ghost"
-              className="p-1 size-8"
-            >
-              <Icon name="dock_to_right" className="text-muted-foreground" />
-            </Button>
-          </div>
-        )}
-      </div>
-      <div className="h-full p-0 md:px-0">
-        <Docked
-          hideViewsButton={hideViewsButton}
-          onReady={onReady}
-          tabComponents={{
-            [DecopilotTabs.displayName]: DecopilotTabs,
-          }}
-        />
-      </div>
-    </Docked.Provider>
-  );
-}
-
-function BreadcrumbSidebarToggle() {
-  const { toggleSidebar, open, isMobile } = useSidebar();
-
-  if (open) {
+  if (!isProjectContext) {
     return null;
   }
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => toggleSidebar()}
-      className={cn(isMobile && "hidden", "size-8")}
-    >
-      <Icon name="dock_to_right" className="text-muted-foreground" />
+    <Button size="sm" variant="special" onClick={toggle}>
+      <img src="/img/logo-tiny.svg" alt="Deco logo" className="w-4 h-4" />
+      Chat
     </Button>
   );
-}
+};
 
 interface BreadcrumbItem {
   label: string | ReactNode;
@@ -265,11 +228,7 @@ export function DefaultBreadcrumb({
   const withWorkspace = useWorkspaceLink();
 
   return (
-    <div className="flex items-center gap-3 pl-2">
-      <ErrorBoundary fallback={null}>
-        <BreadcrumbSidebarToggle />
-      </ErrorBoundary>
-
+    <div className="flex items-center gap-3">
       <Breadcrumb>
         <BreadcrumbList>
           {isMobile ? (

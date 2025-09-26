@@ -17,6 +17,7 @@ import {
 } from "react-router";
 import { EmptyState } from "./components/common/empty-state.tsx";
 import { useWorkspaceLink } from "./hooks/use-navigate-workspace.ts";
+import { OrgsLayout } from "./components/layout/org.tsx";
 
 const DECO_ASCII_LOGO = `
 ..................................................
@@ -59,7 +60,7 @@ export const wrapWithUILoadingFallback = <P,>(
     default: (p: P) => (
       <Suspense
         fallback={
-          <div className="h-full w-full flex items-center justify-center">
+          <div className="h-[calc(100vh-48px)] w-full grid place-items-center">
             <Spinner />
           </div>
         }
@@ -88,9 +89,7 @@ const OrgList = lazy(() =>
 );
 
 const OrgProjectList = lazy(() =>
-  import("./components/home/projects.tsx").then((mod) => ({
-    default: mod.OrgProjectList,
-  })),
+  wrapWithUILoadingFallback(import("./components/home/projects.tsx")),
 );
 
 const ProjectHome = lazy(() =>
@@ -109,19 +108,17 @@ const Login = lazy(() => import("./components/login/index.tsx"));
  * Route component with Suspense + Spinner. Remove the wrapWithUILoadingFallback if
  * want custom Suspense behavior.
  */
-const ConnectionDetail = lazy(() =>
+const AppDetail = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/integrations/app-detail.tsx")),
+);
+
+const InstalledAppsList = lazy(() =>
   wrapWithUILoadingFallback(
-    import("./components/integrations/connection-detail.tsx"),
+    import("./components/integrations/installed-apps.tsx"),
   ),
 );
 
-const ConnectionsList = lazy(() =>
-  wrapWithUILoadingFallback(
-    import("./components/integrations/connections-list.tsx"),
-  ),
-);
-
-const ConnectionInstallSuccess = lazy(() =>
+const AppInstallSuccess = lazy(() =>
   wrapWithUILoadingFallback(
     import("./components/integrations/install-success.tsx"),
   ),
@@ -139,10 +136,6 @@ const PublicChats = lazy(() =>
   wrapWithUILoadingFallback(import("./components/agent/chats.tsx")),
 );
 
-const AuditList = lazy(() =>
-  wrapWithUILoadingFallback(import("./components/audit/list.tsx")),
-);
-
 const AuditDetail = lazy(() =>
   wrapWithUILoadingFallback(import("./components/audit/detail.tsx")),
 );
@@ -151,11 +144,27 @@ const MagicLink = lazy(() =>
   wrapWithUILoadingFallback(import("./components/login/magic-link.tsx")),
 );
 
-const Settings = lazy(() =>
-  wrapWithUILoadingFallback(import("./components/settings/page.tsx")),
+const Members = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/members/index.tsx")),
 );
 
-const Monitor = lazy(() =>
+const OrgSettings = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/general.tsx")),
+);
+
+const Models = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/models.tsx")),
+);
+
+const Billing = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/billing.tsx")),
+);
+
+const Usage = lazy(() =>
+  wrapWithUILoadingFallback(import("./components/settings/usage/usage.tsx")),
+);
+
+const Activity = lazy(() =>
   wrapWithUILoadingFallback(import("./components/monitor/page.tsx")),
 );
 
@@ -324,8 +333,33 @@ const router = createBrowserRouter([
       },
       {
         path: "/:org",
-        Component: HomeLayout,
-        children: [{ index: true, Component: OrgProjectList }],
+        Component: OrgsLayout,
+        children: [
+          {
+            index: true,
+            Component: OrgProjectList,
+          },
+          {
+            path: "members",
+            Component: Members,
+          },
+          {
+            path: "billing",
+            Component: Billing,
+          },
+          {
+            path: "models",
+            Component: Models,
+          },
+          {
+            path: "usage",
+            Component: Usage,
+          },
+          {
+            path: "settings",
+            Component: OrgSettings,
+          },
+        ],
       },
       {
         path: "/invites",
@@ -357,32 +391,26 @@ const router = createBrowserRouter([
         Component: ProjectLayout,
         children: [
           { index: true, Component: ProjectHome },
+          { path: "discover", Component: Discover },
           { path: "agents", Component: AgentList },
           { path: "agent/:id/:threadId", Component: AgentDetail },
-          { path: "connections", Component: ConnectionsList },
-          { path: "connection/:appKey", Component: ConnectionDetail },
-          { path: "connections/success", Component: ConnectionInstallSuccess },
+          { path: "apps", Component: InstalledAppsList },
+          { path: "apps/:appKey", Component: AppDetail },
+          { path: "apps/success", Component: AppInstallSuccess },
           { path: "triggers", Component: TriggerList },
           { path: "trigger/:id", Component: TriggerDetails },
-          { path: "settings/:tab", Component: Settings },
-          { path: "settings", Component: Settings },
-          { path: "monitor/:tab", Component: Monitor },
-          { path: "monitor", Component: Monitor },
-          { path: "audits", Component: AuditList },
-          { path: "audit/:id", Component: AuditDetail },
           { path: "views", Component: ViewsList },
-          // New dynamic route: /:teamSlug/views/:integrationId/:viewName
           { path: "views/:integrationId/:viewName", Component: ViewDetail },
-          // Legacy route redirects to the new dynamic route
           { path: "views/:id", Component: LegacyViewRedirect },
           { path: "prompts", Component: ListPrompts },
           { path: "prompt/:id", Component: PromptDetail },
           { path: "workflows", Component: WorkflowListPage },
-          { path: "discover", Component: Discover },
           {
             path: "workflows/:workflowName/instances/:instanceId",
             Component: WorkflowDetailPage,
           },
+          { path: "activity", Component: Activity },
+          { path: "audit/:id", Component: AuditDetail },
         ],
       },
       { path: "*", Component: NotFound },

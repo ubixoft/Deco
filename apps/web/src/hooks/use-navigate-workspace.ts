@@ -19,6 +19,30 @@ export const useNavigateWorkspace = () => {
   return navigateWorkspace;
 };
 
+export const useNavigateOrg = () => {
+  const navigate = useNavigate();
+  const { org } = useParams();
+
+  const navigateOrg = useCallback(
+    (path: string) =>
+      navigate(`/${org}/${path.startsWith("/") ? path.slice(1) : path}`),
+    [navigate, org],
+  );
+
+  return navigateOrg;
+};
+
+export const useOrgLink = () => {
+  const { org } = useParams();
+
+  const getLinkFor = useCallback(
+    (path: string) => `/${org}/${path.startsWith("/") ? path.slice(1) : path}`,
+    [org],
+  );
+
+  return getLinkFor;
+};
+
 export const useWorkspaceLink = () => {
   const { org: _org, project = "default" } = useParams();
   const [searchParams] = useSearchParams();

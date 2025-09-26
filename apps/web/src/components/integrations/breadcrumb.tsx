@@ -1,77 +1,24 @@
 import { useIntegrations } from "@deco/sdk";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@deco/ui/components/alert-dialog.tsx";
-import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
-import { useState } from "react";
 import { useMatch } from "react-router";
-import { useNavigateWorkspace } from "../../hooks/use-navigate-workspace.ts";
 import { ListPageHeader } from "../common/list-page-header.tsx";
 import type { ViewModeSwitcherProps } from "../common/view-mode-switcher.tsx";
-import type { Tab } from "../dock/index.tsx";
-import { DefaultBreadcrumb, PageLayout } from "../layout/project.tsx";
-
-export function IntegrationPageLayout({ tabs }: { tabs: Record<string, Tab> }) {
-  const [error, setError] = useState<string | null>(null);
-  const navigateWorkspace = useNavigateWorkspace();
-
-  return (
-    <>
-      <PageLayout
-        hideViewsButton
-        breadcrumb={
-          <DefaultBreadcrumb
-            items={[{ label: "My Apps", link: "/connections" }]}
-          />
-        }
-        actionButtons={
-          <Button
-            variant="special"
-            size="sm"
-            onClick={() => navigateWorkspace("/discover")}
-          >
-            Discover Apps
-          </Button>
-        }
-        tabs={tabs}
-      />
-      <AlertDialog open={!!error} onOpenChange={() => setError(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Error</AlertDialogTitle>
-            <AlertDialogDescription>{error}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setError(null)}>
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
 
 export const Header = ({
   query,
   setQuery,
   viewMode,
   setViewMode,
+  actionsRight,
 }: {
   query: string;
   setQuery: (query: string) => void;
   viewMode: ViewModeSwitcherProps["viewMode"];
   setViewMode: (viewMode: ViewModeSwitcherProps["viewMode"]) => void;
+  actionsRight?: React.ReactNode;
 }) => {
-  const projectConnectionsViewActive = useMatch({
-    path: `:org/:project/connections`,
+  const projectAppsViewActive = useMatch({
+    path: `:org/:project/apps`,
   });
 
   const { data: installedIntegrations } = useIntegrations();
@@ -82,21 +29,21 @@ export const Header = ({
       filter={{
         items: [
           {
-            active: !!projectConnectionsViewActive,
+            active: !!projectAppsViewActive,
             label: (
               <span className="flex items-center gap-2">
                 <Icon name="groups" size={16} />
                 Project
               </span>
             ),
-            id: "connected",
+            id: "installed",
             count:
               installedIntegrations?.filter(
                 (integration) => integration.connection.type !== "INNATE",
               ).length ?? 0,
           },
           {
-            active: !projectConnectionsViewActive,
+            active: !projectAppsViewActive,
             disabled: true,
             tooltip: "Coming soon",
             label: (
@@ -117,6 +64,7 @@ export const Header = ({
         onChange: (e) => setQuery(e.target.value),
       }}
       view={{ viewMode, onChange: setViewMode }}
+      actionsRight={actionsRight}
     />
   );
 };

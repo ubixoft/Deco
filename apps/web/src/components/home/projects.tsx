@@ -1,5 +1,6 @@
 // deno-lint-ignore-file ensure-tailwind-design-system-tokens/ensure-tailwind-design-system-tokens
-import { useOrganizations, useProjects } from "@deco/sdk";
+import { useProjects } from "@deco/sdk";
+import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Input } from "@deco/ui/components/input.tsx";
 import {
@@ -7,15 +8,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@deco/ui/components/tooltip.tsx";
-import { Suspense, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Suspense, useState } from "react";
+import { Link, useParams } from "react-router";
 import { ErrorBoundary } from "../../error-boundary";
-import { Button } from "@deco/ui/components/button.tsx";
 import { Avatar } from "../common/avatar";
 import { DecoDayBanner } from "../common/event/deco-day";
 import { OrgAvatars, OrgMemberCount } from "./members";
-import { TopbarLayout } from "../layout/home";
-import { Combobox } from "@deco/ui/components/combobox.tsx";
 
 function ProjectCard({
   name,
@@ -39,7 +37,7 @@ function ProjectCard({
         <div className="flex justify-between items-start">
           <Avatar
             url={avatarUrl}
-            fallback={slug}
+            fallback={name || slug}
             size="lg"
             objectFit="contain"
           />
@@ -175,65 +173,4 @@ function OrgProjectListContent() {
   );
 }
 
-function BreadcrumbOrgSwitcher() {
-  const { org } = useParams();
-  const organizations = useOrganizations();
-  const navigate = useNavigate();
-
-  const currentOrg = useMemo(
-    () => organizations.data?.find((organization) => organization.slug === org),
-    [organizations.data, org],
-  );
-
-  return (
-    <Combobox
-      options={organizations.data?.map((organization) => ({
-        value: organization.slug,
-        label: organization.name,
-      }))}
-      value={org ?? ""}
-      onChange={(value) => {
-        navigate(`/${value}`);
-      }}
-      renderTrigger={() => (
-        <div className="flex items-center gap-2 cursor-pointer hover:bg-sidebar px-2 py-1 rounded-md">
-          <Avatar
-            url={currentOrg?.avatar_url}
-            fallback={currentOrg?.name ?? org}
-            size="xs"
-            objectFit="contain"
-          />
-          <span>{currentOrg?.name ?? org}</span>
-          <Icon name="expand_all" size={16} className="opacity-50" />
-        </div>
-      )}
-      contentClassName="min-w-[200px]"
-    />
-  );
-}
-
-BreadcrumbOrgSwitcher.Skeleton = () => (
-  <div className="h-4 w-16 bg-stone-100 rounded-full animate-pulse"></div>
-);
-
-export function OrgProjectList() {
-  const { org } = useParams();
-
-  return (
-    <TopbarLayout
-      breadcrumb={[
-        { label: "Organizations", link: "/" },
-        {
-          label: (
-            <Suspense fallback={<BreadcrumbOrgSwitcher.Skeleton />}>
-              <BreadcrumbOrgSwitcher />
-            </Suspense>
-          ),
-          link: `/${org}`,
-        },
-      ]}
-    >
-      <OrgProjectListContent />
-    </TopbarLayout>
-  );
-}
+export default OrgProjectListContent;

@@ -26,14 +26,7 @@ import {
 } from "@deco/ui/components/dropdown-menu.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useReducer,
-  useState,
-} from "react";
+import { useCallback, useMemo, useReducer, useState } from "react";
 import { trackEvent } from "../../hooks/analytics.ts";
 import { useCreateAgent } from "../../hooks/use-create-agent.ts";
 import { useLocalStorage } from "../../hooks/use-local-storage.ts";
@@ -44,8 +37,6 @@ import { EmptyState } from "../common/empty-state.tsx";
 import { ListPageHeader } from "../common/list-page-header.tsx";
 import { Table } from "../common/table/index.tsx";
 import { DateTimeCell, UserInfo } from "../common/table/table-cells.tsx";
-import type { Tab } from "../dock/index.tsx";
-import { DefaultBreadcrumb, PageLayout } from "../layout/project.tsx";
 import { useFocusChat } from "./hooks.ts";
 import { useViewMode } from "@deco/ui/hooks/use-view-mode.ts";
 
@@ -391,9 +382,20 @@ const VISIBILITY_LABELS = {
 type Visibility = (typeof VISIBILITIES)[number];
 type TabId = "active" | Visibility;
 
-function List() {
+const useFocusTeamAgent = () => {
+  const focusChat = useFocusChat();
+  const handleCreate = () => {
+    focusChat(WELL_KNOWN_AGENT_IDS.teamAgent, crypto.randomUUID(), {
+      history: false,
+    });
+  };
+
+  return handleCreate;
+};
+
+function AgentsList() {
   const [state, dispatch] = useReducer(listReducer, initialState);
-  const { handleCreate } = useContext(Context)!;
+  const handleCreate = useFocusTeamAgent();
   const { filter } = state;
   const { data: agents } = useAgents();
   const [viewMode, setViewMode] = useViewMode("agents");
@@ -483,6 +485,12 @@ function List() {
             dispatch({ type: "SET_FILTER", payload: e.target.value }),
         }}
         view={{ viewMode, onChange: setViewMode }}
+        actionsRight={
+          <Button variant="special" onClick={handleCreate}>
+            <Icon name="add" size={16} />
+            New agent
+          </Button>
+        }
       />
 
       {filteredAgents.length > 0 ? (
@@ -575,45 +583,4 @@ function List() {
   );
 }
 
-const TABS: Record<string, Tab> = {
-  list: {
-    Component: List,
-    title: "Agents",
-    initialOpen: true,
-  },
-};
-
-const Context = createContext<{ handleCreate: () => void } | null>(null);
-
-export default function Page() {
-  const focusChat = useFocusChat();
-
-  const handleCreate = () => {
-    focusChat(WELL_KNOWN_AGENT_IDS.teamAgent, crypto.randomUUID(), {
-      history: false,
-    });
-  };
-
-  return (
-    <Context.Provider value={{ handleCreate }}>
-      <PageLayout
-        tabs={TABS}
-        hideViewsButton
-        breadcrumb={
-          <DefaultBreadcrumb items={[{ label: "Agents", link: "/agents" }]} />
-        }
-        actionButtons={
-          <Button
-            onClick={handleCreate}
-            variant="special"
-            size="sm"
-            className="gap-2"
-          >
-            <Icon name="add" />
-            <span className="hidden md:inline">New agent</span>
-          </Button>
-        }
-      />
-    </Context.Provider>
-  );
-}
+export default AgentsList;
