@@ -3,7 +3,7 @@ import {
   assertWorkspaceResourceAccess,
 } from "../assertions.ts";
 import { AppContext } from "../context.ts";
-import { branchRpcFor } from "./api.ts";
+import { branchRpcFor, WELL_KNOWN_PUBLIC_PATHS } from "./api.ts";
 import { WatchOptions } from "./branch.ts";
 
 export interface WatchOpts extends WatchOptions {
@@ -19,7 +19,11 @@ export interface WatchOpts extends WatchOptions {
  */
 export const watchSSE = async (env: AppContext, options?: WatchOpts) => {
   assertHasWorkspace(env);
-  await assertWorkspaceResourceAccess(env, "READ_FILE");
+  if (WELL_KNOWN_PUBLIC_PATHS.some((p) => options?.pathFilter?.startsWith(p))) {
+    env.resourceAccess.grant();
+  } else {
+    await assertWorkspaceResourceAccess(env, "READ_FILE");
+  }
   using branch = await branchRpcFor(env, options?.branchName);
 
   const watchStream = await branch.watch(options);

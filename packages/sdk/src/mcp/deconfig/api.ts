@@ -475,7 +475,7 @@ export const putFile = createDeconfigTool({
     };
   },
 });
-
+export const WELL_KNOWN_PUBLIC_PATHS = ["/.deco"];
 export const readFile = createDeconfigTool({
   name: "READ_FILE",
   description: "Read a file from a DECONFIG branch",
@@ -500,7 +500,11 @@ export const readFile = createDeconfigTool({
   handler: async ({ branch, path, format }, c) => {
     path = withPathPrefix(c, path);
     assertHasWorkspace(c);
-    await assertWorkspaceResourceAccess(c);
+    if (WELL_KNOWN_PUBLIC_PATHS.some((p) => path.startsWith(p))) {
+      c.resourceAccess.grant();
+    } else {
+      await assertWorkspaceResourceAccess(c);
+    }
 
     const normalizedPath = normalizePath(path);
 
@@ -636,8 +640,14 @@ export const listFiles = createDeconfigTool({
     if (select) {
       select = select.map((s) => withPathPrefix(c, s));
     }
+    if (
+      WELL_KNOWN_PUBLIC_PATHS.some((p) => select?.every((s) => s.startsWith(p)))
+    ) {
+      c.resourceAccess.grant();
+    } else {
+      await assertWorkspaceResourceAccess(c);
+    }
     assertHasWorkspace(c);
-    await assertWorkspaceResourceAccess(c);
 
     using branchRpc = await branchRpcFor(c, branch);
     using files = await branchRpc.getFiles(select, includeContent);
