@@ -1010,6 +1010,10 @@ const virtualInstallableIntegrations = () => {
   ];
 };
 
+const appIsContract = (app: RegistryApp) => {
+  return app.metadata?.contract !== undefined;
+};
+
 const MARKETPLACE_PROVIDER = "marketplace";
 
 export const DECO_INTEGRATIONS_SEARCH = createIntegrationManagementTool({
@@ -1046,10 +1050,6 @@ It's always handy to search for installed integrations with no query, since all 
     const registry = await listRegistryApps.handler({
       search: query,
     });
-
-    const appIsContract = (app: RegistryApp) => {
-      return app.metadata?.contract !== undefined;
-    };
 
     const registryList = registry.apps
       .map((app) => {
