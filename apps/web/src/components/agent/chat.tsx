@@ -20,7 +20,7 @@ interface Props {
 
 export const MainChat = () => {
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="h-[calc(100vh-48px)] w-full flex flex-col">
       <ScrollArea className="flex-1 min-h-0">
         <ChatMessages />
       </ScrollArea>

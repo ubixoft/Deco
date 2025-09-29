@@ -1,6 +1,5 @@
 import { Locator, SDKProvider } from "@deco/sdk";
 import {
-  ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@deco/ui/components/resizable.tsx";
@@ -114,7 +113,6 @@ export function OrgsLayout() {
                           </Suspense>
                         </ScrollArea>
                       </ResizablePanel>
-                      <ResizableHandle withHandle />
                     </ResizablePanelGroup>
                   </SidebarInset>
                 </SidebarLayout>
