@@ -1,4 +1,3 @@
-// deno-lint-ignore-file ensure-tailwind-design-system-tokens/ensure-tailwind-design-system-tokens
 import { useProjects } from "@deco/sdk";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
@@ -8,11 +7,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@deco/ui/components/tooltip.tsx";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useDeferredValue } from "react";
 import { Link, useParams } from "react-router";
 import { ErrorBoundary } from "../../error-boundary";
 import { Avatar } from "../common/avatar";
-import { DecoDayBanner } from "../common/event/deco-day";
+import { CommunityCallBanner } from "../common/event/community-call-banner";
 import { OrgAvatars, OrgMemberCount } from "./members";
 
 function ProjectCard({
@@ -21,17 +20,25 @@ function ProjectCard({
   url,
   avatarUrl,
   teamId,
+  slugPrefix = "@",
+  showMembers = true,
+  additionalInfo,
+  hideSlug = false,
 }: {
   name: string;
   slug: string;
   url: string;
   avatarUrl: string;
-  teamId: number;
+  teamId?: number;
+  slugPrefix?: string;
+  showMembers?: boolean;
+  additionalInfo?: string;
+  hideSlug?: boolean;
 }) {
   return (
     <Link
       to={url}
-      className="bg-stone-50 hover:bg-stone-100 transition-colors flex flex-col rounded-lg"
+      className="group bg-card hover:bg-accent transition-colors flex flex-col rounded-lg"
     >
       <div className="p-4 flex flex-col gap-4">
         <div className="flex justify-between items-start">
@@ -44,25 +51,37 @@ function ProjectCard({
           <Icon
             name="chevron_right"
             size={20}
-            className="text-muted-foreground"
+            className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
           />
         </div>
         <div className="flex flex-col gap-[2px]">
-          <h3 className="text-sm text-muted-foreground">@{slug}</h3>
-          <p className="font-medium">{name}</p>
+          {!hideSlug && (
+            <h3 className="text-sm text-muted-foreground truncate">
+              {slugPrefix}
+              {slug}
+            </h3>
+          )}
+          <p className="font-medium truncate">{name}</p>
+          {additionalInfo && (
+            <span className="text-xs text-muted-foreground">
+              {additionalInfo}
+            </span>
+          )}
         </div>
       </div>
       {/* Show organization members on the project card for now */}
-      <div className="p-4 border-t border-border flex justify-between items-center">
-        <ErrorBoundary fallback={<div className="w-full h-8"></div>}>
-          <Suspense fallback={<OrgAvatars.Skeleton />}>
-            <OrgAvatars teamId={teamId} />
-          </Suspense>
-          <Suspense fallback={<OrgMemberCount.Skeleton />}>
-            <OrgMemberCount teamId={teamId} />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
+      {showMembers && typeof teamId === "number" && (
+        <div className="p-4 border-t border-border flex justify-between items-center">
+          <ErrorBoundary fallback={<div className="w-full h-8"></div>}>
+            <Suspense fallback={<OrgAvatars.Skeleton />}>
+              <OrgAvatars teamId={teamId} />
+            </Suspense>
+            <Suspense fallback={<OrgMemberCount.Skeleton />}>
+              <OrgMemberCount teamId={teamId} />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+      )}
     </Link>
   );
 }
@@ -95,17 +114,17 @@ Projects.Skeleton = () => (
     {Array.from({ length: 8 }).map((_, index) => (
       <div
         key={index}
-        className="bg-stone-50 hover:bg-stone-100 transition-colors flex flex-col rounded-lg animate-pulse"
+        className="bg-card hover:bg-accent transition-colors flex flex-col rounded-lg animate-pulse"
       >
         <div className="p-4 flex flex-col gap-4">
-          <div className="h-12 w-12 bg-stone-100 rounded-lg"></div>
-          <div className="h-4 w-32 bg-stone-100 rounded-lg"></div>
-          <div className="h-4 w-32 bg-stone-100 rounded-lg"></div>
+          <div className="h-12 w-12 bg-card rounded-lg"></div>
+          <div className="h-4 w-32 bg-card rounded-lg"></div>
+          <div className="h-4 w-32 bg-card rounded-lg"></div>
         </div>
         <div className="p-4 border-t border-border flex items-center">
-          <div className="h-6 w-6 bg-stone-100 rounded-full animate-pulse"></div>
-          <div className="h-6 w-6 bg-stone-100 rounded-full animate-pulse -ml-2"></div>
-          <div className="h-6 w-6 bg-stone-100 rounded-full animate-pulse -ml-2"></div>
+          <div className="h-6 w-6 bg-card rounded-full animate-pulse"></div>
+          <div className="h-6 w-6 bg-card rounded-full animate-pulse -ml-2"></div>
+          <div className="h-6 w-6 bg-card rounded-full animate-pulse -ml-2"></div>
         </div>
       </div>
     ))}
@@ -133,12 +152,13 @@ Projects.Empty = () => (
 
 function OrgProjectListContent() {
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredQuery = useDeferredValue(searchQuery);
   const { org } = useParams();
 
   return (
-    <div className="flex w-full h-full items-start bg-background">
-      <div className="p-8 flex flex-col gap-4 w-full">
-        <DecoDayBanner />
+    <div className="min-h-full w-full bg-background">
+      <div className="p-8 flex flex-col gap-4 w-full max-w-7xl mx-auto min-h-[calc(100vh-48px)]">
+        <CommunityCallBanner />
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-medium">Projects</h2>
           <div className="flex items-center gap-2">
@@ -161,10 +181,10 @@ function OrgProjectListContent() {
             </Tooltip>
           </div>
         </div>
-        <div className="@container overflow-y-auto max-h-[calc(100vh-12rem)] pb-8">
+        <div className="@container overflow-y-auto flex-1 pb-28">
           <ErrorBoundary fallback={<Projects.Error />}>
             <Suspense fallback={<Projects.Skeleton />}>
-              <Projects query={searchQuery} org={org ?? ""} />
+              <Projects query={deferredQuery} org={org ?? ""} />
             </Suspense>
           </ErrorBoundary>
         </div>
@@ -174,3 +194,4 @@ function OrgProjectListContent() {
 }
 
 export default OrgProjectListContent;
+export { ProjectCard };
