@@ -28,6 +28,35 @@ export const WellKnownMcpGroups = {
   Self: "self",
 };
 
+// used to publish on the registry
+export const WellKnownAppNames: Partial<typeof WellKnownMcpGroups> = {
+  AI: "ai-gateway",
+  Agent: "agents",
+  AgentSetup: "agent-crud",
+  APIKeys: "api-keys",
+  Channel: "channels",
+  Contracts: "contracts",
+  Databases: "database",
+  Deconfig: "deconfig",
+  Email: "email-admin",
+  FS: "file-system",
+  Hosting: "hosting",
+  Integration: "integrations",
+  KnowledgeBaseManagement: "knowledge-base",
+  Model: "ai-models",
+  OAuth: "oauth-management",
+  Prompt: "prompts",
+  User: "users",
+  Registry: "registry",
+  Sandbox: "code-sandbox",
+  Team: "teams",
+  Thread: "threads",
+  Triggers: "triggers",
+  Wallet: "wallet",
+  Tools: "tools",
+  Workflows: "workflows",
+};
+
 export type WellKnownMcpGroup = keyof typeof WellKnownMcpGroups;
 
 export const WellKnownMcpGroupIds = Object.values(WellKnownMcpGroups).map(
