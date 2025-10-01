@@ -66,7 +66,7 @@ async function publishApp(
       type: "HTTP",
       url: `https://api.decocms.com/mcp/${app.group}`,
     },
-    unlisted: false,
+    unlisted: true,
   };
 
   const url = `https://api.decocms.com${project}/tools/call/REGISTRY_PUBLISH_APP`;
@@ -139,8 +139,7 @@ async function publishInBatches(
     }
 
     console.log(
-      `Batch ${batchNumber} completed. Success: ${
-        results.filter((r) => r.success).length
+      `Batch ${batchNumber} completed. Success: ${results.filter((r) => r.success).length
       }, Errors: ${results.filter((r) => !r.success).length}`,
     );
 
