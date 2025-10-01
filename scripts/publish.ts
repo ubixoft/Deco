@@ -139,7 +139,8 @@ async function publishInBatches(
     }
 
     console.log(
-      `Batch ${batchNumber} completed. Success: ${results.filter((r) => r.success).length
+      `Batch ${batchNumber} completed. Success: ${
+        results.filter((r) => r.success).length
       }, Errors: ${results.filter((r) => !r.success).length}`,
     );
 

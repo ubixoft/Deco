@@ -37,7 +37,7 @@ import {
   withMCPErrorHandling,
   wrapToolFn,
 } from "@deco/sdk/mcp";
-import { getApps } from "@deco/sdk/mcp/groups";
+import { getApps, getGroupByAppName } from "@deco/sdk/mcp/groups";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   CallToolRequestSchema,
@@ -155,7 +155,8 @@ const createMCPHandlerFor = (
     | ((c: Context<AppEnv>) => Promise<Tool[] | readonly Tool[]>),
 ) => {
   return async (c: Context<AppEnv>) => {
-    const group = c.req.query("group") ?? c.req.param("group");
+    const group =
+      c.req.query("group") ?? getGroupByAppName(c.req.param("group"));
 
     const server = new McpServer(
       { name: "@deco/api", version: "1.0.0" },
@@ -471,7 +472,7 @@ app.get("/mcp/groups", (ctx) => {
 app.all(
   "/mcp/:group",
   createMCPHandlerFor((ctx) => {
-    const group = ctx.req.param("group");
+    const group = getGroupByAppName(ctx.req.param("group"));
     return Promise.resolve(
       PROJECT_TOOLS.filter((tool) => tool.group === group),
     );

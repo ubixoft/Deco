@@ -16,6 +16,19 @@ export function addGroup(group: string, integration: GroupIntegration) {
 
 export const getGroups = () => groups;
 
+export const getGroupByAppName = (appName?: string | null) => {
+  if (!appName) {
+    return undefined;
+  }
+  const wellKnownName = Object.entries(WellKnownAppNames).find(
+    ([_, name]) => name === appName,
+  )?.[0];
+  if (!wellKnownName) {
+    return undefined;
+  }
+  return WellKnownMcpGroups[wellKnownName as WellKnownMcpGroup];
+};
+
 export const getApps = () => {
   const idToWellKnownName = Object.fromEntries(
     Object.entries(WellKnownMcpGroups).map(([group, integration]) => [
