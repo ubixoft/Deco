@@ -41,7 +41,7 @@ const DEFAULT_TEMPLATE: Template = {
   repo: "deco-cx/deco-create",
   branch: "main",
   wranglerRoot: "server",
-  pathsToIgnore: [".cursorindexingignore", ".specstory", "plans"],
+  pathsToIgnore: [],
 };
 
 function runCommand(
@@ -104,20 +104,18 @@ async function downloadTemplate(
     ];
 
     for (const path of pathsToIgnore) {
-      const pathToRemove = join(tempDir, path);
-      const isDirectory = await fs
-        .stat(pathToRemove)
-        .then((stat) => stat.isDirectory());
-      await fs
-        .rm(
+      try {
+        const pathToRemove = join(tempDir, path);
+        const isDirectory = await fs
+          .stat(pathToRemove)
+          .then((stat) => stat.isDirectory());
+        await fs.rm(
           pathToRemove,
           isDirectory ? { recursive: true, force: true } : { force: true },
-        )
-        .catch(() => {
-          console.warn(
-            `Failed to remove ${path} from the original template: ${pathToRemove}`,
-          );
-        });
+        );
+      } catch {
+        console.warn(`Failed to remove ${path} from the original template`);
+      }
     }
 
     const templatePath = join(tempDir, template.path || "");
