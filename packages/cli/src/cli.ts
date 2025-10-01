@@ -345,10 +345,12 @@ const dev = new Command("dev")
     "--gen-watch [path]",
     "Watch for TypeScript file changes and regenerate deco.gen.ts (defaults to current directory)",
   )
+  .option("--vite", "Use Vite for development server")
   .action((options) => {
     devCommand({
       cleanBuildDirectory: options.cleanBuildDir,
       genWatch: options.genWatch === true ? "." : options.genWatch,
+      command: options.vite ? ["vite"] : undefined,
     });
   });
 
@@ -678,7 +680,7 @@ Examples:
   $ deco deconfig push --path ./src --branch main
   $ deco deconfig push --path ./docs --path-filter "/docs/" --dry-run
   $ deco deconfig push --path ./src --watch --branch main
-  
+
 This command works like rsync:
 - Compares local file hashes with remote file hashes
 - Only uploads changed files (new or modified content)

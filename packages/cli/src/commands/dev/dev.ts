@@ -19,12 +19,15 @@ export interface StartDevServerOptions {
     directory: string;
   };
   genWatch?: string;
+  command?: string[];
 }
 
 export async function devCommand(opts: StartDevServerOptions): Promise<void> {
   try {
     // 1. Ensure development environment is set up
     await ensureDevEnvironment(opts);
+
+    const commandOverride = opts.command ?? ["wrangler", "dev"];
 
     // 2. Get configuration
     const _config = await getConfig().catch(() => ({
@@ -140,7 +143,9 @@ export async function devCommand(opts: StartDevServerOptions): Promise<void> {
       onBeforeRegister: () => {
         console.log(chalk.gray("Starting Wrangler development server..."));
 
-        const wranglerProcess = spawn("npx", ["wrangler", "dev"], {
+        const command = commandOverride ?? ["wrangler", "dev"];
+
+        const wranglerProcess = spawn("npx", command, {
           stdio: "inherit",
           shell: true,
         });
