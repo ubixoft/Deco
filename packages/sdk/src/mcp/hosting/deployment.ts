@@ -301,7 +301,7 @@ export async function deployToCloudflare({
 
   const decoEnvVars = {
     DECO_APP_DEPLOYMENT_ID: deploymentId,
-    DECO_APP_ENTRYPOINT: Entrypoint.build(scriptSlug, deploymentId),
+    DECO_APP_ENTRYPOINT: Entrypoint.build(scriptSlug),
   };
 
   // Backwards compatibility
@@ -378,11 +378,11 @@ export async function deployToCloudflare({
     })) ?? []),
     ...(wranglerAssetsConfig?.binding && hasAssets
       ? [
-          {
-            type: "assets" as const,
-            name: wranglerAssetsConfig.binding,
-          },
-        ]
+        {
+          type: "assets" as const,
+          name: wranglerAssetsConfig.binding,
+        },
+      ]
       : []),
   ];
 
