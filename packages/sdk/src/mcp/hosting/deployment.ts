@@ -378,11 +378,11 @@ export async function deployToCloudflare({
     })) ?? []),
     ...(wranglerAssetsConfig?.binding && hasAssets
       ? [
-        {
-          type: "assets" as const,
-          name: wranglerAssetsConfig.binding,
-        },
-      ]
+          {
+            type: "assets" as const,
+            name: wranglerAssetsConfig.binding,
+          },
+        ]
       : []),
   ];
 

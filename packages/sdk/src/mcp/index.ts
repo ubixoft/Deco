@@ -61,7 +61,10 @@ export * from "./models/llm-vault.ts";
 export { getRegistryApp } from "./registry/api.ts";
 export * from "./wallet/stripe/webhook.ts";
 
-export const DECONFIG_TOOLS = deconfigAPI.DECONFIG_TOOLS;
+export const DECONFIG_TOOLS = [
+  ...deconfigAPI.DECONFIG_TOOLS,
+  deconfigAPI.oauthStart,
+];
 export const CONTRACTS_TOOLS = [
   contractGet,
   contractAuthorize,
