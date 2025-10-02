@@ -105,11 +105,11 @@ const contextToPrincipalExecutionContext = (
 
   const ctxLocator = locator
     ? {
-      org,
-      project,
-      value: locator,
-      branch,
-    }
+        org,
+        project,
+        value: locator,
+        branch,
+      }
     : undefined;
   const tokenQs = c.req.query("auth-token");
   return {
@@ -181,8 +181,8 @@ const createMCPHandlerFor = (
               : z.object({}).shape,
           outputSchema:
             tool.outputSchema &&
-              typeof tool.outputSchema === "object" &&
-              "shape" in tool.outputSchema
+            typeof tool.outputSchema === "object" &&
+            "shape" in tool.outputSchema
               ? (tool.outputSchema.shape as z.ZodRawShape)
               : z.object({}).shape,
         },
@@ -224,9 +224,9 @@ const createToolCallHandlerFor = <
   ) => Promise<Map<string, ToolLike>> | Map<string, ToolLike> =
     typeof toolsOrToolsFn === "function"
       ? async (c: Context) => {
-        const tools = await toolsOrToolsFn(c);
-        return new Map(tools.map((t) => [t.name, t]));
-      }
+          const tools = await toolsOrToolsFn(c);
+          return new Map(tools.map((t) => [t.name, t]));
+        }
       : () => new Map(toolsOrToolsFn.map((t) => [t.name, t]));
 
   return async (c: Context) => {
