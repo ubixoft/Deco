@@ -28,7 +28,6 @@ import {
   ListToolsMiddleware,
   PrincipalExecutionContext,
   PROJECT_TOOLS,
-  IntegrationSub as ProxySub,
   toBindingsContext,
   Tool,
   type ToolLike,
@@ -74,7 +73,6 @@ import { type AppContext, type AppEnv, State } from "./utils/context.ts";
 import { handleStripeWebhook } from "./webhooks/stripe.ts";
 import { handleTrigger } from "./webhooks/trigger.ts";
 
-const PROXY_TOKEN_HEADER = "X-Proxy-Auth";
 export const app = new Hono<AppEnv>();
 
 const contextToPrincipalExecutionContext = (
@@ -124,7 +122,7 @@ const contextToPrincipalExecutionContext = (
     locator: ctxLocator,
     cookie: c.req.header("Cookie"),
     // token issued by the MCP Proxy server to identify the caller as deco api
-    proxyToken: c.req.header(PROXY_TOKEN_HEADER)?.split(" ")[1],
+    proxyToken: c.req.header(PROXY_TOKEN_HEADER),
     callerApp: c.req.header("x-caller-app"),
     token: tokenQs ?? c.req.header("Authorization")?.split(" ")[1],
   };
@@ -255,8 +253,11 @@ const createToolCallHandlerFor = <
   };
 };
 
+export interface EmitTokenOptions {
+  tool: string;
+}
 interface ProxyOptions {
-  proxyToken?: string;
+  tokenEmitter?: (options: EmitTokenOptions) => Promise<string>;
   headers?: Record<string, string>;
   tools?: ListToolsResult | null;
   middlewares?: Partial<{
@@ -265,31 +266,43 @@ interface ProxyOptions {
   }>;
 }
 
+const PROXY_TOKEN_HEADER = "x-deco-proxy-token";
 const proxy = (
   mcpConnection: MCPConnection,
-  { middlewares, tools, headers }: ProxyOptions = {},
+  { middlewares, tools, headers, tokenEmitter }: ProxyOptions = {},
 ) => {
-  const createMcpClient = async () => {
-    const client = await createServerClient(
-      {
-        connection: mcpConnection,
-        name: "proxy",
-      },
-      undefined,
-      headers,
-    );
+  const createMcpClient = () => {
+    const client = async (options?: EmitTokenOptions) => {
+      return createServerClient(
+        {
+          connection: mcpConnection,
+          name: "proxy",
+        },
+        undefined,
+        {
+          ...headers,
+          ...(tokenEmitter && options
+            ? { [PROXY_TOKEN_HEADER]: await tokenEmitter(options) }
+            : {}),
+        },
+      );
+    };
 
     const listTools = compose(
       ...(middlewares?.listTools ?? []),
       async () =>
         tools ??
-        ((await client.listTools()) as Awaited<
+        ((await (await client()).listTools()) as Awaited<
           ReturnType<ListToolsMiddleware>
         >),
     );
 
-    const callTool = compose(...(middlewares?.callTool ?? []), (req) => {
-      return client.callTool(req.params) as ReturnType<CallToolMiddleware>;
+    const callTool = compose(...(middlewares?.callTool ?? []), async (req) => {
+      return (
+        await client({
+          tool: req.params.name,
+        })
+      ).callTool(req.params) as ReturnType<CallToolMiddleware>;
     });
 
     return { listTools, callTool };
@@ -350,14 +363,31 @@ const createMcpServerProxyForIntegration = async (
     ctx.jwtIssuer(),
   ]);
 
-  const token = await issuer.issue({
-    sub: ProxySub.build(integration.id),
-  });
-
   const mcpServerProxy = proxy(integration.connection, {
+    tokenEmitter: async (options) => {
+      return await issuer.issue({
+        sub: `proxy:${callerApp}`,
+        aud: ctx.locator?.value,
+        iat: new Date().getTime(),
+        exp: new Date(Date.now() + 1000 * 60).getTime(), //1 minute
+        policies: [
+          {
+            statements: [
+              {
+                effect: "allow",
+                resource: options.tool,
+                matchCondition: {
+                  resource: "is_integration",
+                  integrationId: integration.id,
+                },
+              },
+            ],
+          },
+        ],
+      });
+    },
     headers: {
       ...(callerApp ? { "x-caller-app": callerApp } : {}),
-      [PROXY_TOKEN_HEADER]: token,
     },
     tools: integration.tools
       ? { tools: integration.tools as ListToolsResult["tools"] }
