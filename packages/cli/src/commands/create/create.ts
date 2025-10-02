@@ -167,10 +167,7 @@ async function customizeTemplate({
       const currentConfig = await readWranglerConfig(wranglerRoot || targetDir);
 
       // For now, use empty bindings - we can enhance this later with prompt integrations
-      const bindings: Array<
-        | { type: string; name: string; integration_id: string }
-        | { type: string; name: string; integration_name: string }
-      > = [];
+      const bindings = currentConfig.deco?.bindings || [];
 
       // Merge with new project name and workspace - preserve all existing config
       const newConfig = {
