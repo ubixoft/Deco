@@ -40,7 +40,6 @@ const DEFAULT_TEMPLATE: Template = {
   description: "A Deco MCP app",
   repo: "deco-cx/deco-create",
   branch: "main",
-  wranglerRoot: "server",
   pathsToIgnore: [],
 };
 
