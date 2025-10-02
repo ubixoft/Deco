@@ -228,6 +228,7 @@ export async function getTeamBySlug(slug: string, db: Client) {
       "id, name, slug, members(user_id, profile:profiles(email)), plan_id, plan:deco_chat_plans(*)",
     )
     .eq("slug", slug)
+    .is("members.deleted_at", null)
     .single();
 
   if (!team || error || !team.plan) {
