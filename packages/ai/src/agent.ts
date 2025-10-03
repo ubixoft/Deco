@@ -54,8 +54,14 @@ import type { ToolsetsInput, ToolsInput } from "@mastra/core/agent";
 import { Agent } from "@mastra/core/agent";
 import type { MastraMemory } from "@mastra/core/memory";
 import { TokenLimiter } from "@mastra/memory/processors";
-import type { LanguageModelUsage, ModelMessage, UIMessage } from "ai";
-import { type GenerateObjectResult, type GenerateTextResult } from "ai";
+import type { CoreMessage } from "ai";
+import {
+  type GenerateObjectResult,
+  type GenerateTextResult,
+  type LanguageModelUsage,
+  type Message,
+  smoothStream,
+} from "ai";
 import { getRuntimeKey } from "hono/adapter";
 import jsonSchemaToZod from "json-schema-to-zod";
 import process from "node:process";
@@ -64,7 +70,7 @@ import { z } from "zod";
 import type { MCPConnection, ProjectLocator } from "../../sdk/src/index.ts";
 import { createWalletClient } from "../../sdk/src/mcp/wallet/index.ts";
 import { resolveMentions } from "../../sdk/src/utils/prompt-mentions.ts";
-import { convertToModelMessages } from "./agent/ai-message.ts";
+import { convertToAIMessage } from "./agent/ai-message.ts";
 import { createAgentOpenAIVoice } from "./agent/audio.ts";
 import {
   createLLMInstance,
@@ -80,10 +86,9 @@ import { AgentWallet } from "./agent/wallet.ts";
 import { pickCapybaraAvatar } from "./capybaras.ts";
 import { mcpServerTools } from "./mcp.ts";
 import type {
-  CompletionsOptions,
-  GenerateOptions,
   AIAgent as IIAgent,
-  MessageMetadata,
+  GenerateOptions,
+  Message as AIMessage,
   StreamOptions,
   Thread,
   ThreadQueryOptions,
@@ -509,7 +514,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         getLogger: () => undefined,
         getTelemetry: () => this.telemetry,
         generateId: () => this._memory.generateId(),
-        getStorage: () => undefined,
       },
       voice: this.env.OPENAI_API_KEY
         ? createAgentOpenAIVoice({ apiKey: this.env.OPENAI_API_KEY })
@@ -541,7 +545,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         getLogger: () => undefined,
         getTelemetry: () => this.telemetry,
         generateId: () => this._memory.generateId(),
-        getStorage: () => undefined,
       },
     });
   }
@@ -576,31 +579,41 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     );
   }
 
-  // Build additional context from UIMessage.parts (annotations)
-  private _partsToContext(
-    parts: UIMessage<MessageMetadata>["parts"] | undefined,
-  ): ModelMessage[] {
-    if (!parts || !Array.isArray(parts)) {
-      return [];
-    }
+  // Build additional context from message.annotations, supporting explicit role/content
+  private _annotationsToContext(payload: AIMessage[]): CoreMessage[] {
+    return payload.flatMap((message) =>
+      Array.isArray(message.annotations)
+        ? message.annotations.map((annotation) => {
+            if (
+              typeof annotation === "string" ||
+              typeof annotation === "number" ||
+              typeof annotation === "boolean"
+            ) {
+              return {
+                role: "user" as const,
+                content: String(annotation),
+              } as CoreMessage;
+            }
 
-    // Extract text parts and convert to model messages
-    const textParts = parts
-      .filter((part: any) => part.type === "text")
-      .map((part: any) => part.text)
-      .filter(Boolean);
+            if (
+              annotation &&
+              !Array.isArray(annotation) &&
+              typeof annotation.role === "string" &&
+              typeof annotation.content === "string"
+            ) {
+              return {
+                role: annotation.role,
+                content: annotation.content,
+              } as CoreMessage;
+            }
 
-    if (textParts.length === 0) {
-      return [];
-    }
-
-    // Combine all text parts into a single user message
-    return [
-      {
-        role: "user" as const,
-        content: textParts.join("\n"),
-      } as ModelMessage,
-    ];
+            return {
+              role: "user" as const,
+              content: JSON.stringify(annotation),
+            } as CoreMessage;
+          })
+        : [],
+    );
   }
 
   private async _withToolOverrides(
@@ -662,7 +675,6 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           getLogger: () => undefined,
           getTelemetry: () => this.telemetry,
           generateId: () => this._memory.generateId(),
-          getStorage: () => undefined,
         },
       });
     }
@@ -843,11 +855,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     });
   }
 
-  async query(
-    options?: ThreadQueryOptions,
-  ): Promise<UIMessage<MessageMetadata>[]> {
+  async query(options?: ThreadQueryOptions): Promise<Message[]> {
     const currentThreadId = this._thread;
-    const { uiMessages } = await this._memory
+    const { uiMessages, messages } = await this._memory
       .query({
         ...currentThreadId,
         threadId: options?.threadId ?? currentThreadId.threadId,
@@ -858,10 +868,29 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           error: serializeError(error),
           threadId: options?.threadId ?? currentThreadId.threadId,
         });
-        return { uiMessages: [] };
+        return {
+          messages: [],
+          uiMessages: [],
+        };
       });
 
-    return uiMessages as UIMessage<MessageMetadata>[];
+    const messagesById: Record<string, Message> = {};
+    for (const msg of messages as Message[]) {
+      if (msg.id) {
+        messagesById[msg.id] = msg;
+      }
+    }
+
+    // Workaround for ui messages missing createdAt property
+    // Messages are typed as CoreMessage but contain id and createdAt
+    // See: https://github.com/mastra-ai/mastra/issues/3535
+    return uiMessages.map((uiMessage) => {
+      const message = messagesById[uiMessage.id];
+      if (message?.createdAt) {
+        return { ...uiMessage, createdAt: message.createdAt };
+      }
+      return uiMessage;
+    });
   }
 
   async speak(text: string, options?: { voice?: string; speed?: number }) {
@@ -1073,7 +1102,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   }
 
   async generateObject<TObject = any>(
-    payload: UIMessage<MessageMetadata>[],
+    payload: AIMessage[],
     jsonSchema: JSONSchema7,
   ): Promise<GenerateObjectResult<TObject>> {
     const hasBalance = await this.wallet.canProceed(this.workspace);
@@ -1085,15 +1114,21 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       throw new Error("Insufficient funds");
     }
 
-    const converter = convertToModelMessages(this._agent);
-    const aiMessages = await Promise.all(payload.map(converter));
+    const aiMessages = await Promise.all(
+      payload.map((msg) =>
+        convertToAIMessage({ message: msg, agent: this._agent }),
+      ),
+    );
 
+    // Build additional context from annotations using the same helper as stream()
+    const annotationsContextForObject = this._annotationsToContext(aiMessages);
     const result = (await this._agent.generate(aiMessages, {
       ...this.thread,
+      context: annotationsContextForObject,
       output: jsonSchema,
       maxSteps: this._maxSteps(),
       maxTokens: this._maxTokens(),
-    })) as unknown as GenerateObjectResult<TObject>;
+    })) as GenerateObjectResult<TObject>;
 
     assertConfiguration(this._configuration);
     this._handleGenerationFinish({
@@ -1106,7 +1141,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   }
 
   async generate(
-    payload: UIMessage<MessageMetadata>[],
+    payload: AIMessage[],
     options?: GenerateOptions,
   ): Promise<GenerateTextResult<any, any>> {
     const hasBalance = await this.wallet.canProceed(this.workspace);
@@ -1120,21 +1155,36 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
     const toolsets = await this._withToolOverrides(options?.tools);
 
+    const isClaude = this._configuration?.model.includes("claude");
+    const hasPdf = payload.some((message) =>
+      message.experimental_attachments?.some(
+        (attachment) => attachment.contentType === "application/pdf",
+      ),
+    );
+    const bypassOpenRouter = isClaude && hasPdf;
+
     const agent = await this._withAgentOverrides({
       ...options,
-      bypassOpenRouter: options?.bypassOpenRouter || false,
+      bypassOpenRouter: bypassOpenRouter || options?.bypassOpenRouter || false,
     });
 
-    const converter = convertToModelMessages(this._agent);
-    const aiMessages = await Promise.all(payload.map(converter));
+    const aiMessages = await Promise.all(
+      payload.map((msg) =>
+        convertToAIMessage({ message: msg, agent: this._agent }),
+      ),
+    );
+
+    // Build additional context from annotations using the same helper as stream() and generateObject()
+    const annotationsContext = this._annotationsToContext(aiMessages);
 
     const result = (await agent.generate(aiMessages, {
       ...this.thread,
+      context: annotationsContext,
       maxSteps: this._maxSteps(options?.maxSteps),
       maxTokens: this._maxTokens(),
       instructions: options?.instructions,
       toolsets,
-    })) as unknown as GenerateTextResult<any, undefined>;
+    })) as GenerateTextResult<any, any>;
 
     assertConfiguration(this._configuration);
     this._handleGenerationFinish({
@@ -1194,55 +1244,32 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   }
 
   async stream(
-    messages: UIMessage<MessageMetadata>[],
-    { threadId, resourceId } = {} as CompletionsOptions,
+    payload: AIMessage[],
+    options?: StreamOptions,
   ): Promise<Response> {
     try {
       const tracer = this.telemetry?.tracer;
       const timings = this.metadata?.timings ?? createServerTimings();
 
-      // Extract all configuration from the latest message metadata
-      const latestMessage = messages[messages.length - 1];
-      const messageMetadata =
-        latestMessage?.metadata || ({} as MessageMetadata);
-
-      // Parse options from metadata
-      const options: StreamOptions = {
-        model: messageMetadata.model,
-        instructions: messageMetadata.instructions,
-        bypassOpenRouter: messageMetadata.bypassOpenRouter ?? false,
-        sendReasoning: messageMetadata.sendReasoning ?? true,
-        threadTitle: messageMetadata.threadTitle,
-        tools: messageMetadata.tools,
-        maxSteps: messageMetadata.maxSteps,
-        pdfSummarization: messageMetadata.pdfSummarization ?? true,
-        toolsets: messageMetadata.toolsets,
-        annotations: messageMetadata.annotations,
-        threadId: threadId ?? this.metadata?.threadId,
-        resourceId: resourceId ?? this.metadata?.resourceId,
-      };
-
       const thread = {
-        threadId: options.threadId ?? this._thread.threadId,
-        resourceId: options.resourceId ?? this._thread.resourceId,
+        threadId: options?.threadId ?? this._thread.threadId,
+        resourceId: options?.resourceId ?? this._thread.resourceId,
       };
 
       const isClaude = (
-        options.model ??
+        options?.model ??
         this._configuration?.model ??
         ""
       ).includes("claude");
-
-      // Check PDF in the latest message (the one being sent)
-      const { hasPdf, hasMinimumSizeForSummarization } =
-        shouldSummarizePDFs(latestMessage);
+      const { hasPdf, hasMinimumSizeForSummarization } = shouldSummarizePDFs(
+        payload as Message[],
+      );
       let bypassOpenRouter = isClaude && hasPdf;
-      bypassOpenRouter ||= options.bypassOpenRouter || false;
+      bypassOpenRouter ||= options?.bypassOpenRouter || false;
 
-      // Summarize PDFs in the latest message if needed
       if (
         hasPdf &&
-        options.pdfSummarization &&
+        options?.pdfSummarization &&
         hasMinimumSizeForSummarization
       ) {
         if (!this.metadata?.mcpClient) {
@@ -1252,8 +1279,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           });
           throw new Error("MCP client not found");
         }
-        const summarizedLatest = await summarizePDFMessages(
-          latestMessage,
+        const processedMessages = await summarizePDFMessages(
+          payload as Message[],
           this.metadata.mcpClient,
           {
             // TODO: fallback to a custom model if this one is disabled.
@@ -1263,28 +1290,22 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
             maxTotalTokens: 16_000,
           },
         );
-        // Replace the latest message with the summarized version
-        messages = [
-          ...messages.slice(0, -1),
-          summarizedLatest as UIMessage<MessageMetadata>,
-        ];
+        payload = processedMessages as typeof payload;
       }
 
-      // Build context from annotations (passed as UIMessage.parts)
-      const context = this._partsToContext(options.annotations);
+      // Additional context from annotations
+      const context = this._annotationsToContext(payload);
 
       const toolsets = await this._withToolOverrides(
-        options.tools,
+        options?.tools,
         timings,
         thread,
-        options.toolsets,
+        options?.toolsets,
       );
 
       const agentOverridesTiming = timings.start("agent-overrides");
       const agent = await this._withAgentOverrides({
-        model: options.model,
-        instructions: options.instructions,
-        maxSteps: options.maxSteps,
+        ...options,
         bypassOpenRouter,
       });
       agentOverridesTiming.end();
@@ -1305,7 +1326,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       const ttfbSpan = tracer?.startSpan("stream-ttfb", {
         attributes: {
           "agent.id": this.state.id,
-          model: options.model ?? this._configuration?.model,
+          model: options?.model ?? this._configuration?.model,
           "thread.id": thread.threadId,
           "openrouter.bypass": `${bypassOpenRouter}`,
         },
@@ -1320,17 +1341,29 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       };
       const streamTiming = timings.start("stream");
 
+      const experimentalTransform = options?.smoothStream
+        ? smoothStream({
+            delayInMs: options.smoothStream.delayInMs,
+            // The default chunking breaks cloudflare due to using too much CPU.
+            // This is a simpler function that does the job.
+            chunking: (buffer) => buffer.slice(0, 15) || null,
+          })
+        : undefined;
+
       const maxLimit = Math.max(MIN_MAX_TOKENS, this._maxTokens());
       const budgetTokens = Math.min(
         DEFAULT_MAX_THINKING_TOKENS,
         maxLimit - this._maxTokens(),
       );
 
-      const converter = convertToModelMessages(this._agent);
-      const aiMessages = await Promise.all(messages.map(converter));
+      const aiMessages = await Promise.all(
+        payload.map((msg) =>
+          convertToAIMessage({ message: msg, agent: this._agent }),
+        ),
+      );
 
       // Process instructions if provided in options
-      let processedInstructions = options.instructions;
+      let processedInstructions = options?.instructions;
       if (processedInstructions) {
         const [resolveInstructionsTimings, resolveInstructionsSpan] = [
           timings.start("resolve-instructions-mentions"),
@@ -1345,16 +1378,15 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         resolveInstructionsSpan?.end();
       }
 
-      const response = await agent.streamVNext(aiMessages, {
-        format: "aisdk",
+      const response = await agent.stream(aiMessages, {
         ...thread,
         context,
         toolsets,
         instructions: processedInstructions,
-        maxSteps: this._maxSteps(options.maxSteps),
-        modelSettings: {
-          temperature: this._configuration?.temperature ?? undefined,
-        },
+        maxSteps: this._maxSteps(options?.maxSteps),
+        maxTokens: this._maxTokens(),
+        temperature: this._configuration?.temperature ?? undefined,
+        experimental_transform: experimentalTransform,
         providerOptions: getProviderOptions({ budgetTokens }),
         onChunk: endTtfbSpan,
         onError: (err) => {
@@ -1362,21 +1394,15 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           this._trackEvent("agent_stream_error", {
             error: serializeError(err),
             threadId: thread.threadId,
-            model: options.model ?? this._configuration?.model,
+            model: options?.model ?? this._configuration?.model,
           });
         },
         memory: {
           ...this.memory,
           thread: {
             title:
-              options.threadTitle ??
-              (await this.resolveThreadTitle(
-                latestMessage.parts
-                  ?.filter((p: any) => p.type === "text")
-                  .map((p: any) => p.text)
-                  .join(" ") ?? "",
-                thread,
-              )),
+              options?.threadTitle ??
+              (await this.resolveThreadTitle(aiMessages[0].content, thread)),
             id: thread.threadId,
           },
           resource: thread.resourceId,
@@ -1385,16 +1411,31 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           assertConfiguration(this._configuration);
           this._handleGenerationFinish({
             threadId: thread.threadId,
-            usedModelId: options.model ?? this._configuration.model,
-            usage: result.usage as unknown as LanguageModelUsage,
+            usedModelId: options?.model ?? this._configuration.model,
+            usage: result.usage,
           });
         },
       });
       streamTiming.end();
 
       const dataStreamResponseTiming = timings.start("data-stream-response");
-      const dataStreamResponse = response.toUIMessageStreamResponse({
-        sendReasoning: options.sendReasoning,
+      const dataStreamResponse = response.toDataStreamResponse({
+        sendReasoning: options?.sendReasoning,
+        getErrorMessage: (error) => {
+          if (error == null) {
+            return "unknown error";
+          }
+
+          if (typeof error === "string") {
+            return error;
+          }
+
+          if (error instanceof Error) {
+            return error.message;
+          }
+
+          return JSON.stringify(error);
+        },
       });
       dataStreamResponseTiming.end();
 
