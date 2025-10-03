@@ -67,7 +67,7 @@ export const DEFAULT_VIEWS: View[] = [
   },
   {
     id: "prompts",
-    title: "Prompts",
+    title: "Documents",
     icon: "local_library",
     type: "default",
     metadata: {

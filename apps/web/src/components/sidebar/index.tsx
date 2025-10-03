@@ -297,7 +297,11 @@ function WorkspaceViews() {
     return workspaceLink(path ?? "/");
   }
 
-  const wellKnownItems = ["Tools", "Views", "Workflows", "Agents", "Prompts"];
+  const wellKnownItems = ["Tools", "Views", "Workflows", "Documents", "Agents"];
+  const legacyTitleMap: Record<string, string> = {
+    Prompts: "Documents",
+  };
+  const canonicalTitle = (title: string) => legacyTitleMap[title] ?? title;
 
   function buildResourceHrefFromResource(resource: {
     integration_id: string;
@@ -308,11 +312,12 @@ function WorkspaceViews() {
 
   // Separate items for organization
   const mcpItems = firstLevelViews
-    .filter((item) => wellKnownItems.includes(item.title))
+    .filter((item) => wellKnownItems.includes(canonicalTitle(item.title)))
     .sort((a, b) => {
       const predefinedOrder = wellKnownItems;
       return (
-        predefinedOrder.indexOf(a.title) - predefinedOrder.indexOf(b.title)
+        predefinedOrder.indexOf(canonicalTitle(a.title)) -
+        predefinedOrder.indexOf(canonicalTitle(b.title))
       );
     });
   const hasIntegrationMenus =
@@ -356,7 +361,7 @@ function WorkspaceViews() {
       <SidebarSeparator className="my-2 -ml-1" />
 
       {mcpItems.map((item) => {
-        const displayTitle = item.title;
+        const displayTitle = canonicalTitle(item.title);
         const href = buildViewHrefFromView(item as View);
         const view = item as View;
 
