@@ -288,10 +288,22 @@ export async function deployToCloudflare({
               zone_id: zoneId,
               ...CUSTOM_HOSTNAME_POST_BODY,
             })
-            .catch((err) => {
+            .catch(async (err) => {
               if (err.status === 409) {
                 // fine, domain already exists
                 return;
+              }
+              if (err.status === 403) {
+                const list = await c.cf.customHostnames.list({
+                  zone_id: zoneId,
+                  hostname: route.pattern,
+                });
+                const existing = list.result.find(
+                  (h) => h.hostname === route.pattern,
+                );
+                if (existing) {
+                  return;
+                }
               }
               throw err;
             });
