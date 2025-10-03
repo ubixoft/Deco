@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import z, { type ZodObject } from "zod/v3";
+import z, { type ZodObject } from "zod";
 
 export function jsonSchemaPropertiesToTSTypes(value: any): z.ZodTypeAny {
   if (!value?.type) {

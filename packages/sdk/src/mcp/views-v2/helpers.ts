@@ -1,4 +1,4 @@
-import { z } from "zod/v3";
+import { z } from "zod";
 import { createTool, type AppContext } from "../index.ts";
 import {
   BaseViewRenderInputSchema,
@@ -108,8 +108,8 @@ export function createViewImplementation(options: ViewImplementationOptions) {
       createTool({
         name: `DECO_VIEW_RENDER_${name.toUpperCase()}`,
         description: `Render ${name} view`,
-        inputSchema: z.lazy(() => inputSchema),
-        outputSchema: z.lazy(() => ViewRenderOutputSchema),
+        inputSchema: inputSchema,
+        outputSchema: ViewRenderOutputSchema,
         handler: async (input, context) => {
           context.resourceAccess.grant();
 

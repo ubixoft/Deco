@@ -1,6 +1,6 @@
 import type { Integration } from "@deco/sdk";
 import { Path } from "@deco/sdk/path";
-import z from "zod/v3";
+import z from "zod";
 import { AIAgent } from "../agent.ts";
 import { createInnateTool } from "../utils/create-tool.ts";
 
@@ -48,7 +48,7 @@ export const createHandoffToolsFor = (
         const userMessage = {
           id: crypto.randomUUID(),
           role: "user" as const,
-          parts: [{ type: "text" as const, text: context.message }],
+          content: context.message,
         };
 
         if (context.schema) {
