@@ -9,9 +9,11 @@ import { DeconfigResource } from "../deconfig/deconfig-resource.ts";
 import {
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
+  createMCPToolsStub,
   createTool,
   createToolGroup,
   DeconfigClient,
+  PROJECT_TOOLS,
 } from "../index.ts";
 import { validate } from "../tools/utils.ts";
 import {
@@ -112,6 +114,103 @@ export const WorkflowResourceV2 = DeconfigResourceV2.define({
     DECO_RESOURCE_WORKFLOW_DELETE: {
       description: WORKFLOW_DELETE_PROMPT,
     },
+  },
+  validate: async (workflow, context, _deconfig) => {
+    // Create an MCPClientStub to call INTEGRATIONS_LIST
+    const client = createMCPToolsStub({
+      tools: PROJECT_TOOLS,
+      context,
+    });
+
+    const result = await client.INTEGRATIONS_LIST({});
+    const integrations = result.items;
+
+    // Validate code step dependencies
+    const codeSteps = workflow.steps
+      .filter((step) => step.type === "code")
+      .map((step) => step.def as CodeStepDefinition);
+
+    for (const codeDef of codeSteps) {
+      if (codeDef.dependencies && codeDef.dependencies.length > 0) {
+        for (const dependency of codeDef.dependencies) {
+          const integration = integrations.find(
+            (item: { id: string; name: string }) =>
+              item.id === dependency.integrationId,
+          );
+
+          if (!integration) {
+            const availableIntegrations = integrations.map(
+              (item: { id: string; name: string }) => ({
+                id: item.id,
+                name: item.name,
+              }),
+            );
+
+            throw new Error(
+              `Code step '${codeDef.name}': Dependency validation failed. Integration '${dependency.integrationId}' not found.\n\nAvailable integrations:\n${JSON.stringify(availableIntegrations, null, 2)}`,
+            );
+          }
+        }
+      }
+    }
+
+    // Validate tool_call steps against available integrations
+    const toolCallSteps = workflow.steps
+      .filter((step) => step.type === "tool_call")
+      .map((step) => step.def as ToolCallStepDefinition);
+
+    if (toolCallSteps.length === 0) {
+      return; // No tool_call steps to validate
+    }
+
+    for (const stepDef of toolCallSteps) {
+      // Find the integration by name or id
+      const integration = integrations.find(
+        (item: { id: string; name: string }) =>
+          item.name === stepDef.integration || item.id === stepDef.integration,
+      );
+
+      if (!integration) {
+        const availableIntegrations = integrations.map(
+          (item: { id: string; name: string }) => ({
+            id: item.id,
+            name: item.name,
+          }),
+        );
+
+        throw new Error(
+          `Tool call step '${stepDef.name}': Integration '${stepDef.integration}' not found.\n\nAvailable integrations:\n${JSON.stringify(availableIntegrations, null, 2)}`,
+        );
+      }
+
+      // Check if the tool exists in the integration
+      const tools =
+        "tools" in integration && Array.isArray(integration.tools)
+          ? integration.tools
+          : [];
+
+      const tool = tools.find(
+        (t: { name: string }) => t.name === stepDef.tool_name,
+      );
+
+      if (!tool) {
+        const availableTools = tools.map(
+          (t: {
+            name: string;
+            inputSchema?: unknown;
+            outputSchema?: unknown;
+          }) => ({
+            name: t.name,
+            inputSchema: t.inputSchema,
+            outputSchema: t.outputSchema,
+          }),
+        );
+
+        throw new Error(
+          `Tool call step '${stepDef.name}': Tool '${stepDef.tool_name}' not found in integration '${integration.name}' (${integration.id}).\n\nAvailable tools:\n${JSON.stringify(availableTools, null, 2)}`,
+        );
+      }
+    }
   },
 });
 
