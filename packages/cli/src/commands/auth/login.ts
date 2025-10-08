@@ -73,7 +73,6 @@ export const loginCommand = () => {
 
           // Save session data securely
           try {
-            // @ts-expect-error - fix data
             await saveSession(data);
           } catch (e) {
             console.error("Failed to save session data:", e);

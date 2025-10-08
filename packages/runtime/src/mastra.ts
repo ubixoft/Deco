@@ -58,48 +58,30 @@ const createRuntimeContext = (prev?: RuntimeContext<AppContext>) => {
  * creates a private tool that always ensure for athentication before being executed
  */
 export function createPrivateTool<
-  TSchemaIn extends z.ZodSchema = z.ZodSchema,
+  TSchemaIn extends z.ZodSchema | undefined = undefined,
   TSchemaOut extends z.ZodSchema | undefined = undefined,
-  TSuspendSchema extends z.ZodSchema = z.ZodSchema,
-  TResumeSchema extends z.ZodSchema = z.ZodSchema,
   TContext extends
     ToolExecutionContext<TSchemaIn> = ToolExecutionContext<TSchemaIn>,
   TExecute extends ToolAction<
     TSchemaIn,
     TSchemaOut,
-    any,
-    any,
     TContext
-  >["execute"] = ToolAction<
-    TSchemaIn,
-    TSchemaOut,
-    any,
-    any,
-    TContext
-  >["execute"],
+  >["execute"] = ToolAction<TSchemaIn, TSchemaOut, TContext>["execute"],
 >(
-  opts: ToolAction<
-    TSchemaIn,
-    TSchemaOut,
-    TSuspendSchema,
-    TResumeSchema,
-    TContext
-  > & {
+  opts: ToolAction<TSchemaIn, TSchemaOut, TContext> & {
     execute?: TExecute;
   },
-): [TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TExecute] extends [
-  z.ZodSchema,
-  z.ZodSchema,
+): [TSchemaIn, TSchemaOut, TExecute] extends [
   z.ZodSchema,
   z.ZodSchema,
   Function,
 ]
-  ? Tool<TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TContext> & {
+  ? Tool<TSchemaIn, TSchemaOut, TContext> & {
       inputSchema: TSchemaIn;
       outputSchema: TSchemaOut;
       execute: (context: TContext) => Promise<any>;
     }
-  : Tool<TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TContext> {
+  : Tool<TSchemaIn, TSchemaOut, TContext> {
   const execute = opts.execute;
   if (typeof execute === "function") {
     opts.execute = ((input, options) => {
@@ -115,50 +97,28 @@ export function createPrivateTool<
 export function createTool<
   TSchemaIn extends z.ZodSchema | undefined = undefined,
   TSchemaOut extends z.ZodSchema | undefined = undefined,
-  TSuspendSchema extends z.ZodSchema = z.ZodSchema,
-  TResumeSchema extends z.ZodSchema = z.ZodSchema,
-  TContext extends ToolExecutionContext<
-    TSchemaIn,
-    TSuspendSchema,
-    TResumeSchema
-  > = ToolExecutionContext<TSchemaIn, TSuspendSchema, TResumeSchema>,
+  TContext extends
+    ToolExecutionContext<TSchemaIn> = ToolExecutionContext<TSchemaIn>,
   TExecute extends ToolAction<
     TSchemaIn,
     TSchemaOut,
-    TSuspendSchema,
-    TResumeSchema,
     TContext
-  >["execute"] = ToolAction<
-    TSchemaIn,
-    TSchemaOut,
-    TSuspendSchema,
-    TResumeSchema,
-    TContext
-  >["execute"],
+  >["execute"] = ToolAction<TSchemaIn, TSchemaOut, TContext>["execute"],
 >(
-  opts: ToolAction<
-    TSchemaIn,
-    TSchemaOut,
-    TSuspendSchema,
-    TResumeSchema,
-    TContext
-  > & {
+  opts: ToolAction<TSchemaIn, TSchemaOut, TContext> & {
     execute?: TExecute;
   },
-): [TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TExecute] extends [
-  z.ZodSchema,
-  z.ZodSchema,
+): [TSchemaIn, TSchemaOut, TExecute] extends [
   z.ZodSchema,
   z.ZodSchema,
   Function,
 ]
-  ? Tool<TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TContext> & {
+  ? Tool<TSchemaIn, TSchemaOut, TContext> & {
       inputSchema: TSchemaIn;
       outputSchema: TSchemaOut;
       execute: (context: TContext) => Promise<any>;
     }
-  : Tool<TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TContext> {
-  // @ts-expect-error - TSchemaIn is not a ZodType
+  : Tool<TSchemaIn, TSchemaOut, TContext> {
   return mastraCreateTool({
     ...opts,
     execute:
@@ -181,8 +141,6 @@ export type ExecWithContext<TF extends (...args: any[]) => any> = (
 
 export interface Step<
   TStepId extends string = string,
-  // @ts-expect-error - TState is not a ZodObject
-  TState extends z.ZodObject<any> = z.ZodObject<any, z.$strip>,
   TSchemaIn extends z.ZodType<any> = z.ZodType<any>,
   TSchemaOut extends z.ZodType<any> = z.ZodType<any>,
   TResumeSchema extends z.ZodType<any> = z.ZodType<any>,
@@ -191,7 +149,6 @@ export interface Step<
 > extends Omit<
     MastraStep<
       TStepId,
-      TState,
       TSchemaIn,
       TSchemaOut,
       TResumeSchema,
@@ -202,7 +159,6 @@ export interface Step<
   > {
   execute: ExecWithContext<
     ExecuteFunction<
-      z.infer<TState>,
       z.infer<TSchemaIn>,
       z.infer<TSchemaOut>,
       z.infer<TResumeSchema>,
@@ -214,29 +170,21 @@ export interface Step<
 export function createStepFromTool<
   TSchemaIn extends z.ZodType<any>,
   TSchemaOut extends z.ZodType<any>,
-  TSuspendSchema extends z.ZodType<any>,
-  TResumeSchema extends z.ZodType<any>,
-  TContext extends ToolExecutionContext<
-    TSchemaIn,
-    TSuspendSchema,
-    TResumeSchema
-  >,
+  TContext extends ToolExecutionContext<TSchemaIn>,
 >(
-  tool: Tool<TSchemaIn, TSchemaOut, TSuspendSchema, TResumeSchema, TContext> & {
+  tool: Tool<TSchemaIn, TSchemaOut, TContext> & {
     inputSchema: TSchemaIn;
     outputSchema: TSchemaOut;
     execute: (context: TContext) => Promise<any>;
   },
 ): Step<
   string,
-  // @ts-expect-error - TSchemaIn is not a ZodType
   TSchemaIn,
   TSchemaOut,
   z.ZodType<any>,
   z.ZodType<any>,
   DefaultEngineType
 > {
-  // @ts-expect-error - TSchemaIn is not a ZodType
   return mastraCreateStep(tool);
 }
 
@@ -254,7 +202,6 @@ export function createStep<
   resumeSchema?: TResumeSchema;
   suspendSchema?: TSuspendSchema;
   execute: ExecWithContext<
-    // @ts-expect-error - TStepInput is not a ZodObject
     ExecuteFunction<
       z.infer<TStepInput>,
       z.infer<TStepOutput>,
@@ -265,14 +212,12 @@ export function createStep<
   >;
 }): Step<
   TStepId,
-  // @ts-expect-error - TStepInput is not a ZodObject
   TStepInput,
   TStepOutput,
   TResumeSchema,
   TSuspendSchema,
   DefaultEngineType
 > {
-  // @ts-expect-error - TStepInput is not a ZodObject
   return mastraCreateStep({
     ...opts,
     execute: (input) => {
@@ -541,15 +486,12 @@ export const createMCPServer = <
           description: "Read a resource by uri (name + uri)",
           inputSchema: ResourcesReadInputSchema,
           outputSchema: ResourcesReadOutputSchema,
-          execute: (input) => {
-            // @ts-expect-error - input.name is not a string
-            const fn = readHandlers.get(input.name);
+          execute: ({ context }) => {
+            const fn = readHandlers.get(context.name);
             if (!fn) {
-              // @ts-expect-error - input.name is not a string
-              throw new Error(`READ not implemented for ${input.name}`);
+              throw new Error(`READ not implemented for ${context.name}`);
             }
-            // @ts-expect-error - input.name is not a string
-            return fn({ uri: input.uri });
+            return fn({ uri: context.uri });
           },
         }),
       );
@@ -559,15 +501,12 @@ export const createMCPServer = <
           description: "Search resources (name + term)",
           inputSchema: ResourceSearchInputSchema,
           outputSchema: ResourceSearchOutputSchema,
-          execute: (input) => {
-            // @ts-expect-error - input.name is not a string
-            const fn = searchHandlers.get(input.name);
+          execute: ({ context }) => {
+            const fn = searchHandlers.get(context.name);
             if (!fn) {
-              // @ts-expect-error - input.name is not a string
-              throw new Error(`SEARCH not implemented for ${input.name}`);
+              throw new Error(`SEARCH not implemented for ${context.name}`);
             }
-            // @ts-expect-error - input.name is not a string
-            const { term, cursor, limit } = input;
+            const { term, cursor, limit } = context;
             return fn({ term, cursor, limit });
           },
         }),
@@ -578,14 +517,12 @@ export const createMCPServer = <
           description: "Create a resource (name + content)",
           inputSchema: ResourceCreateInputSchema,
           outputSchema: ResourceCreateOutputSchema,
-          execute: (input) => {
-            // @ts-expect-error - input.name is not a string
-            const fn = createHandlers.get(input.name);
+          execute: ({ context }) => {
+            const fn = createHandlers.get(context.name);
             if (!fn) {
-              // @ts-expect-error - input.name is not a string
-              throw new Error(`CREATE not implemented for ${input.name}`);
+              throw new Error(`CREATE not implemented for ${context.name}`);
             }
-            return fn(input);
+            return fn(context as any);
           },
         }),
       );
@@ -595,14 +532,12 @@ export const createMCPServer = <
           description: "Update a resource (name + uri)",
           inputSchema: ResourceUpdateInputSchema,
           outputSchema: ResourceUpdateOutputSchema,
-          execute: (input) => {
-            // @ts-expect-error - input.name is not a string
-            const fn = updateHandlers.get(input.name);
+          execute: ({ context }) => {
+            const fn = updateHandlers.get(context.name);
             if (!fn) {
-              // @ts-expect-error - input.name is not a string
-              throw new Error(`UPDATE not implemented for ${input.name}`);
+              throw new Error(`UPDATE not implemented for ${context.name}`);
             }
-            return fn(input);
+            return fn(context as any);
           },
         }),
       );
@@ -612,14 +547,12 @@ export const createMCPServer = <
           description: "Delete a resource (name + uri)",
           inputSchema: ResourceDeleteInputSchema,
           outputSchema: ResourceDeleteOutputSchema,
-          execute: (input) => {
-            // @ts-expect-error - input.name is not a string
-            const fn = deleteHandlers.get(input.name);
+          execute: ({ context }) => {
+            const fn = deleteHandlers.get(context.name);
             if (!fn) {
-              // @ts-expect-error - input.name is not a string
-              throw new Error(`DELETE not implemented for ${input.name}`);
+              throw new Error(`DELETE not implemented for ${context.name}`);
             }
-            return fn(input);
+            return fn(context as any);
           },
         }),
       );

@@ -117,22 +117,18 @@ const AGENT_FIELDS_SELECT = {
   org_id: organizations.id,
 };
 
-const ListAgentsInputSchema = z.object({});
-
-const ListAgentsOutputSchema = z.object({
-  items: z.array(
-    AgentSchema.extend({
-      lastAccess: z.string().nullable().optional(),
-      lastAccessor: z.string().nullable().optional(),
-    }),
-  ),
-});
-
 export const listAgents = createTool({
   name: "AGENTS_LIST",
   description: "List all agents",
-  inputSchema: ListAgentsInputSchema,
-  outputSchema: ListAgentsOutputSchema,
+  inputSchema: z.object({}),
+  outputSchema: z.object({
+    items: z.array(
+      AgentSchema.extend({
+        lastAccess: z.string().nullable().optional(),
+        lastAccessor: z.string().nullable().optional(),
+      }),
+    ),
+  }),
   handler: async (_, c: WithTool<AppContext>) => {
     assertHasWorkspace(c);
 
@@ -235,12 +231,10 @@ export const listAgents = createTool({
   },
 });
 
-const GetAgentInputSchema = z.object({ id: z.string() });
-
 export const getAgent = createTool({
   name: "AGENTS_GET",
   description: "Get an agent by id",
-  inputSchema: GetAgentInputSchema,
+  inputSchema: z.object({ id: z.string() }),
   outputSchema: AgentSchema,
   handler: async ({ id }, c) => {
     assertHasWorkspace(c);
@@ -285,12 +279,10 @@ export const getAgent = createTool({
   },
 });
 
-const CreateAgentInputSchema = AgentSchema.partial();
-
 export const createAgent = createTool({
   name: "AGENTS_CREATE",
   description: "Create a new agent",
-  inputSchema: CreateAgentInputSchema,
+  inputSchema: AgentSchema.partial(),
   outputSchema: AgentSchema,
   handler: async (agent, c) => {
     assertHasWorkspace(c);
@@ -318,15 +310,13 @@ export const createAgentSetupTool = createToolGroup("AgentSetup", {
   icon: "https://assets.decocache.com/mcp/42dcf0d2-5a2f-4d50-87a6-0e9ebaeae9b5/Agent-Setup.png",
 });
 
-const UpdateAgentInputSchema = z.object({
-  id: z.string(),
-  agent: AgentSchema.partial(),
-});
-
 export const updateAgent = createAgentSetupTool({
   name: "AGENTS_UPDATE",
   description: "Update an existing agent",
-  inputSchema: UpdateAgentInputSchema,
+  inputSchema: z.object({
+    id: z.string(),
+    agent: AgentSchema.partial(),
+  }),
   outputSchema: AgentSchema,
   handler: async ({ id, agent }, c) => {
     assertHasWorkspace(c);
@@ -355,15 +345,11 @@ export const updateAgent = createAgentSetupTool({
   },
 });
 
-const DeleteAgentInputSchema = z.object({ id: z.string() });
-
-const DeleteAgentOutputSchema = z.object({ deleted: z.boolean() });
-
 export const deleteAgent = createTool({
   name: "AGENTS_DELETE",
   description: "Delete an agent by id",
-  inputSchema: DeleteAgentInputSchema,
-  outputSchema: DeleteAgentOutputSchema,
+  inputSchema: z.object({ id: z.string() }),
+  outputSchema: z.object({ deleted: z.boolean() }),
   handler: async ({ id }, c) => {
     assertHasWorkspace(c);
 

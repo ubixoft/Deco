@@ -1,5 +1,6 @@
 import type { AIAgent } from "@deco/ai";
 import { z } from "zod";
+import { AgentGenerateOptions } from "../../models/index.ts";
 import { stub } from "../../stub.ts";
 import {
   assertHasWorkspace,
@@ -21,34 +22,18 @@ const createAgentTool = createToolFactory<WithTool<AgentContext>>(
     }) as unknown as WithTool<AgentContext>,
 );
 
-// Zod schema for agent generation options (used for runtime validation in API)
-const AgentGenerateOptionsSchema = z.object({
-  instructions: z.string().optional(),
-  model: z.string().optional(),
-  tools: z.record(z.string(), z.array(z.string())).optional(),
-  bypassOpenRouter: z.boolean().optional(),
-  threadId: z.string().optional(),
-  resourceId: z.string().optional(),
-  enableSemanticRecall: z.boolean().optional(),
-  maxSteps: z.number().optional(),
-});
-
-const AgentGenerateTextInputSchema = z.object({
-  message: z
-    .union([z.string(), baseMessageSchema])
-    .describe("The message to send to the agent"),
-  options: AgentGenerateOptionsSchema.optional().nullable(),
-});
-
-const AgentGenerateTextOutputSchema = z.object({
-  text: z.string().optional().describe("The text output from the agent"),
-});
-
 export const agentGenerateText = createAgentTool({
   name: "AGENT_GENERATE_TEXT",
   description: "Generate text output using an agent",
-  inputSchema: AgentGenerateTextInputSchema,
-  outputSchema: AgentGenerateTextOutputSchema,
+  inputSchema: z.object({
+    message: z
+      .union([z.string(), baseMessageSchema])
+      .describe("The message to send to the agent"),
+    options: AgentGenerateOptions.optional().nullable(),
+  }),
+  outputSchema: z.object({
+    text: z.string().optional().describe("The text output from the agent"),
+  }),
   handler: async ({ message }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c);
@@ -78,26 +63,22 @@ export const agentGenerateText = createAgentTool({
   },
 });
 
-const AgentGenerateObjectInputSchema = z.object({
-  message: z
-    .union([z.string(), baseMessageSchema])
-    .describe("The message to send to the agent"),
-  schema: z
-    .any()
-    .describe(
-      "The JSON schema to use for a structured response. If provided, the response will be an object.",
-    ),
-});
-
-const AgentGenerateObjectOutputSchema = z.object({
-  object: z.any().describe("The object output from the agent"),
-});
-
 export const agentGenerateObject = createAgentTool({
   name: "AGENT_GENERATE_OBJECT",
   description: "Generate an object using an agent",
-  inputSchema: AgentGenerateObjectInputSchema,
-  outputSchema: AgentGenerateObjectOutputSchema,
+  inputSchema: z.object({
+    message: z
+      .union([z.string(), baseMessageSchema])
+      .describe("The message to send to the agent"),
+    schema: z
+      .any()
+      .describe(
+        "The JSON schema to use for a structured response. If provided, the response will be an object.",
+      ),
+  }),
+  outputSchema: z.object({
+    object: z.any().describe("The object output from the agent"),
+  }),
   handler: async ({ message, schema }, c) => {
     assertHasWorkspace(c);
     await assertWorkspaceResourceAccess(c);
