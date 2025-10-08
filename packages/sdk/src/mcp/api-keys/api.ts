@@ -10,6 +10,7 @@ import {
 import { LocatorStructured } from "../../locator.ts";
 import type { QueryResult } from "../../storage/index.ts";
 import {
+  assertHasLocator,
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
 } from "../assertions.ts";
@@ -18,6 +19,7 @@ import { MCPClient } from "../index.ts";
 import { getIntegration } from "../integrations/api.ts";
 import { getRegistryApp } from "../registry/api.ts";
 import { apiKeys, organizations, projects } from "../schema.ts";
+import { getProjectIdFromContext } from "../projects/util.ts";
 
 const SELECT_API_KEY_QUERY = `
   id,
@@ -179,6 +181,7 @@ export const createApiKey = createTool({
   outputSchema: ApiKeyWithValueSchema,
   handler: async ({ name, policies, claims }, c) => {
     assertHasWorkspace(c);
+    assertHasLocator(c);
     await assertWorkspaceResourceAccess(c);
     const workspace = c.workspace.value;
 
@@ -218,6 +221,8 @@ export const createApiKey = createTool({
 
     const db = c.db;
 
+    const projectId = await getProjectIdFromContext(c);
+
     // Insert the API key metadata
     const { data: apiKey, error } = await db
       .from("deco_chat_api_keys")
@@ -226,6 +231,7 @@ export const createApiKey = createTool({
         workspace,
         enabled: true,
         policies: policies || [],
+        project_id: projectId,
       })
       .select(SELECT_API_KEY_QUERY)
       .single();
@@ -238,7 +244,7 @@ export const createApiKey = createTool({
     const value = await issuer.issue({
       ...claims,
       sub: `api-key:${apiKey.id}`,
-      aud: workspace,
+      aud: c.locator.value,
       iat: new Date().getTime(),
     });
 
@@ -259,17 +265,24 @@ export const reissueApiKey = createTool({
   outputSchema: ApiKeyWithValueSchema,
   handler: async ({ id, claims }, c) => {
     assertHasWorkspace(c);
+    assertHasLocator(c);
     await assertWorkspaceResourceAccess(c);
 
     const db = c.db;
     const workspace = c.workspace.value;
+
+    const projectId = await getProjectIdFromContext(c);
 
     // First, verify the API key exists and is accessible
     const { data: apiKey, error } = await db
       .from("deco_chat_api_keys")
       .select(SELECT_API_KEY_QUERY)
       .eq("id", id)
-      .eq("workspace", workspace)
+      .or(
+        projectId
+          ? `workspace.eq.${workspace},project_id.eq.${projectId}`
+          : `workspace.eq.${workspace}`,
+      )
       .is("deleted_at", null)
       .single();
 
@@ -282,12 +295,11 @@ export const reissueApiKey = createTool({
     }
 
     // Generate new JWT token with the provided claims
-
     const issuer = await c.jwtIssuer();
     const value = await issuer.issue({
       ...claims,
       sub: `api-key:${apiKey.id}`,
-      aud: workspace,
+      aud: c.locator.value,
       iat: new Date().getTime(),
     });
 
