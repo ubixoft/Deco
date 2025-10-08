@@ -1,6 +1,5 @@
 import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
-import { StatementSchema } from "../../auth/policy.ts";
 import { userFromJWT } from "../../auth/user.ts";
 import {
   InternalServerError,
@@ -8,8 +7,14 @@ import {
   UserInputError,
 } from "../../errors.ts";
 import { LocatorStructured } from "../../locator.ts";
+import {
+  policiesSchema,
+  Statement,
+  StatementSchema,
+} from "../../models/index.ts";
 import type { QueryResult } from "../../storage/index.ts";
 import {
+  apiKeySWRCache,
   assertHasLocator,
   assertHasWorkspace,
   assertWorkspaceResourceAccess,
@@ -17,11 +22,11 @@ import {
 import { createToolGroup } from "../context.ts";
 import { MCPClient } from "../index.ts";
 import { getIntegration } from "../integrations/api.ts";
+import { getProjectIdFromContext } from "../projects/util.ts";
 import { getRegistryApp } from "../registry/api.ts";
 import { apiKeys, organizations, projects } from "../schema.ts";
-import { getProjectIdFromContext } from "../projects/util.ts";
 
-const SELECT_API_KEY_QUERY = `
+export const SELECT_API_KEY_QUERY = `
   id,
   name,
   workspace,
@@ -32,7 +37,7 @@ const SELECT_API_KEY_QUERY = `
   deleted_at
 ` as const;
 
-function mapApiKey(
+export function mapApiKey(
   apiKey: QueryResult<"deco_chat_api_keys", typeof SELECT_API_KEY_QUERY>,
 ) {
   return {
@@ -40,7 +45,7 @@ function mapApiKey(
     name: apiKey.name,
     workspace: apiKey.workspace,
     enabled: apiKey.enabled,
-    policies: apiKey.policies,
+    policies: apiKey.policies as Statement[],
     createdAt: apiKey.created_at,
     updatedAt: apiKey.updated_at,
     deletedAt: apiKey.deleted_at,
@@ -73,11 +78,6 @@ export const matchByWorkspaceOrProjectLocatorForApiKeys = (
   );
 };
 
-const policiesSchema = z
-  .array(StatementSchema)
-  .optional()
-  .describe("Policies for the API key");
-
 const AppClaimsSchema = z.object({
   appName: z.string(),
   integrationId: z.string(),
@@ -85,7 +85,7 @@ const AppClaimsSchema = z.object({
 });
 
 // Shared API key output schema
-const ApiKeySchema = z.object({
+export const ApiKeySchema = z.object({
   id: z.string().describe("The unique identifier of the API key"),
   name: z.string().describe("The name of the API key"),
   workspace: z.string().describe("The workspace ID"),
@@ -141,6 +141,7 @@ export const listApiKeys = createTool({
     };
   },
 });
+
 const ensureStateIsWellFormed = async (state: unknown) => {
   const promises: Promise<unknown>[] = [];
 
@@ -261,9 +262,10 @@ export const reissueApiKey = createTool({
       .any()
       .optional()
       .describe("New claims to be added to the API key"),
+    policies: policiesSchema.optional().describe("Policies of the API key"),
   }),
   outputSchema: ApiKeyWithValueSchema,
-  handler: async ({ id, claims }, c) => {
+  handler: async ({ id, claims, policies }, c) => {
     assertHasWorkspace(c);
     assertHasLocator(c);
     await assertWorkspaceResourceAccess(c);
@@ -294,6 +296,22 @@ export const reissueApiKey = createTool({
       throw new NotFoundError("API key not found");
     }
 
+    const { error: updateError } = policies
+      ? await db
+          .from("deco_chat_api_keys")
+          .update({
+            policies,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", id)
+          .eq("workspace", workspace)
+          .is("deleted_at", null)
+      : { error: null };
+
+    if (updateError) {
+      throw new InternalServerError(updateError.message);
+    }
+
     // Generate new JWT token with the provided claims
     const issuer = await c.jwtIssuer();
     const value = await issuer.issue({
@@ -303,7 +321,12 @@ export const reissueApiKey = createTool({
       iat: new Date().getTime(),
     });
 
-    return { ...mapApiKey(apiKey), value };
+    const cacheId = `${c.workspace.value}:${id}`;
+    await apiKeySWRCache.delete(cacheId);
+
+    // Return the API key with updated policies if they were provided
+    const updatedApiKey = policies ? { ...apiKey, policies } : apiKey;
+    return { ...mapApiKey(updatedApiKey), value };
   },
 });
 
