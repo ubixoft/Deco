@@ -350,7 +350,7 @@ const proxy = (
           tool: req.params.name,
         })
       ).callTool(req.params, undefined, {
-        timeout: 3000000
+        timeout: 3000000,
       }) as ReturnType<CallToolMiddleware>;
     });
 
