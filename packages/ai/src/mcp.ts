@@ -10,23 +10,20 @@ import { createSessionTokenCookie } from "@deco/sdk/auth";
 import { WebCache } from "@deco/sdk/cache";
 import { SWRCache } from "@deco/sdk/cache/swr";
 import { type AppContext, fromWorkspaceString, MCPClient } from "@deco/sdk/mcp";
-import { slugify } from "@deco/sdk/mcp/slugify";
+import { slugify } from "@deco/sdk/memory";
 import {
   createServerClient,
   createTransport,
 } from "@deco/workers-runtime/mcp-client";
+import type { ToolAction } from "@mastra/core";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import type { Tool } from "ai";
-import { jsonSchema } from "ai";
 import type { AIAgent, Env } from "./agent.ts";
 import { getTools } from "./deco.ts";
 import { getToolsForInnateIntegration } from "./storage/tools.ts";
 import { createTool } from "./utils/create-tool.ts";
 import { jsonSchemaToModel } from "./utils/json-schema-to-model.ts";
 import { mapToolEntries } from "./utils/tool-entries.ts";
-
 export { createServerClient, createTransport, jsonSchemaToModel };
-
 const ApiDecoChatURLs = [
   "https://api.decocms.com",
   "https://api.deco.chat",
@@ -79,41 +76,42 @@ const getMCPServerTools = async (
   mcpServer: Integration,
   agent: AIAgent,
   signal?: AbortSignal,
-): Promise<Record<string, Tool>> => {
+): Promise<Record<string, ToolAction<any, any, any>>> => {
   try {
     const { tools } =
       mcpServer.tools && mcpServer.tools.length > 0
         ? { tools: mcpServer.tools }
         : await swrListTools(mcpServer, signal);
-
-    const mtools: Record<string, Tool> = Object.fromEntries(
+    const mtools: Record<
+      string,
+      ToolAction<any, any, any>
+    > = Object.fromEntries(
       tools.map((tool: (typeof tools)[number]) => {
         const slug = slugify(tool.name);
         return [
           slug,
           createTool({
             id: slug,
-            description: tool.description ?? "",
-            // @ts-expect-error - tool.inputSchema is not a JSONSchema7
-            inputSchema: jsonSchema(tool.inputSchema),
-            outputSchema: jsonSchema(
+            description: tool.description! ?? "",
+            inputSchema: jsonSchemaToModel(tool.inputSchema),
+            outputSchema: jsonSchemaToModel(
               tool.outputSchema ?? {
                 type: "object",
                 additionalProperties: true,
               },
             ),
-            execute: async (input) => {
+            execute: async ({ context }) => {
               const innerClient = await createServerClient(mcpServer).catch(
                 console.error,
               );
               if (!innerClient) {
-                throw new Error("Failed to create inner client");
+                return { error: "Failed to create inner client" };
               }
               try {
                 const result = await innerClient.callTool(
                   {
                     name: tool.name,
-                    arguments: input,
+                    arguments: context,
                   },
                   // @ts-expect-error should be fixed after this is merged: https://github.com/modelcontextprotocol/typescript-sdk/pull/528
                   CallToolResultSchema,
@@ -150,7 +148,7 @@ export const fetchMeta = async (baseUrl: string) => {
 
 export const getDecoSiteTools = async (
   settings: DecoConnection,
-): Promise<Record<string, Tool<any, any>>> => {
+): Promise<Record<string, ToolAction<any, any, any>>> => {
   const baseUrl = `https://${settings.tenant}.deco.site`;
   const meta = await fetchMeta(baseUrl);
   if (!meta) {
@@ -159,20 +157,20 @@ export const getDecoSiteTools = async (
 
   const tools = getTools(meta.schema);
 
-  const createdTools: Record<string, Tool> = {};
+  const createdTools: Record<string, ReturnType<typeof createTool>> = {};
   for (const tool of tools) {
     try {
       const createdTool = createTool({
         id: tool.name,
         description: tool.description,
-        inputSchema: jsonSchema(tool.inputSchema),
-        outputSchema: jsonSchema(
+        inputSchema: jsonSchemaToModel(tool.inputSchema),
+        outputSchema: jsonSchemaToModel(
           tool.outputSchema ?? {
             type: "object",
             additionalProperties: true,
           },
         ),
-        execute: async (context) => {
+        execute: async ({ context }) => {
           const response = await fetch(
             new URL(`/live/invoke/${tool.resolveType}`, baseUrl),
             {
@@ -205,7 +203,7 @@ export const mcpServerTools = async (
   agent: AIAgent,
   signal?: AbortSignal,
   env?: Env,
-): Promise<Record<string, Tool<any, any>>> => {
+): Promise<Record<string, ToolAction<any, any, any>>> => {
   if (!mcpServer.connection) {
     return {};
   }

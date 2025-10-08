@@ -14,10 +14,8 @@ export const ChannelSchema = z.object({
     .describe("The date and time the channel was last updated"),
   workspace: z.string().describe("The workspace the channel belongs to"),
   active: z.boolean().describe("Whether the channel is active"),
-  integration: IntegrationSchema.describe(
-    "The integration the channel belongs to",
-  )
-    .optional()
+  integration: IntegrationSchema.optional()
+    .describe("The integration the channel belongs to")
     .nullable(),
 });
 

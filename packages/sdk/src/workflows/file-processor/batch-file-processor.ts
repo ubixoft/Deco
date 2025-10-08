@@ -1,17 +1,18 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import type { MastraVector } from "@mastra/core";
 import { basename } from "@std/path";
 import { embedMany } from "ai";
 import { z } from "zod";
-import { KNOWLEDGE_BASE_GROUP as _KNOWLEDGE_BASE_GROUP } from "../../constants.ts";
+import { KNOWLEDGE_BASE_GROUP } from "../../constants.ts";
 import { InternalServerError } from "../../errors.ts";
 import { type AppContext } from "../../mcp/context.ts";
 import {
   FileProcessor,
   type ProcessedDocument,
 } from "../../mcp/file-processor.ts";
-import type { Workspace as _Workspace } from "../../path.ts";
+import { WorkspaceMemory } from "../../memory/memory.ts";
+import type { Workspace } from "../../path.ts";
 import { getServerClient } from "../../storage/supabase/client.ts";
-import { VectorStorage } from "../../storage/vector-storage.ts";
 
 // Workflow message schema for knowledge base file processing
 export const KbFileProcessorMessageSchema = z.object({
@@ -83,10 +84,23 @@ export function getBatchSize(env: WorkflowEnvs): number {
 /**
  * Get vector client for the workspace
  */
-function getVectorClient(_workspace: string, env: WorkflowEnvs): VectorStorage {
-  const supabase = createKnowledgeBaseSupabaseClient(env);
+async function getVectorClient(workspace: string, env: WorkflowEnvs) {
+  const mem = await WorkspaceMemory.create({
+    workspace: workspace as Workspace, // Cast to avoid type issues in workflow context
+    tursoAdminToken: env.TURSO_ADMIN_TOKEN,
+    tursoOrganization: env.TURSO_ORGANIZATION,
+    tokenStorage: env.TURSO_GROUP_DATABASE_TOKEN,
+    workspaceDO: env.WORKSPACE_DB,
+    openAPIKey: env.OPENAI_API_KEY,
+    discriminator: KNOWLEDGE_BASE_GROUP,
+    options: { semanticRecall: true },
+  });
 
-  return new VectorStorage(supabase);
+  const vector = mem.vector;
+  if (!vector) {
+    throw new InternalServerError("Missing vector client");
+  }
+  return vector;
 }
 
 /**
@@ -127,7 +141,6 @@ async function generateFileChunks(
   };
 
   const enrichedChunks = processedFile.chunks.map((chunk, index) => ({
-    // @ts-expect-error - text is not a property of DocumentChunk
     text: chunk.text,
     metadata: {
       ...fileMetadata,
@@ -167,16 +180,16 @@ async function generateEmbeddings(
  * Store vectors in the vector database
  */
 async function storeVectorsInDatabase(
-  vector: VectorStorage,
+  vector: MastraVector,
   knowledgeBaseName: string,
   embeddings: number[][],
-  chunks: Array<{ text: string; metadata: Record<string, unknown> }>,
+  // deno-lint-ignore no-explicit-any
+  chunks: Array<{ text: string; metadata: Record<string, any> }>,
 ): Promise<string[]> {
   // Store vectors in database
   const batchResult = await vector.upsert({
     indexName: knowledgeBaseName,
     vectors: embeddings,
-    // @ts-expect-error - text is not a property of DocumentChunk
     metadata: chunks.map((item) => ({
       metadata: {
         ...item.metadata,

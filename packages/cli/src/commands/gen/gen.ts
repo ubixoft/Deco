@@ -362,7 +362,7 @@ ${tsTypes}
         outputSchema?: z.ZodType<ReturnType<T[K]>>
         description: string
         id: string
-        execute: (input: Parameters<T[K]>[0]) => Promise<ReturnType<T[K]>>
+        execute: ({ context }: { context: Parameters<T[K]>[0] }) => Promise<ReturnType<T[K]>>
       }>
     }
   }

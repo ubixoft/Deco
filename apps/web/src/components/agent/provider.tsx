@@ -1,4 +1,4 @@
-import type { LanguageModelV2FinishReason } from "@ai-sdk/provider";
+import type { LanguageModelV1FinishReason } from "@ai-sdk/provider";
 import { useChat } from "@ai-sdk/react";
 import {
   type Agent,
@@ -8,7 +8,6 @@ import {
   dispatchMessages,
   getTraceDebugId,
   type Integration,
-  type MessageMetadata,
   Toolset,
   useAgentData,
   useAgentRoot,
@@ -29,8 +28,7 @@ import {
   AlertDialogTitle,
 } from "@deco/ui/components/alert-dialog.tsx";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DefaultChatTransport } from "ai";
-import type { UIMessage } from "@ai-sdk/react";
+import type { ToolCall, UIMessage } from "ai";
 import {
   createContext,
   type PropsWithChildren,
@@ -46,9 +44,9 @@ import { useForm, type UseFormReturn } from "react-hook-form";
 import { useBlocker } from "react-router";
 import { toast } from "sonner";
 import { trackEvent } from "../../hooks/analytics.ts";
+import { onRulesUpdated, dispatchRulesUpdated } from "../../utils/events.ts";
 import { useCreateAgent } from "../../hooks/use-create-agent.ts";
 import { useUserPreferences } from "../../hooks/use-user-preferences.ts";
-import { dispatchRulesUpdated, onRulesUpdated } from "../../utils/events.ts";
 import { IMAGE_REGEXP, openPreviewPanel } from "../chat/utils/preview.ts";
 
 interface UiOptions {
@@ -74,7 +72,7 @@ interface AgentProviderProps {
   autoSend?: boolean;
   onAutoSendComplete?: () => void;
   initialRules?: string[];
-  onToolCall?: (toolCall: { toolName: string }) => void;
+  onToolCall?: (toolCall: ToolCall<string, unknown>) => void;
   readOnly?: boolean;
 }
 
@@ -95,16 +93,9 @@ interface AgentContextValue {
   setRules: (rules: string[]) => void;
 
   // Chat integration
-  chat: ReturnType<typeof useChat> & {
-    finishReason: LanguageModelV2FinishReason | null;
-    sendMessage: (message?: UIMessage) => Promise<void>;
+  chat: (ReturnType<typeof useChat> | MockChat) & {
+    finishReason: LanguageModelV1FinishReason | null;
   };
-
-  // Input state management
-  input: string;
-  setInput: (input: string) => void;
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
 
   // Agent and chat context
   agentId: string;
@@ -128,6 +119,21 @@ interface AgentContextValue {
   isReadOnly?: boolean;
 }
 
+type MockChat = {
+  messages: UIMessage[];
+  isLoading: boolean;
+  status: ReturnType<typeof useChat>["status"];
+  setMessages: ReturnType<typeof useChat>["setMessages"];
+  handleInputChange: ReturnType<typeof useChat>["handleInputChange"];
+  handleSubmit: ReturnType<typeof useChat>["handleSubmit"];
+  input: string;
+  setInput: ReturnType<typeof useChat>["setInput"];
+  append: ReturnType<typeof useChat>["append"];
+  reload: ReturnType<typeof useChat>["reload"];
+  error: ReturnType<typeof useChat>["error"];
+  stop: ReturnType<typeof useChat>["stop"];
+};
+
 const DEFAULT_UI_OPTIONS: UiOptions = {
   showThreadTools: true,
   showModelSelector: true,
@@ -148,6 +154,8 @@ const isAutoScrollEnabled = (e: HTMLDivElement | null) => {
   return e?.dataset.disableAutoScroll !== "true";
 };
 
+const IMAGE_GENERATION_NOTE = `<IMAGE_GENERATION_NOTE>If you call a GENERATE_IMAGE tool and it successfully returns an "image" field, and "image" is a valid image URL, you must not attempt to render the image, neither repeat the image URL in the response. The UI will handle the image rendering. Do not ask the user if they wish to see the image, since they will be able to see it in the UI. Do not inform the user about the image URL in the response.</IMAGE_GENERATION_NOTE>`;
+
 export function AgentProvider({
   agentId,
   threadId,
@@ -158,6 +166,7 @@ export function AgentProvider({
   uiOptions,
   children,
   additionalTools,
+  toolsets,
   autoSend,
   onAutoSendComplete,
   initialRules,
@@ -173,13 +182,11 @@ export function AgentProvider({
   const { preferences } = useUserPreferences();
 
   const [finishReason, setFinishReason] =
-    useState<LanguageModelV2FinishReason | null>(null);
+    useState<LanguageModelV1FinishReason | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const correlationIdRef = useRef<string | null>(null);
   const latestRulesRef = useRef<string[] | null>(initialRules || null);
   const [rules, setRulesState] = useState<string[]>(initialRules || []);
-  const [input, setInput] = useState(initialInput || "");
-  const [isLoading, setIsLoading] = useState(false);
 
   const mergedUiOptions = { ...DEFAULT_UI_OPTIONS, ...uiOptions };
   const { data: threads } = useThreads({
@@ -287,177 +294,167 @@ export function AgentProvider({
     form.reset(serverAgent);
   }, [form, serverAgent]);
 
-  // Memoize the transport to prevent unnecessary re-creation
-  const transport = useMemo(
+  const hasImageGeneration = useMemo(
     () =>
-      new DefaultChatTransport({
-        api: new URL("/actors/AIAgent/invoke/stream", DECO_CMS_API_URL).href,
+      Object.values(effectiveChatState.tools_set ?? {}).some((set) =>
+        set.includes("GENERATE_IMAGE"),
+      ),
+    [effectiveChatState.tools_set],
+  );
+
+  // feel free to revert this if you dont like it
+  const effectiveInstructions = useMemo(() => {
+    const baseInstructions = effectiveChatState.instructions ?? "";
+
+    if (
+      hasImageGeneration &&
+      !baseInstructions.includes(IMAGE_GENERATION_NOTE)
+    ) {
+      return `${baseInstructions}\n${IMAGE_GENERATION_NOTE}`;
+    }
+
+    return baseInstructions;
+  }, [hasImageGeneration, effectiveChatState.instructions]);
+
+  // Initialize chat - readOnly should be stable (passed with key prop at parent)
+  // This conditional is safe because readOnly doesn't change during component lifetime
+  // When readOnly changes, parent should remount with different key
+  const chat = readOnly
+    ? ({
+        messages: initialMessages || threadMessages || [],
+        isLoading: false,
+        status: "ready",
+        setMessages: () => undefined,
+        handleInputChange: () => undefined,
+        handleSubmit: () => undefined,
+        input: "",
+        setInput: () => undefined,
+        append: () => Promise.resolve(undefined),
+        reload: () => Promise.resolve(undefined),
+        error: undefined,
+        stop: () => undefined,
+        addToolResult: () => undefined,
+        experimental_resume: () => undefined,
+        setData: () => undefined,
+        id: threadId ?? agentId,
+      } as ReturnType<typeof useChat>)
+    : useChat({
+        initialInput,
+        initialMessages: initialMessages || threadMessages || [],
         credentials: "include",
         headers: {
           "x-deno-isolate-instance-id": agentRoot,
           "x-trace-debug-id": getTraceDebugId(),
         },
-        prepareSendMessagesRequest: ({ messages, requestMetadata }) => ({
-          body: {
+        api: new URL("/actors/AIAgent/invoke/stream", DECO_CMS_API_URL).href,
+        experimental_prepareRequestBody: ({ messages }) => {
+          dispatchMessages({ messages, threadId, agentId });
+          const lastMessage = messages.at(-1);
+
+          /** Add annotation so we can use the file URL as a parameter to a tool call */
+          if (lastMessage) {
+            lastMessage.annotations =
+              lastMessage?.["experimental_attachments"]?.map((attachment) => ({
+                type: "file",
+                url: attachment.url,
+                name: attachment.name ?? "unknown file",
+                contentType: attachment.contentType ?? "unknown content type",
+                content:
+                  "This message refers to a file uploaded by the user. You might use the file URL as a parameter to a tool call.",
+              })) || lastMessage?.annotations;
+          }
+
+          const bypassOpenRouter = !preferences.useOpenRouter;
+
+          // Collect persisted rules from latest state provided via events
+          const rules = latestRulesRef.current;
+
+          // Merge rules into annotations on the outgoing message so we send a single
+          // message with annotations (files + rules) instead of separate system messages
+          if (lastMessage) {
+            lastMessage.annotations = [
+              ...(lastMessage?.annotations ?? []),
+              ...(rules?.map((r) => ({ role: "system", content: r })) ?? []),
+            ].filter(Boolean);
+          }
+
+          return {
             metadata: { threadId: threadId ?? agentId },
-            args: [messages.slice(-1), requestMetadata],
-          },
-        }),
-      }),
-    [agentRoot, threadId, agentId],
-  );
+            args: [
+              [lastMessage],
+              {
+                model: mergedUiOptions.showModelSelector
+                  ? preferences.defaultModel
+                  : effectiveChatState.model,
+                instructions: effectiveInstructions,
+                bypassOpenRouter,
+                sendReasoning: preferences.sendReasoning ?? true,
+                threadTitle: thread?.title,
+                tools: effectiveChatState.tools_set,
+                maxSteps: effectiveChatState.max_steps,
+                pdfSummarization: preferences.pdfSummarization ?? true,
+                toolsets,
+                smoothStream:
+                  preferences.smoothStream !== false
+                    ? { delayInMs: 25, chunk: "word" }
+                    : undefined,
+              },
+            ],
+          };
+        },
+        onFinish: (_result, { finishReason }) => {
+          setFinishReason(finishReason);
+        },
+        onError: (error) => {
+          console.error("Chat error:", error);
+        },
+        onToolCall: ({ toolCall }) => {
+          _onToolCall?.(toolCall);
+          if (toolCall.toolName === "RENDER") {
+            const { content, title } = toolCall.args as {
+              content: string;
+              title: string;
+            };
 
-  // Initialize chat - always uses current agent state + overrides
-  const chat = useChat({
-    messages: initialMessages || threadMessages || [],
-    transport,
-    onFinish: (result) => {
-      const metadata = result?.message?.metadata as
-        | { finishReason: LanguageModelV2FinishReason }
-        | undefined;
+            const isImageLike = content && IMAGE_REGEXP.test(content);
 
-      // Read finish reason from metadata attached by the backend
-      const finishReason = metadata?.finishReason;
+            if (!isImageLike) {
+              openPreviewPanel(
+                `preview-${toolCall.toolCallId}`,
+                content,
+                title,
+              );
+            }
 
-      // Only set finish reason if it's one we care about displaying
-      if (finishReason === "length" || finishReason === "tool-calls") {
-        setFinishReason(finishReason);
-      } else {
-        setFinishReason(null);
-      }
-    },
-    onError: (error) => {
-      console.error("Chat error:", error);
-    },
-    onToolCall: ({ toolCall }) => {
-      _onToolCall?.(toolCall);
-      if (toolCall.toolName === "RENDER") {
-        const { content, title } = (toolCall.input ?? {}) as {
-          content?: string;
-          title?: string;
-        };
-
-        const isImageLike = content && IMAGE_REGEXP.test(content);
-
-        if (!isImageLike) {
-          openPreviewPanel(
-            `preview-${toolCall.toolCallId}`,
-            content || "",
-            title || "",
-          );
-        }
-      }
-    },
-    ...chatOptions, // Allow passing any additional useChat options
-  });
+            return {
+              success: true,
+            };
+          }
+        },
+        onResponse: (response) => {
+          correlationIdRef.current = response.headers.get("x-trace-debug-id");
+        },
+        ...chatOptions, // Allow passing any additional useChat options
+      });
 
   const hasUnsavedChanges = form.formState.isDirty;
   const blocked = useBlocker(hasUnsavedChanges && !isWellKnownAgent);
 
-  // Wrap sendMessage to enrich request metadata with all configuration
-  const wrappedSendMessage = useCallback(
-    (message?: UIMessage) => {
-      // Early return if readOnly
-      if (readOnly) {
-        return Promise.resolve();
-      }
-
-      setAutoScroll(scrollRef.current, true);
-
-      // If no message provided, send current input (form behavior)
-      if (!message) {
-        return chat.sendMessage?.();
-      }
-
-      // Handle programmatic message send with metadata
-      // Convert rules to UIMessages for context (not persisted to thread)
-      const context: UIMessage[] | undefined =
-        rules && rules.length > 0
-          ? rules.map((rule) => ({
-              id: crypto.randomUUID(),
-              role: "system" as const,
-              parts: [
-                {
-                  type: "text" as const,
-                  text: rule,
-                },
-              ],
-            }))
-          : undefined;
-
-      const metadata: MessageMetadata = {
-        // Agent configuration
-        model: mergedUiOptions.showModelSelector
-          ? preferences.defaultModel
-          : effectiveChatState.model,
-        instructions: effectiveChatState.instructions,
-        tools: effectiveChatState.tools_set,
-        maxSteps: effectiveChatState.max_steps,
-        temperature:
-          effectiveChatState.temperature !== null
-            ? effectiveChatState.temperature
-            : undefined,
-        lastMessages: effectiveChatState.memory?.last_messages,
-        maxTokens:
-          effectiveChatState.max_tokens !== null
-            ? effectiveChatState.max_tokens
-            : undefined,
-
-        // User preferences
-        bypassOpenRouter: !preferences.useOpenRouter,
-        sendReasoning: preferences.sendReasoning ?? true,
-        smoothStream:
-          preferences.smoothStream !== false
-            ? { delayInMs: 25, chunking: "word" }
-            : undefined,
-
-        // Thread info
-        threadTitle: thread?.title,
-
-        // Context messages (additional context not persisted to thread)
-        context: context,
-      };
-
-      // Dispatch messages to track them
-      dispatchMessages({
-        messages: [message],
-        threadId: threadId,
-        agentId: agentId,
-      });
-
-      // Send message with metadata in options
-      return chat.sendMessage?.(message, { metadata });
-    },
-    [
-      mergedUiOptions.showModelSelector,
-      preferences.defaultModel,
-      preferences.useOpenRouter,
-      preferences.sendReasoning,
-      preferences.smoothStream,
-      effectiveChatState.model,
-      effectiveChatState.instructions,
-      effectiveChatState.tools_set,
-      effectiveChatState.max_steps,
-      effectiveChatState.temperature,
-      effectiveChatState.max_tokens,
-      effectiveChatState.memory?.last_messages,
-      thread?.title,
-      rules,
-      chat.sendMessage,
-      readOnly,
-    ],
-  );
-
   const handlePickerSelect = async (
-    _toolCallId: string,
+    toolCallId: string,
     selectedValue: string,
   ) => {
     if (selectedValue) {
-      await wrappedSendMessage({
-        role: "user",
-        id: crypto.randomUUID(),
-        parts: [{ type: "text", text: selectedValue }],
-      });
+      chat.setMessages((prevMessages) =>
+        prevMessages.map((msg) => ({
+          ...msg,
+          toolInvocations: msg.toolInvocations?.filter(
+            (tool) => tool.toolCallId !== toolCallId,
+          ),
+        })),
+      );
+
+      await chat.append({ role: "user", content: selectedValue });
     }
   };
 
@@ -468,35 +465,25 @@ export function AgentProvider({
 
     if (!lastUserMessage) return;
 
-    const lastText =
-      "content" in lastUserMessage &&
-      typeof lastUserMessage.content === "string"
-        ? lastUserMessage.content
-        : (lastUserMessage.parts
-            ?.map((p) => (p.type === "text" ? p.text : ""))
-            .join(" ") ??
-          lastUserMessage.parts
-            ?.map((p) => (p.type === "text" ? p.text : ""))
-            .join(" ") ??
-          "");
-
-    await wrappedSendMessage({
+    await chat.append({
+      content: lastUserMessage.content,
       role: "user",
-      id: crypto.randomUUID(),
-      parts: [
-        { type: "text", text: lastText },
-        ...(context?.map((c) => ({ type: "text" as const, text: c })) || []),
-      ],
+      annotations: context || [],
     });
 
     trackEvent("chat_retry", {
-      data: { agentId, threadId, lastUserMessage: lastText },
+      data: { agentId, threadId, lastUserMessage: lastUserMessage.content },
     });
   };
 
   const handleSubmitForm = form.handleSubmit(async (_data: Agent) => {
     await saveChanges();
   });
+
+  const handleSubmitChat: typeof chat.handleSubmit = (e, options) => {
+    chat.handleSubmit(e, options);
+    setAutoScroll(scrollRef.current, true);
+  };
 
   function handleCancel() {
     blocked.reset?.();
@@ -509,22 +496,17 @@ export function AgentProvider({
 
   // Auto-send initialInput when autoSend is true
   useEffect(() => {
-    if (autoSend && input && chat.messages.length === 0 && !isLoading) {
-      wrappedSendMessage({
-        role: "user",
-        id: crypto.randomUUID(),
-        parts: [{ type: "text", text: input }],
-      });
+    if (
+      autoSend &&
+      initialInput &&
+      chat.messages.length === 0 &&
+      !chat.isLoading
+    ) {
+      chat.handleSubmit(new Event("submit"));
+      setAutoScroll(scrollRef.current, true);
       onAutoSendComplete?.();
     }
-  }, [
-    autoSend,
-    input,
-    chat.messages.length,
-    isLoading,
-    onAutoSendComplete,
-    wrappedSendMessage,
-  ]);
+  }, []);
 
   const contextValue: AgentContextValue = {
     agent: agent as Agent,
@@ -542,12 +524,8 @@ export function AgentProvider({
     chat: {
       ...chat,
       finishReason,
-      sendMessage: wrappedSendMessage as typeof chat.sendMessage,
+      handleSubmit: handleSubmitChat,
     },
-    input,
-    setInput,
-    isLoading,
-    setIsLoading,
     agentId,
     agentRoot,
     threadId,

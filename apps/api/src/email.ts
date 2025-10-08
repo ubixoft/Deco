@@ -108,10 +108,9 @@ export function email(
         {
           id: crypto.randomUUID(),
           role: "user",
-          parts: [{ type: "text", text: await readContent(message) }],
+          content: await readContent(message),
         },
       ],
-      {}, // metadata - empty for email
       {
         threadId: originalMessageId,
         resourceId: originalMessageId,

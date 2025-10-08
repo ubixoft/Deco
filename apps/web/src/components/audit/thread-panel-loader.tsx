@@ -1,7 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useThread, useThreadMessages, useUpdateThreadTitle } from "@deco/sdk";
-import type { UIMessage } from "@ai-sdk/react";
 import { ThreadDetailPanel } from "./thread-detail-panel.tsx";
 import { AgentProvider } from "../agent/provider.tsx";
 import { MainChat } from "../agent/chat.tsx";
@@ -127,24 +126,22 @@ function ThreadMessages({ threadId }: { threadId: string }) {
   );
 }
 
-function extractSummaryCandidate(messages: UIMessage[]) {
+function extractSummaryCandidate(
+  messages: { role: string; content: unknown }[],
+) {
   if (!messages.length) {
     return null;
   }
 
-  const firstUserMessage = messages.find((message) => message.role === "user");
+  const firstUserMessage = messages.find(
+    (message) => message.role === "user" && typeof message.content === "string",
+  );
 
-  if (!firstUserMessage) {
+  if (typeof firstUserMessage?.content !== "string") {
     return null;
   }
 
-  // Extract text from UIMessage parts
-  const textContent =
-    firstUserMessage.parts
-      ?.map((part) => (part.type === "text" ? part.text : ""))
-      .join(" ") ?? "";
-
-  const normalized = textContent.trim();
+  const normalized = firstUserMessage.content.trim();
 
   if (!normalized) {
     return null;

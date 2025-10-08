@@ -3,7 +3,7 @@
  */
 
 import type { ThreadDetails } from "@deco/sdk";
-import type { UIMessage } from "@ai-sdk/react";
+import type { UIMessage } from "ai";
 
 interface CachedThreadData {
   threadDetail: ThreadDetails;
