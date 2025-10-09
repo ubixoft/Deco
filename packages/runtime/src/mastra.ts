@@ -670,6 +670,7 @@ export const createMCPServer = <
         .flat() ?? [];
 
     tools.push(...workflowTools);
+    tools.push(...decoChatOAuthToolsFor<TSchema>(options.oauth));
     tools.push(createStateValidationTool(options.oauth?.state));
 
     tools.push(
@@ -753,14 +754,6 @@ export const createMCPServer = <
         },
       }),
     );
-
-    // Finally append resource tools after other tools are collected
-    tools.push(...resourceTools);
-
-    const hasOAuthTools = tools.some((t) => t.id === "DECO_CHAT_OAUTH_START");
-    if (!hasOAuthTools) {
-      tools.push(...decoChatOAuthToolsFor<TSchema>(options.oauth));
-    }
 
     for (const tool of tools) {
       server.registerTool(
