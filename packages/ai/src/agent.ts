@@ -212,6 +212,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           this.context.db,
           this.env.LLMS_ENCRYPTION_KEY,
           this.workspace,
+          // TODO(@viktormarinho): figure out what to do here
+          null,
         )
       : undefined;
   }
@@ -1001,7 +1003,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           if (!agentInstructions) return undefined;
           return await resolveMentions(
             agentInstructions,
-            this.workspace,
+            this.locator,
             this.metadata?.mcpClient,
           );
         },
@@ -1174,7 +1176,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           if (!agentInstructions) return undefined;
           return await resolveMentions(
             agentInstructions,
-            this.workspace,
+            this.locator,
             this.metadata?.mcpClient,
           );
         },
@@ -1377,7 +1379,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
             if (!options.instructions) return undefined;
             return await resolveMentions(
               options.instructions,
-              this.workspace,
+              this.locator,
               this.metadata?.mcpClient,
             );
           },
