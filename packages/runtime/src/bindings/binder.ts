@@ -135,7 +135,7 @@ export const impl = <TBinder extends Binder>(
       createToolFn({
         ...toolLike,
         id: name,
-        execute: (arg) => Promise.resolve(handler(arg)),
+        execute: ({ context }) => Promise.resolve(handler(context)),
       }),
     );
   }

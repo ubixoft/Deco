@@ -335,7 +335,6 @@ export const createDeconfigResource = <
           resourceId,
         );
         const filePath = ResourcePath.build(directory, resourceId);
-
         const user = env.DECO_REQUEST_CONTEXT.ensureAuthenticated();
         // Prepare resource data with metadata
         const resourceData = {
@@ -348,7 +347,6 @@ export const createDeconfigResource = <
         };
 
         const fileContent = JSON.stringify(resourceData, null, 2);
-
         const putResult = await deconfig.PUT_FILE({
           path: filePath,
           content: fileContent,
@@ -496,13 +494,17 @@ export const createDeconfigResource = <
   return tools;
 };
 
+const removeLeadingSlash = (url: string) => {
+  return url.startsWith("/") ? url.slice(1) : url;
+};
 export const DeconfigResource = {
   define: <TDataSchema extends BaseResourceDataSchema>(
     options: Omit<DeconfigResourceOptions<TDataSchema>, "env">,
   ) => {
     const watcher = (env: DefaultEnv & { DECONFIG: DeconfigClient }) => {
       const url = new URL(
-        `${env.DECO_API_URL ?? "https://api.decocms.com"}/deconfig/watch`,
+        `/${removeLeadingSlash(env.DECO_REQUEST_CONTEXT.workspace)}/deconfig/watch`,
+        `${env.DECO_API_URL ?? "https://api.decocms.com"}`,
       );
       url.searchParams.set("pathFilter", dirOf(options));
       url.searchParams.set("branch", env.DECO_REQUEST_CONTEXT.branch ?? "main");
