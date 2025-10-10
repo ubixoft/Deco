@@ -1,8 +1,8 @@
 // Types for DeconfigResource
 import { z } from "zod";
-import type { BaseResourceDataSchema } from "../resources/bindings.ts";
+import type { DefaultEnv } from "../../index.ts";
 import type { MCPClientFetchStub, ToolBinder } from "../../mcp.ts";
-import { DefaultEnv } from "@deco/runtime";
+import type { BaseResourceDataSchema } from "../resources/bindings.ts";
 
 export type ResourcesBinding<TDataSchema extends BaseResourceDataSchema> =
   ReturnType<
