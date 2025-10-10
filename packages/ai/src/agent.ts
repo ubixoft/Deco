@@ -1486,7 +1486,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       messageList.add(threadMessages, "memory");
       messageList.add(messages, "user");
 
-      let threadQueue = store.saveMessages({
+      let threadQueue: Promise<unknown> = store.saveMessages({
         format: "v2",
         messages: messageList.get.input.v2(),
       });
@@ -1519,15 +1519,21 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
         onStepFinish: ({ response }) => {
           messageList.add(response.messages, "response");
 
-          threadQueue = threadQueue.then(() =>
-            store.saveMessages({
-              messages: messageList.get.response.v2(),
-              format: "v2",
-            }),
-          );
+          threadQueue = threadQueue
+            .then(() =>
+              store.saveMessages({
+                messages: messageList.get.response.v2(),
+                format: "v2",
+              }),
+            )
+            .catch((error) => {
+              console.error("error saving messages", error);
+            });
         },
         onFinish: async (result) => {
           assertConfiguration(this._configuration);
+          const onFinishId = crypto.randomUUID();
+          console.log("onFinish start", onFinishId);
 
           await this._handleGenerationFinish({
             threadId: thread.threadId,
@@ -1535,7 +1541,10 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
             usage: result.usage as unknown as LanguageModelUsage,
           });
 
+          console.log("onFinish await threadQueue", onFinishId);
+
           await threadQueue;
+          console.log("onFinish end", onFinishId);
         },
         onAbort: (props) => {
           console.error("stream aborted", props);
