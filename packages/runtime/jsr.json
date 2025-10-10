@@ -13,6 +13,6 @@
     "./views": "./src/views.ts",
     "./mcp-client": "./src/mcp-client.ts",
     "./bindings": "./src/bindings/index.ts",
-    "./deconfig": "./src/deconfig/index.ts"
+    "./deconfig": "./src/bindings/deconfig/index.ts"
   }
 }
