@@ -16,16 +16,14 @@ export default function MentionNode({
   editor,
   getPos,
 }: ReactNodeViewProps<HTMLSpanElement>) {
-  const label = node.attrs.label;
   const id = node.attrs.id;
   const { mutateAsync: updatePrompt } = useUpdatePrompt();
 
   const items =
     extension.options.suggestion
-      ?.items?.({ query: label })
+      ?.items?.({ query: "" })
       ?.find((option: SlashCommandOption) => option.id === "references")
-      ?.children?.flatMap((options: SlashCommandOption) => options.children) ||
-    [];
+      ?.children || [];
 
   const prompt = items?.find((option: SlashCommandOption) => option?.id === id);
 
