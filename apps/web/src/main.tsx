@@ -462,6 +462,7 @@ const router = createBrowserRouter([
             path: "workflows/runs/:workflowName/instances/:instanceId",
             Component: WorkflowDetailPage,
           },
+          { path: "workflows/triggers", Component: WorkflowsTriggersPage },
           {
             path: "activity",
             Component: () => <Navigate to="../agents/threads" replace />,
