@@ -235,21 +235,19 @@ export async function fetchWorkflowStatus(
   c: AppContext,
   runId: string,
 ): Promise<InstanceGetResponse> {
-  // Try to get detailed status from API (available in production)
-  const apiResponse: InstanceGetResponse | null = await c.cf.workflows.instances
-    .get("workflow-runner", runId, { account_id: c.envVars.CF_ACCOUNT_ID })
-    .catch(() => null);
-
-  if (apiResponse) {
-    return apiResponse;
-  }
-
   // Get status from Cloudflare Workflow
   const workflowInstance = await c.workflowRunner.get(runId);
-  const basicStatus = await workflowInstance.status();
+  const basicStatus = (await workflowInstance.status()) as InstanceStatus;
+
+  // Try to get detailed status from API (available in production)
+  const apiResponse: InstanceGetResponse | null = await c.cf.workflows.instances
+    .get("workflow-runner", runId, {
+      account_id: c.envVars.CF_ACCOUNT_ID,
+    })
+    .catch(() => null);
 
   // Normalize to common format - use detailed if available, otherwise convert basic
-  return normalizeWorkflowStatus(basicStatus as InstanceStatus);
+  return apiResponse || normalizeWorkflowStatus(basicStatus);
 }
 
 /**

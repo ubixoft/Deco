@@ -28,7 +28,6 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import { useParams, useSearchParams } from "react-router";
 import { z } from "zod";
 import { useNavigateWorkspace } from "../../hooks/use-navigate-workspace.ts";
-import { formatResourceName } from "../../utils/format.ts";
 import { usePersistedFilters } from "../../hooks/use-persisted-filters.ts";
 import { useSortable } from "../../hooks/use-sortable.ts";
 import { EmptyState } from "../common/empty-state.tsx";
@@ -384,10 +383,10 @@ function ResourcesV2ListTab({
     );
   }
 
-  // Format resource name for title (e.g., "WORKFLOW_RUN" -> "Workflow Runs")
-  const title = useMemo(() => {
-    return resourceName ? formatResourceName(resourceName) : "Resources";
-  }, [resourceName]);
+  // Capitalize resource name for title
+  const title = resourceName
+    ? resourceName.charAt(0).toUpperCase() + resourceName.slice(1) + "s"
+    : "Resources";
 
   // Always ensure there's at least an "All" tab
   const finalTabs = useMemo(() => {

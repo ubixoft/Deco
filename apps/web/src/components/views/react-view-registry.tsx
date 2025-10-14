@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { DocumentDetail } from "../documents/document-detail.tsx";
 import { useResourceRoute } from "../resources-v2/route-context.tsx";
-import { ToolDetail } from "../tools/tool-detail.tsx";
 import { WorkflowDisplayCanvas } from "../workflow-builder/workflow-display-canvas.tsx";
-import { WorkflowRunDetail } from "../workflows/workflow-run-detail.tsx";
+import { ToolDetail } from "../tools/tool-detail.tsx";
+import { DocumentDetail } from "../documents/document-detail.tsx";
 import { ViewDetail } from "./view-detail.tsx";
 
 interface ReactViewProps {
@@ -12,7 +11,6 @@ interface ReactViewProps {
 
 const WELL_KNOWN_VIEWS = {
   workflow_detail: WorkflowDisplayCanvas,
-  workflow_run_detail: WorkflowRunDetail,
   tool_detail: ToolDetail,
   document_detail: DocumentDetail,
   view_detail: ViewDetail,
