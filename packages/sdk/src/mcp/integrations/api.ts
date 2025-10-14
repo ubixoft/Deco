@@ -54,7 +54,6 @@ import {
   NotFoundError,
   WellKnownBindings,
 } from "../index.ts";
-import { listKnowledgeBases } from "../knowledge/api.ts";
 import {
   getProjectIdFromContext,
   workspaceOrProjectIdConditions,
@@ -535,7 +534,6 @@ export const listIntegrations = createIntegrationManagementTool({
           }),
         )
         .then((result) => ({ data: result })),
-      listKnowledgeBases.handler({}),
     ]);
     const roles =
       c.workspace.root === "users"
