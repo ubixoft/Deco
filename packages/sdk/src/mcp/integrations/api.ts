@@ -438,7 +438,7 @@ export const listIntegrations = createIntegrationManagementTool({
 
     await assertWorkspaceResourceAccess(c);
 
-    const [integrationsData, agentsData, knowledgeBases] = await Promise.all([
+    const [integrationsData, agentsData] = await Promise.all([
       // Query integrations with all necessary joins
       c.drizzle
         .select({
@@ -558,11 +558,7 @@ export const listIntegrations = createIntegrationManagementTool({
 
     // Build the result with all integrations
     const baseResult = [
-      ...virtualIntegrationsFor(
-        c.locator.value,
-        knowledgeBases.names ?? [],
-        c.token,
-      ),
+      ...virtualIntegrationsFor(c.locator.value, [], c.token),
       ...filteredIntegrations.map(mapIntegration),
       ...filteredAgents
         .map((item) => AgentSchema.safeParse(item)?.data)
