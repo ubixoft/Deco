@@ -50,6 +50,7 @@ export {
   useUpsertDocument,
   useDeleteDocument,
   buildDocumentUri,
+  useDocuments,
 } from "./hooks/documents.ts";
 export {
   useViewByUriV2,
@@ -65,6 +66,8 @@ export * from "./hooks/wallet.ts";
 export * from "./hooks/workflow-builder.ts";
 export * from "./hooks/workflow-step-generator.ts";
 export * from "./hooks/workflows.ts";
+export * from "./hooks/use-recent-resources.ts";
+export * from "./hooks/use-pinned-resources.ts";
 export {
   WorkflowDefinitionSchema,
   WorkflowStepDefinitionSchema,
