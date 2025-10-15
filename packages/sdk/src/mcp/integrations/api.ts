@@ -517,6 +517,10 @@ export const listIntegrations = createIntegrationManagementTool({
             }
           }
           return Array.from(byIntegration.values());
+        })
+        .catch((err) => {
+          console.error("list_integrations_error", err);
+          throw err;
         }),
       // Query agents
       c.drizzle
@@ -533,7 +537,11 @@ export const listIntegrations = createIntegrationManagementTool({
             ctx: c,
           }),
         )
-        .then((result) => ({ data: result })),
+        .then((result) => ({ data: result }))
+        .catch((err) => {
+          console.error("list_agents_error", err);
+          throw err;
+        }),
     ]);
     const roles =
       c.workspace.root === "users"
