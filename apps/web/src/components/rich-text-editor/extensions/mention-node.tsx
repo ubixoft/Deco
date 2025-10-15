@@ -20,11 +20,7 @@ const RESOURCE_TYPE_ICONS: Record<string, string> = {
   WORKFLOW: "flowchart",
 };
 
-export function MentionNode({
-  node,
-  IntegrationAvatar,
-  ResourceIcon,
-}: MentionNodeProps) {
+export function MentionNode({ node, IntegrationAvatar }: MentionNodeProps) {
   const mentionType = node.attrs.mentionType;
   const label = node.attrs.label;
   const integrationIcon = node.attrs.integrationIcon;

@@ -113,13 +113,14 @@ export const MentionDropdown = forwardRef<
       if (event?.key === " ") {
         const now = Date.now();
         const timeSinceLastSpace = now - lastSpaceTimeRef.current;
-        
-        if (timeSinceLastSpace < 500) { // Double space within 500ms
+
+        if (timeSinceLastSpace < 500) {
+          // Double space within 500ms
           // Close the mention box by returning false and letting the space through
           lastSpaceTimeRef.current = 0;
           return false;
         }
-        
+
         lastSpaceTimeRef.current = now;
         // Allow space in search - return false to let it be added to query
         return false;
@@ -271,7 +272,10 @@ export const MentionDropdown = forwardRef<
                         renderIndex += 1;
                         const currentRenderIndex = renderIndex;
                         // Store mapping from renderIndex to original items array index
-                        renderToOriginalIndex.current.set(currentRenderIndex, originalIdx);
+                        renderToOriginalIndex.current.set(
+                          currentRenderIndex,
+                          originalIdx,
+                        );
                         return (
                           <button
                             type="button"
@@ -282,7 +286,8 @@ export const MentionDropdown = forwardRef<
                             className={cn(
                               "flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-left transition-colors",
                               "hover:bg-muted/50",
-                              selectedIndex === currentRenderIndex && "bg-muted",
+                              selectedIndex === currentRenderIndex &&
+                                "bg-muted",
                             )}
                             onClick={() => selectItem(currentRenderIndex)}
                           >
