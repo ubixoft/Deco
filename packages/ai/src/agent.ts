@@ -184,7 +184,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       ...this.env,
     };
     this.sql = postgres(this.actorEnv.DATABASE_URL, {
-      max: 5,
+      max: 2,
     });
     this.context = toBindingsContext(this.actorEnv);
     this.locator = Locator.asFirstTwoSegmentsOf(this.state.id);

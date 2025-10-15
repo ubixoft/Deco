@@ -86,7 +86,7 @@ export default {
     const sql =
       contextStorage.getStore()?.sql ??
       postgres(env.DATABASE_URL, {
-        max: 5,
+        max: 2,
       });
     return contextStorage.run({ env, ctx, sql }, async () => {
       return await instrumentedApp.fetch!(

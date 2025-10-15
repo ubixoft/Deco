@@ -79,7 +79,7 @@ export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
   constructor(ctx: ExecutionContext, env: Bindings) {
     super(ctx, env);
     this.sql = postgres(env.DATABASE_URL, {
-      max: 5,
+      max: 2,
     });
     this.bindingsCtx = toBindingsContext(env, this.sql);
     this.executionCtx = ctx;

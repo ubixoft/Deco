@@ -477,7 +477,7 @@ export const toBindingsContext = (
     _sql ??
     contextStorage.getStore()?.sql ??
     postgres(bindings.DATABASE_URL, {
-      max: 5,
+      max: 2,
     });
   const drizzle = drizzlePostgres(sql, { relations });
 
