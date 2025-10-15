@@ -186,7 +186,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
     this.sql = postgres(this.actorEnv.DATABASE_URL, {
       max: 2,
     });
-    this.context = toBindingsContext(this.actorEnv);
+    this.context = toBindingsContext(this.actorEnv, this.sql);
     this.locator = Locator.asFirstTwoSegmentsOf(this.state.id);
     this.agentId = this.state.id.split("/").pop() ?? "";
     this.agentScoppedMcpClient = this._createMCPClient();

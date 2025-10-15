@@ -464,6 +464,12 @@ export type Bindings = EnvVars & {
 };
 export type BindingsContext = Omit<AppContext, keyof PrincipalExecutionContext>;
 
+const createPostgres = (bindings: Bindings) => {
+  console.log("[creating postgres client]");
+  return postgres(bindings.DATABASE_URL, {
+    max: 2,
+  });
+};
 export const toBindingsContext = (
   bindings: Bindings,
   _sql?: postgres.Sql,
@@ -474,11 +480,7 @@ export const toBindingsContext = (
   const policy = PolicyClient.getInstance(db);
   const authorization = new AuthorizationClient(policy);
   const sql =
-    _sql ??
-    contextStorage.getStore()?.sql ??
-    postgres(bindings.DATABASE_URL, {
-      max: 2,
-    });
+    _sql ?? contextStorage.getStore()?.sql ?? createPostgres(bindings);
   const drizzle = drizzlePostgres(sql, { relations });
 
   return {
