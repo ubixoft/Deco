@@ -1500,6 +1500,12 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       ];
 
       const stream = streamText({
+        experimental_telemetry: {
+          recordInputs: true,
+          recordOutputs: true,
+          isEnabled: true,
+          tracer,
+        },
         model: llm,
         messages: allMessages,
         tools: allTools,
