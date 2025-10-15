@@ -78,16 +78,18 @@ globalThis.fetch = async function patchedFetch(
   return await originalFetch(req);
 };
 
+const createPostgres = (env: any) => {
+  console.log("[creating postgres client on main.ts]");
+  return postgres(env.DATABASE_URL, {
+    max: 2,
+  });
+};
 // Default export that wraps app with per-request context initializer
 export default {
   tail,
   email,
   fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    const sql =
-      contextStorage.getStore()?.sql ??
-      postgres(env.DATABASE_URL, {
-        max: 2,
-      });
+    const sql = contextStorage.getStore()?.sql ?? createPostgres(env);
     return contextStorage.run({ env, ctx, sql }, async () => {
       return await instrumentedApp.fetch!(
         request as Request<unknown, IncomingRequestCfProperties<unknown>>,
