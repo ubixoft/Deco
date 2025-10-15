@@ -11,6 +11,7 @@ import { contextStorage } from "@deco/sdk/fetch";
 import { Hosts } from "@deco/sdk/hosts";
 import { instrument } from "@deco/sdk/observability";
 import { env } from "cloudflare:workers";
+import postgres from "postgres";
 import { default as app } from "./src/app.ts";
 import { email } from "./src/email.ts";
 import { tail } from "./tail.ts";
@@ -82,7 +83,12 @@ export default {
   tail,
   email,
   fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    return contextStorage.run({ env, ctx }, async () => {
+    const sql =
+      contextStorage.getStore()?.sql ??
+      postgres(env.DATABASE_URL, {
+        max: 5,
+      });
+    return contextStorage.run({ env, ctx, sql }, async () => {
       return await instrumentedApp.fetch!(
         request as Request<unknown, IncomingRequestCfProperties<unknown>>,
         env,

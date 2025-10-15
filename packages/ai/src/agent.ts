@@ -64,6 +64,7 @@ import {
 } from "ai";
 import { getRuntimeKey } from "hono/adapter";
 import process from "node:process";
+import postgres from "postgres";
 import { createAgentOpenAIVoice } from "./agent/audio.ts";
 import {
   createLLMInstance,
@@ -82,6 +83,7 @@ import type {
   Thread,
   ThreadQueryOptions,
 } from "./types.ts";
+
 const ANONYMOUS_INSTRUCTIONS =
   "You should help users to configure yourself. Users should give you your name, instructions, and optionally a model (leave it default if the user don't mention it, don't force they to set it). This is your only task for now. Tell the user that you are ready to configure yourself when you have all the information.";
 
@@ -168,6 +170,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
   private agentScoppedMcpClient: MCPClientStub<ProjectTools>;
   private branch: string = "main"; // TODO(@mcandeia) for now only main branch is supported
   private storePromise?: Promise<D1Store>;
+  private sql: postgres.Sql;
 
   constructor(
     public readonly state: ActorState,
@@ -180,6 +183,9 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
       ...process.env,
       ...this.env,
     };
+    this.sql = postgres(this.actorEnv.DATABASE_URL, {
+      max: 5,
+    });
     this.context = toBindingsContext(this.actorEnv);
     this.locator = Locator.asFirstTwoSegmentsOf(this.state.id);
     this.agentId = this.state.id.split("/").pop() ?? "";
@@ -488,6 +494,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
           waitUntil: () => {},
           props: {},
         },
+        sql: this.sql,
       },
       fn,
     );
