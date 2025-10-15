@@ -97,8 +97,6 @@ export const asEnv = (
   const envAccessor = (integrationId: string, toolName: string) => {
     return async (args: unknown) => {
       let connection;
-      const start = performance.now();
-      console.log("[workflow]: START_CALL", toolName, args);
       if (authorization && workspace) {
         connection = proxyConnectionForId(integrationId, {
           workspace: workspace,
@@ -112,17 +110,9 @@ export const asEnv = (
           });
           cache.set(integrationId, mConnection.connection);
         }
-        const end = performance.now();
-        console.log("[workflow]: END_GET", toolName, args, end - start);
         connection = cache.get(integrationId);
       }
 
-      console.log(
-        "[workflow]: END_CALL",
-        toolName,
-        args,
-        performance.now() - start,
-      );
       const response = await client.INTEGRATIONS_CALL_TOOL({
         connection,
         params: {
@@ -130,13 +120,6 @@ export const asEnv = (
           arguments: args as Record<string, unknown>,
         },
       });
-
-      console.log(
-        "[workflow]: END_CALL_TOOL",
-        toolName,
-        args,
-        performance.now() - start,
-      );
 
       if (response.isError) {
         throw new Error(
