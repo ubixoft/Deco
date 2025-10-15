@@ -464,13 +464,17 @@ export type Bindings = EnvVars & {
 };
 export type BindingsContext = Omit<AppContext, keyof PrincipalExecutionContext>;
 
-export const toBindingsContext = (bindings: Bindings): BindingsContext => {
+export const toBindingsContext = (
+  bindings: Bindings,
+  _sql?: postgres.Sql,
+): BindingsContext => {
   const db = createServerClient(SUPABASE_URL, bindings.SUPABASE_SERVER_TOKEN, {
     cookies: { getAll: () => [] },
   });
   const policy = PolicyClient.getInstance(db);
   const authorization = new AuthorizationClient(policy);
   const sql =
+    _sql ??
     contextStorage.getStore()?.sql ??
     postgres(bindings.DATABASE_URL, {
       max: 5,

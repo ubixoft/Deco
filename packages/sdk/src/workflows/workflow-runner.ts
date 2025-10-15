@@ -4,6 +4,7 @@ import {
   WorkflowEvent,
   WorkflowStepConfig,
 } from "cloudflare:workers";
+import postgres from "postgres";
 import { contextStorage } from "../fetch.ts";
 import {
   AppContext,
@@ -73,10 +74,14 @@ const DEFAULT_CONFIG: WorkflowStepConfig = {
 export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
   protected bindingsCtx: BindingsContext;
   protected executionCtx: ExecutionContext;
+  private sql: postgres.Sql;
 
   constructor(ctx: ExecutionContext, env: Bindings) {
     super(ctx, env);
-    this.bindingsCtx = toBindingsContext(env);
+    this.sql = postgres(env.DATABASE_URL, {
+      max: 5,
+    });
+    this.bindingsCtx = toBindingsContext(env, this.sql);
     this.executionCtx = ctx;
   }
 
@@ -169,7 +174,7 @@ export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
         (await cfStep.do(step.name, step.config ?? {}, () => {
           const nStart = performance.now();
           return contextStorage
-            .run({ env: this.env, ctx: this.executionCtx }, () =>
+            .run({ env: this.env, ctx: this.executionCtx, sql: this.sql }, () =>
               State.run(
                 appContext,
                 () =>
