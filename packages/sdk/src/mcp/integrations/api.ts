@@ -447,6 +447,7 @@ export const listIntegrations = createIntegrationManagementTool({
   inputSchema: z.lazy(() =>
     z.object({
       binder: BindingsSchema.optional(),
+      hideVirtual: z.boolean().optional(),
     }),
   ),
   outputSchema: z.lazy(() =>
@@ -454,7 +455,7 @@ export const listIntegrations = createIntegrationManagementTool({
       items: z.array(IntegrationSchema),
     }),
   ),
-  handler: async ({ binder }, c) => {
+  handler: async ({ binder, hideVirtual }, c) => {
     assertHasWorkspace(c);
     assertHasLocator(c);
     const workspace = c.workspace.value;
@@ -508,7 +509,9 @@ export const listIntegrations = createIntegrationManagementTool({
 
     // Build the result with all integrations
     const baseResult = [
-      ...virtualIntegrationsFor(c.locator.value, [], c.token),
+      ...(hideVirtual
+        ? []
+        : virtualIntegrationsFor(c.locator.value, [], c.token)),
       ...filteredIntegrations.map(mapIntegration),
       ...filteredAgents
         .map((item) => AgentSchema.safeParse(item)?.data)
