@@ -1530,12 +1530,21 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
             usage: result.usage as unknown as LanguageModelUsage,
           });
 
-          threadQueue.then(() =>
-            store.saveMessages({
-              messages: messageList.get.response.v2(),
-              format: "v2",
-            }),
-          );
+          threadQueue.then(() => {
+            console.log("saving messages");
+            return store
+              .saveMessages({
+                messages: messageList.get.response.v2(),
+                format: "v2",
+              })
+              .then(() => {
+                console.log("messages saved");
+              })
+              .catch((err) => {
+                console.error("error saving messages", err);
+                throw err;
+              });
+          });
 
           console.log("onFinish await threadQueue", onFinishId);
           console.log("onFinish end", onFinishId);
