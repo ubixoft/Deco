@@ -61,6 +61,15 @@ export interface WorkflowRunnerProps<T = unknown> {
   };
 }
 
+const DEFAULT_CONFIG: WorkflowStepConfig = {
+  retries: {
+    limit: 2,
+    delay: 2000,
+    backoff: "exponential",
+  },
+  timeout: "5 minutes",
+};
+
 export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
   protected bindingsCtx: BindingsContext;
   protected executionCtx: ExecutionContext;
@@ -123,7 +132,7 @@ export class WorkflowRunner extends WorkflowEntrypoint<Bindings> {
     const config =
       stepDef.type === "tool_call" && stepDef.def && "options" in stepDef.def
         ? (stepDef.def.options ?? {})
-        : {};
+        : DEFAULT_CONFIG;
 
     return {
       name: stepDef.def?.name ?? "",
