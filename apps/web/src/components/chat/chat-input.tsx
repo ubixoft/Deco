@@ -2,25 +2,32 @@ import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { cn } from "@deco/ui/lib/utils.ts";
 import {
-  type FormEvent,
-  type KeyboardEvent,
   useCallback,
   useEffect,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
 } from "react";
 
 import { UIMessage } from "@ai-sdk/react";
+import { useFileUpload } from "../../hooks/use-file-upload.ts";
 import {
   useUserPreferences,
   type UserPreferences,
 } from "../../hooks/use-user-preferences.ts";
-import { useFileUpload } from "../../hooks/use-file-upload.ts";
 import { useAgent } from "../agent/provider.tsx";
 import { AudioButton } from "./audio-button.tsx";
 import { ContextResources } from "./context-resources.tsx";
 import { ModelSelector } from "./model-selector.tsx";
 import { RichTextArea } from "./rich-text.tsx";
 
-export function ChatInput({ disabled }: { disabled?: boolean } = {}) {
+export function ChatInput({
+  disabled,
+  rightNode,
+}: {
+  disabled?: boolean;
+  rightNode?: ReactNode;
+} = {}) {
   const { chat, uiOptions, input, setInput, isLoading, setIsLoading } =
     useAgent();
   const { stop, sendMessage } = chat;
@@ -145,6 +152,7 @@ export function ChatInput({ disabled }: { disabled?: boolean } = {}) {
           removeFile={removeFile}
           openFileDialog={openFileDialog}
           enableFileUpload={enableFileUpload}
+          rightNode={rightNode}
         />
       )}
       <form
