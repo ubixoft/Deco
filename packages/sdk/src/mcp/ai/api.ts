@@ -23,6 +23,7 @@ import {
 } from "../wallet/index.ts";
 import { getPlan } from "../wallet/plans.ts";
 import { getProjectIdFromContext } from "../projects/util.ts";
+import { MessageList } from "@mastra/core/agent";
 
 const createLLMUsageTransaction = (opts: {
   usage: LanguageModelUsage;
@@ -301,7 +302,16 @@ export const aiGenerate = createTool({
     const { wallet } = await validateWalletBalance(c);
     const modelId = input.model ?? DEFAULT_MODEL.id;
     const { llm, llmConfig, usedVault } = await setupLLMInstance(modelId, c);
-    const aiMessages = convertMessages(input.messages).to("AIV5.Model");
+    const userMessages = input.messages.filter(
+      (message) => message.role === "user",
+    );
+    const systemMessages = input.messages.filter(
+      (message) => message.role === "system",
+    );
+    const messageList = new MessageList({})
+      .add(userMessages, "user")
+      .addSystem(systemMessages, "system");
+    const aiMessages = messageList.get.all.prompt();
 
     const result = await generateText({
       model: llm,
