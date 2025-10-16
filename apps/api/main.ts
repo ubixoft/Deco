@@ -79,7 +79,6 @@ globalThis.fetch = async function patchedFetch(
 };
 
 const createPostgres = (env: any) => {
-  console.log("[creating postgres client on main.ts]");
   return postgres(env.DATABASE_URL, {
     max: 2,
   });
