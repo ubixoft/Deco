@@ -179,11 +179,11 @@ export const callTool = createIntegrationManagementTool({
 
     let connection: MCPConnection | undefined = undefined;
     if ("id" in input) {
-      assertHasWorkspace(c);
+      assertHasLocator(c);
       connection = patchApiDecoChatTokenHTTPConnection(
         {
           type: "HTTP",
-          url: new URL(`${c.workspace.value}/${input.id}/mcp`, DECO_CMS_API_URL)
+          url: new URL(`${c.locator.value}/${input.id}/mcp`, DECO_CMS_API_URL)
             .href,
         },
         c.cookie,
