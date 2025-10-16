@@ -76,11 +76,8 @@ export const updateTeam = (
   init?: RequestInit,
 ): Promise<Team> => MCPClient.TEAMS_UPDATE(input, init) as Promise<Team>;
 
-export const deleteTeam = (
-  teamId: number,
-  init?: RequestInit,
-): Promise<{ success: boolean }> =>
-  MCPClient.TEAMS_DELETE({ teamId }, init) as Promise<{ success: boolean }>;
+export const deleteTeam = (teamId: number, init?: RequestInit) =>
+  MCPClient.TEAMS_DELETE({ teamId }, init);
 
 export interface AddViewInput {
   view: {
