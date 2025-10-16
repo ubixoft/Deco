@@ -1,9 +1,9 @@
 import { createLLMInstance, getLLMConfig } from "@deco/ai/agent/llm";
-import { convertMessages } from "@mastra/core/agent";
 import {
   generateObject,
   generateText,
   jsonSchema,
+  ModelMessage,
   type LanguageModelUsage,
 } from "ai";
 import { z } from "zod";
@@ -302,20 +302,10 @@ export const aiGenerate = createTool({
     const { wallet } = await validateWalletBalance(c);
     const modelId = input.model ?? DEFAULT_MODEL.id;
     const { llm, llmConfig, usedVault } = await setupLLMInstance(modelId, c);
-    const userMessages = input.messages.filter(
-      (message) => message.role === "user",
-    );
-    const systemMessages = input.messages.filter(
-      (message) => message.role === "system",
-    );
-    const messageList = new MessageList({})
-      .add(userMessages, "user")
-      .addSystem(systemMessages, "system");
-    const aiMessages = messageList.get.all.prompt();
 
     const result = await generateText({
       model: llm,
-      messages: aiMessages,
+      messages: convertMessages(input.messages),
       maxOutputTokens: input.maxTokens,
       temperature: input.temperature,
     });
@@ -349,6 +339,23 @@ export const aiGenerate = createTool({
   },
 });
 
+const convertMessages = (
+  messages: z.infer<typeof baseMessageSchema>[number][],
+): ModelMessage[] => {
+  const systemMessages = messages.filter(
+    (message) => message.role === "system",
+  );
+  const userMessages = messages.filter((message) => message.role === "user");
+  const assistantMessages = messages.filter(
+    (message) => message.role === "assistant",
+  );
+  return new MessageList({})
+    .add(assistantMessages, "response")
+    .add(userMessages, "user")
+    .addSystem(systemMessages, "system")
+    .get.all.prompt();
+};
+
 export const aiGenerateObject = createTool({
   name: "AI_GENERATE_OBJECT",
   description:
@@ -373,7 +380,7 @@ export const aiGenerateObject = createTool({
       model: llm,
       mode: "json",
       maxRetries: 1,
-      messages: convertMessages(input.messages).to("AIV5.Model"),
+      messages: convertMessages(input.messages),
       schema: jsonSchema(input.schema),
       maxOutputTokens: input.maxTokens,
       temperature: input.temperature,
