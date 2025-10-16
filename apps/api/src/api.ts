@@ -304,7 +304,7 @@ const createToolCallHandlerFor = <
         args: z.ZodType<TDefinition[number]["inputSchema"]>,
       ) => Promise<z.ZodType<TDefinition[number]["outputSchema"]>>,
       tool,
-      ctx?.workspace?.value,
+      ctx?.locator?.value,
     );
 
     const result = await State.run(ctx, (args) => toolFn(args), data).catch(
