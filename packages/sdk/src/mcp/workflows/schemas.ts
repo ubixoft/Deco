@@ -36,11 +36,18 @@ export const CodeStepDefinitionSchema = z.object({
           .describe(
             "The integration ID (format: i:<uuid> or a:<uuid>) that this step depends on",
           ),
+        toolNames: z
+          .array(z.string().min(1))
+          .min(1)
+          .optional()
+          .describe(
+            "List of tool names from this integration that will be used by this code step. If undefined, all tools from the integration are available.",
+          ),
       }),
     )
     .optional()
     .describe(
-      "List of integrations this step calls via ctx.env['{INTEGRATION_ID}'].{TOOL_NAME}(). These integrations must be installed and available for the step to execute successfully.",
+      "List of integration dependencies with specific tools. These integrations and their tools must be installed and available for the step to execute successfully. Tools are accessible via ctx.env['{INTEGRATION_ID}']['{TOOL_NAME}'](). Use INTEGRATIONS_LIST to find available integration IDs and their tools.",
     ),
 });
 

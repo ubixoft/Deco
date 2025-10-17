@@ -31,11 +31,18 @@ export const ToolDefinitionSchema = z.object({
           .describe(
             "The integration ID (format: i:<uuid>) that this tool depends on",
           ),
+        toolNames: z
+          .array(z.string().min(1))
+          .min(1)
+          .optional()
+          .describe(
+            "List of tool names from this integration that will be used by this tool. If undefined, all tools from the integration are available (backwards compatibility).",
+          ),
       }),
     )
     .optional()
     .describe(
-      "List of integrations this tool depends on. These integrations must be installed and available for the tool to execute successfully. Use INTEGRATIONS_LIST to find available integration IDs.",
+      "List of integration dependencies with specific tools. These integrations and their tools must be installed and available for the tool to execute successfully. Use INTEGRATIONS_LIST to find available integration IDs and their tools.",
     ),
 });
 
