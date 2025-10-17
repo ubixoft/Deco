@@ -455,7 +455,7 @@ export const listIntegrations = createIntegrationManagementTool({
         .or(buildWorkspaceOrProjectIdConditions(workspace, projectId)),
     ]);
     const roles =
-      c.workspace.root === "users"
+      c.workspace.root === "users" || typeof c.user?.id !== "string"
         ? []
         : await c.policy.getUserRoles(c.user.id as string, c.workspace.slug);
     const userRoles: string[] = roles?.map((role) => role?.name);
