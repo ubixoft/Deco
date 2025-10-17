@@ -555,7 +555,7 @@ export const inviteTeamMembers = createTool({
     }
 
     // Get team data
-    const teamData = await getTeamById(teamId, db);
+    const teamData = await getTeamById(teamId, c);
     const plan = enrichPlanWithTeamMetadata({
       team: teamData,
       plan: teamData.plan,

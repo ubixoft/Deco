@@ -238,13 +238,14 @@ export async function getTeamBySlug(slug: string, db: Client) {
   return team;
 }
 
-export async function getTeamById(teamId: string, db: Client) {
-  const { data: team, error } = await db
+export async function getTeamById(teamId: string, c: AppContext) {
+  const { data: team, error } = await c.db
     .from("teams")
     .select(
       "id, name, members(user_id, profile:profiles(email)), plan_id, plan:deco_chat_plans(*)",
     )
     .eq("id", Number(teamId))
+    .is("members.deleted_at", null)
     .single();
 
   if (!team || error || !team.plan) {
