@@ -10,10 +10,11 @@ import {
   createUpdateOutputSchema,
   DeleteInputSchema,
   DeleteOutputSchema,
+  DescribeInputSchema,
+  DescribeOutputSchema,
   ReadInputSchema,
   SearchInputSchema,
 } from "./schemas.ts";
-
 export type BaseResourceDataSchema = z.ZodObject<{
   name: z.ZodString;
   description: z.ZodString;
@@ -51,6 +52,7 @@ export type BaseResourceDataSchema = z.ZodObject<{
 export function createResourceBindings<
   TDataSchema extends BaseResourceDataSchema,
 >(resourceName: string, dataSchema: TDataSchema) {
+  const readOutputSchema = createReadOutputSchema(dataSchema);
   return [
     {
       name: `DECO_RESOURCE_${resourceName.toUpperCase()}_SEARCH` as const,
@@ -62,7 +64,7 @@ export function createResourceBindings<
     {
       name: `DECO_RESOURCE_${resourceName.toUpperCase()}_READ` as const,
       inputSchema: ReadInputSchema,
-      outputSchema: createReadOutputSchema(dataSchema),
+      outputSchema: readOutputSchema,
     },
     {
       name: `DECO_RESOURCE_${resourceName.toUpperCase()}_CREATE` as const,
@@ -80,6 +82,12 @@ export function createResourceBindings<
       name: `DECO_RESOURCE_${resourceName.toUpperCase()}_DELETE` as const,
       inputSchema: DeleteInputSchema,
       outputSchema: DeleteOutputSchema,
+      opt: true,
+    },
+    {
+      name: `DECO_RESOURCE_${resourceName.toUpperCase()}_DESCRIBE` as const,
+      inputSchema: DescribeInputSchema,
+      outputSchema: DescribeOutputSchema,
       opt: true,
     },
   ] as const satisfies readonly ToolBinder[];

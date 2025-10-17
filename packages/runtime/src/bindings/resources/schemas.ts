@@ -23,6 +23,16 @@ export const ResourceUriSchema = z
     "Invalid resource URI format. Expected format: rsc://workspace/project/resource-id",
   );
 
+export const DescribeInputSchema = z.object({});
+export const DescribeOutputSchema = z.object({
+  uriTemplate: ResourceUriSchema.describe("URI template for the resource"),
+  features: z.object({
+    watch: z.object({
+      pathname: z.string().describe("Pathname to watch"),
+    }),
+  }),
+});
+
 /**
  * Search input schema for resource queries
  * Supports pagination, filtering, sorting, and search terms

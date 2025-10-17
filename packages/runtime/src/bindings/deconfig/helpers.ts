@@ -20,21 +20,17 @@ export const ResourcePath = {
   },
 };
 
-export const extractResourceId = (uri: string) => {
-  // Extract ID from Resources 2.0 URI format: rsc://integrationId/resourceName/resource-id
-  const match = uri.match(/^rsc:\/\/[^\/]+\/[^\/]+\/(.+)$/);
-  if (!match) {
-    throw new Error("Invalid Resources 2.0 URI format");
-  }
-  return match[1];
-};
-
-export const constructResourceUri = (
-  integrationId: string,
-  resourceName: string,
-  resourceId: string,
-) => {
-  return `rsc://${integrationId}/${resourceName}/${resourceId}`;
+export const ResourceUri = {
+  build: (integrationId: string, resourceName: string, resourceId: string) => {
+    return `rsc://${integrationId}/${resourceName}/${resourceId}`;
+  },
+  unwind: (uri: string) => {
+    const match = uri.match(/^rsc:\/\/[^\/]+\/([^\/]+)\/(.+)$/);
+    if (!match) {
+      throw new Error("Invalid Resources 2.0 URI format");
+    }
+    return { resourceName: match[1], resourceId: match[2] };
+  },
 };
 
 export function getMetadataValue(metadata: unknown, key: string): unknown {
@@ -56,7 +52,10 @@ export function getMetadataString(
   return typeof value === "string" ? value : undefined;
 }
 
-export const toAsyncIterator = <T>(emitter: EventSource): AsyncIterable<T> => {
+export const toAsyncIterator = <T>(
+  emitter: EventSource,
+  eventType: string = "message",
+): AsyncIterable<T> => {
   const queue: T[] = [];
   let done = false;
   let waitPromise: ((data?: T) => void) | null = null;
@@ -68,7 +67,7 @@ export const toAsyncIterator = <T>(emitter: EventSource): AsyncIterable<T> => {
     }
   };
 
-  const changeHandler = (data: MessageEvent) => {
+  const messageHandler = (data: MessageEvent) => {
     try {
       queue.push(JSON.parse(data.data));
     } catch {
@@ -83,7 +82,7 @@ export const toAsyncIterator = <T>(emitter: EventSource): AsyncIterable<T> => {
     triggerLoop();
   };
 
-  emitter.addEventListener("change", changeHandler);
+  emitter.addEventListener(eventType, messageHandler);
   emitter.addEventListener("error", errorHandler);
 
   return {
@@ -99,7 +98,7 @@ export const toAsyncIterator = <T>(emitter: EventSource): AsyncIterable<T> => {
           }
         }
       } finally {
-        emitter.removeEventListener("change", changeHandler);
+        emitter.removeEventListener(eventType, messageHandler);
         emitter.removeEventListener("error", errorHandler);
         emitter.close();
       }
