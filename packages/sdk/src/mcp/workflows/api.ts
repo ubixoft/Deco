@@ -416,7 +416,6 @@ export function createWorkflowBindingImpl({
       const result = await client.DECO_TOOL_RUN_TOOL({
         tool,
         input,
-        authorization: c.cookie,
       });
 
       return { result };
