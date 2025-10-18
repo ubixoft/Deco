@@ -173,7 +173,7 @@ export function RichTextArea({
         />
       );
     };
-  }, [appendIntegrationTool]);
+  }, []); // turns out we cant list it lol
 
   const extensions: Extensions = useMemo(() => {
     const extensions: Extensions = [
