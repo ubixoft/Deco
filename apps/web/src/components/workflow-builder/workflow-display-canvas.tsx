@@ -2,317 +2,262 @@ import {
   callTool,
   useRecentResources,
   useSDK,
+  useStartWorkflow,
   useWorkflowByUriV2,
-  type WorkflowDefinition,
+  workflowExecutionKeys,
   type WorkflowRunData,
-  type WorkflowStep,
 } from "@deco/sdk";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@deco/ui/components/alert.tsx";
-import { Badge } from "@deco/ui/components/badge.tsx";
 import { Button } from "@deco/ui/components/button.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import Form from "@rjsf/shadcn";
-import validator from "@rjsf/validator-ajv8";
 import { useQuery } from "@tanstack/react-query";
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { EmptyState } from "../common/empty-state.tsx";
-import { UserInfo } from "../common/table/table-cells.tsx";
 import { useResourceRoute } from "../resources-v2/route-context.tsx";
-import { getStatusBadgeVariant } from "../workflows/utils.ts";
 import { WorkflowStepCard } from "../workflows/workflow-step-card.tsx";
+import {
+  useWorkflowActions,
+  useWorkflowDescription,
+  useWorkflowFirstStepInput,
+  useWorkflowName,
+  useWorkflowStepDefinition,
+  useWorkflowStepInput,
+  useWorkflowStepNames,
+  useWorkflowStepOutputs,
+  useWorkflowUri,
+} from "../../stores/workflows/hooks.ts";
+import { WorkflowStoreProvider } from "../../stores/workflows/provider.tsx";
 import { DetailSection } from "../common/detail-section.tsx";
-
-const LazyHighlighter = lazy(() => import("../chat/lazy-highlighter.tsx"));
-
+import { useNavigateWorkspace } from "../../hooks/use-navigate-workspace.ts";
+import { toast } from "@deco/ui/components/sonner.tsx";
+import { useForm } from "react-hook-form";
+import { Form } from "@deco/ui/components/form.tsx";
+import type { JSONSchema7 } from "json-schema";
+import {
+  WorkflowStepField,
+  NestedObjectField,
+} from "./workflow-step-field.tsx";
+import { useWorkflowAvailableRefs } from "../../hooks/use-workflow-available-refs.ts";
 interface WorkflowDisplayCanvasProps {
   resourceUri: string;
   onRefresh?: () => Promise<void>;
 }
 
-interface JsonViewerProps {
-  data: unknown;
-  title: string;
-  matchHeight?: boolean;
+// Reference resolution utilities
+function isAtRef(value: unknown): value is `@${string}` {
+  return typeof value === "string" && value.startsWith("@");
 }
 
-// Runtime step from workflowStatus.steps (Cloudflare workflow instance)
-interface RuntimeStep {
-  name?: string;
-  type?: string;
-  start?: string | null;
-  end?: string | null;
-  success?: boolean | null;
-  output?: unknown;
-  error?: { name?: string; message?: string } | null;
-  attempts?: Array<{
-    start?: string | null;
-    end?: string | null;
-    success?: boolean | null;
-    error?: { name?: string; message?: string } | null;
-  }>;
-  config?: unknown;
+function parseAtRef(ref: `@${string}`): {
+  type: "step" | "input";
+  id?: string;
+  path?: string;
+} {
+  const refStr = ref.substring(1); // Remove @ prefix
+
+  // Input reference: @input.path.to.value
+  if (refStr === "input" || refStr.startsWith("input.")) {
+    const path = refStr.startsWith("input.") ? refStr.substring(6) : "";
+    return { type: "input", path };
+  }
+
+  // Step reference: @stepId.path.to.value
+  const [id, ...pathParts] = refStr.split(".");
+
+  // If path starts with 'output.', remove it since stepResults already contains the output
+  let path = pathParts.join(".");
+  if (path.startsWith("output.")) {
+    path = path.substring(7); // Remove 'output.'
+  }
+
+  return { type: "step", id, path };
 }
 
-// Merged step combines definition with runtime data
-type MergedStep = Partial<WorkflowStep> &
-  RuntimeStep & {
-    def?: WorkflowStep["def"];
-  };
+function getValue(
+  obj: Record<string, unknown> | unknown[] | unknown,
+  path: string,
+): unknown {
+  if (!path) return obj;
 
-function JsonViewer({ data, title, matchHeight = false }: JsonViewerProps) {
-  const [copied, setCopied] = useState(false);
+  const keys = path.split(".");
+  let current: unknown = obj;
 
-  async function handleCopy() {
-    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
-      globalThis.window.alert("Clipboard API unavailable");
-      return;
+  for (const key of keys) {
+    if (current === null || current === undefined) {
+      return undefined;
     }
-
-    const payload = JSON.stringify(data, null, 2);
-    try {
-      await navigator.clipboard.writeText(payload);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch (error) {
-      console.error("Failed to copy data", error);
+    if (typeof current === "object" && !Array.isArray(current)) {
+      current = (current as Record<string, unknown>)[key];
+    } else if (Array.isArray(current)) {
+      const index = parseInt(key, 10);
+      current = isNaN(index) ? undefined : current[index];
+    } else {
+      return undefined;
     }
   }
 
-  if (data === null || data === undefined) {
-    return (
-      <div className="space-y-2">
-        <p className="font-mono text-sm text-muted-foreground uppercase">
-          {title}
-        </p>
-        <div className="text-xs text-muted-foreground italic p-2">
-          No {title.toLowerCase()}
-        </div>
-      </div>
-    );
+  return current;
+}
+
+function resolveAtRef(
+  ref: `@${string}`,
+  stepOutputs: Record<string, unknown>,
+  firstStepInput?: unknown,
+): { value: unknown; error?: string } {
+  try {
+    const parsed = parseAtRef(ref);
+
+    switch (parsed.type) {
+      case "input": {
+        // Resolve @input.* to the first step's input
+        const value = getValue(
+          (firstStepInput as Record<string, unknown>) || {},
+          parsed.path || "",
+        );
+        if (value === undefined) {
+          return { value: null, error: `Input path not found: ${parsed.path}` };
+        }
+        return { value };
+      }
+
+      case "step": {
+        const identifier = parsed.id || "";
+        const stepResult = stepOutputs[identifier];
+
+        if (stepResult === undefined) {
+          return {
+            value: null,
+            error: `Step not found or not executed: ${identifier}`,
+          };
+        }
+        const value = getValue(stepResult, parsed.path || "");
+        if (value === undefined) {
+          return {
+            value: null,
+            error: `Path not found in step result: ${parsed.path}`,
+          };
+        }
+        return { value };
+      }
+
+      default:
+        return { value: null, error: `Unknown reference type: ${ref}` };
+    }
+  } catch (error) {
+    return { value: null, error: `Failed to resolve ${ref}: ${String(error)}` };
+  }
+}
+
+function resolveAtRefsInInput(
+  input: unknown,
+  stepOutputs: Record<string, unknown>,
+  firstStepInput?: unknown,
+): { resolved: unknown; errors?: Array<{ ref: string; error: string }> } {
+  const errors: Array<{ ref: string; error: string }> = [];
+
+  function resolveValue(value: unknown): unknown {
+    // If it's an @ref, resolve it
+    if (isAtRef(value)) {
+      const result = resolveAtRef(value, stepOutputs, firstStepInput);
+      if (result.error) {
+        errors.push({ ref: value, error: result.error });
+      }
+      return result.value;
+    }
+
+    // If it's an array, resolve each element
+    if (Array.isArray(value)) {
+      return value.map((v) => resolveValue(v));
+    }
+
+    // If it's an object, resolve each property
+    if (value !== null && typeof value === "object") {
+      const resolvedObj: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(value)) {
+        resolvedObj[key] = resolveValue(val);
+      }
+      return resolvedObj;
+    }
+
+    // Primitive value, return as-is
+    return value;
   }
 
-  const jsonString = JSON.stringify(data, null, 2);
-
-  return (
-    <div
-      className={`space-y-2 min-w-0 w-full ${matchHeight ? "h-full flex flex-col" : ""}`}
-    >
-      <p className="font-mono text-sm text-muted-foreground uppercase">
-        {title}
-      </p>
-      <div
-        className={`relative bg-muted rounded-xl ${matchHeight ? "min-h-[200px]" : ""} max-h-[300px] overflow-auto w-full ${matchHeight ? "flex-1" : ""}`}
-      >
-        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 bg-background rounded-xl shadow-sm">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleCopy}
-            className="h-8 w-8"
-          >
-            <Icon name={copied ? "check" : "content_copy"} size={16} />
-          </Button>
-        </div>
-        <div
-          className={`overflow-x-auto w-full ${matchHeight ? "h-full" : ""}`}
-        >
-          <Suspense
-            fallback={
-              <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
-                {jsonString}
-              </pre>
-            }
-          >
-            <LazyHighlighter
-              language="json"
-              content={jsonString}
-              fillHeight={matchHeight}
-            />
-          </Suspense>
-        </div>
-      </div>
-    </div>
-  );
+  const resolved = resolveValue(input);
+  return { resolved, errors: errors.length > 0 ? errors : undefined };
 }
+
+// Reference resolution utilities moved to use-workflow-available-refs.ts hook
 
 /**
- * Interactive workflow canvas that shows a form for workflow input
- * and displays the run results below
+ * Unwraps the nested MCP response structure to extract the actual tool output.
+ *
+ * MCP responses can have inconsistent nesting levels:
+ * - { result: value }
+ * - { result: { result: value } }
+ * - { structuredContent: { result: value } }
+ * - { structuredContent: { result: { result: value } } }
+ *
+ * This utility recursively unwraps these structures to find the deepest result value.
+ *
+ * @param response - The MCP response object from callTool
+ * @returns The unwrapped tool output value
+ * @throws Error if the response contains an error field
  */
-export function WorkflowDisplayCanvas({
-  resourceUri,
-  onRefresh: _onRefresh,
-}: WorkflowDisplayCanvasProps) {
-  const { connection } = useResourceRoute();
+function unwrapMCPResponse(response: unknown): unknown {
+  if (!response || typeof response !== "object") {
+    return response;
+  }
+
+  const resp = response as {
+    structuredContent?: unknown;
+    result?: unknown;
+    error?: string;
+    [key: string]: unknown;
+  };
+
+  // Check for error first
+  if (resp.error) {
+    throw new Error(resp.error);
+  }
+
+  // Try to unwrap nested structuredContent first
+  if (resp.structuredContent) {
+    return unwrapMCPResponse(resp.structuredContent);
+  }
+
+  // If there's a result field, check if it has nested results
+  if ("result" in resp) {
+    const result = resp.result;
+
+    // If result is an object with its own result field, unwrap it
+    if (result && typeof result === "object" && "result" in result) {
+      return unwrapMCPResponse(result);
+    }
+
+    // Otherwise return the result as-is
+    return result;
+  }
+
+  // No result or structuredContent found, return the original response
+  return response;
+}
+
+export function WorkflowDisplay({ resourceUri }: WorkflowDisplayCanvasProps) {
   const { data: resource, isLoading: isLoadingWorkflow } =
     useWorkflowByUriV2(resourceUri);
   const workflow = resource?.data;
 
-  // Track recent workflows (Resources v2 workflow detail)
-  const { locator } = useSDK();
-  const projectKey = typeof locator === "string" ? locator : undefined;
-  const { addRecent } = useRecentResources(projectKey);
-  const hasTrackedRecentRef = useRef(false);
-
-  useEffect(() => {
-    if (workflow && resourceUri && projectKey && !hasTrackedRecentRef.current) {
-      hasTrackedRecentRef.current = true;
-      setTimeout(() => {
-        addRecent({
-          id: resourceUri,
-          name: workflow.name || resourceUri,
-          type: "workflow",
-          icon: "flowchart",
-          path: `/${projectKey}/rsc/i:workflows-management/workflow/${encodeURIComponent(resourceUri)}`,
-        });
-      }, 0);
-    }
-  }, [workflow, resourceUri, projectKey, addRecent]);
-
-  // Form state for workflow input
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
-  const [currentRunUri, setCurrentRunUri] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Fetch run data if we have a run URI
-  const runQuery = useQuery({
-    queryKey: ["workflow-run-read", currentRunUri],
-    enabled: Boolean(connection && currentRunUri),
-    queryFn: async () => {
-      const result = await callTool(connection!, {
-        name: "DECO_RESOURCE_WORKFLOW_RUN_READ",
-        arguments: { uri: currentRunUri! },
-      });
-      return result.structuredContent as {
-        uri: string;
-        data: WorkflowRunData;
-        created_at?: string;
-        updated_at?: string;
-      };
-    },
-    staleTime: 10_000,
-    refetchInterval: (q) => {
-      const status = q.state.data?.data?.status;
-      if (status === "completed" || status === "failed") return false;
-      return 2000;
-    },
-  });
-
-  const run = runQuery.data;
-
-  // Handle form submission - start workflow
-  async function handleFormSubmit(data: Record<string, unknown>) {
-    if (!connection || !resourceUri) return;
-
-    try {
-      setIsSubmitting(true);
-      const result = await callTool(connection, {
-        name: "DECO_WORKFLOW_START",
-        arguments: {
-          uri: resourceUri,
-          input: data,
-        },
-      });
-
-      const response = result.structuredContent as {
-        runId?: string;
-        uri?: string;
-        error?: string;
-      };
-
-      if (response.error) {
-        throw new Error(response.error);
-      }
-
-      if (response.uri) {
-        setCurrentRunUri(response.uri);
-      }
-    } catch (error) {
-      console.error("Failed to start workflow", error);
-      globalThis.window.alert(
-        `Failed to start workflow: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  // Calculate duration
-  const duration = useMemo(() => {
-    const startTime = run?.data?.startTime;
-    const endTime = run?.data?.endTime;
-    if (!startTime) return null;
-    const ms = (endTime || Date.now()) - startTime;
-    if (ms < 0) return null;
-    const s = Math.floor(ms / 1000);
-    if (s < 60) return `${s}s`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m ${s % 60}s`;
-    const h = Math.floor(m / 60);
-    return `${h}h ${m % 60}m ${s % 60}s`;
-  }, [run?.data?.startTime, run?.data?.endTime]);
-
-  const input = useMemo(
-    () => run?.data?.workflowStatus?.params?.input,
-    [run?.data?.workflowStatus],
-  );
-  const output = useMemo(
-    () => run?.data?.finalResult,
-    [run?.data?.finalResult],
-  );
-  const error = run?.data?.error;
-  const status = run?.data?.status || "unknown";
-  const badgeVariant = getStatusBadgeVariant(status);
-  const startedBy = run?.data.workflowStatus?.params?.context?.startedBy;
-
-  // Merge workflow definition steps with runtime steps
-  const steps = useMemo<MergedStep[]>(() => {
-    const runSteps = run?.data.workflowStatus?.steps;
-    const definitionSteps = (workflow as WorkflowDefinition)?.steps;
-
-    // If no definition steps, return empty or just runtime steps
-    if (!definitionSteps || !Array.isArray(definitionSteps)) {
-      return (runSteps || []) as MergedStep[];
-    }
-
-    // If no run yet, return definition steps without runtime data
-    if (!runSteps || runSteps.length === 0) {
-      return definitionSteps as MergedStep[];
-    }
-
-    // Merge: for each definition step, use runtime data if available
-    return definitionSteps.map((defStep: WorkflowStep, idx: number) => {
-      const runtimeStep = runSteps[idx];
-
-      // If we have runtime data for this step, merge it with definition
-      if (runtimeStep) {
-        return {
-          ...defStep,
-          ...runtimeStep,
-          // Keep definition data in 'def' for reference
-          def: defStep.def || defStep,
-        } as MergedStep;
-      }
-
-      // Otherwise, return the definition step (pending)
-      return defStep as MergedStep;
-    });
-  }, [run?.data.workflowStatus?.steps, workflow]);
-
-  const firstStepInputSchema = useMemo(() => {
-    return workflow?.steps?.[0]?.def?.inputSchema;
-  }, [workflow?.steps]);
-
-  // Flag to know if we have an active or completed run
-  const hasRun = Boolean(run);
-
-  if (isLoadingWorkflow) {
+  // Only show loading on initial load, not on refetch
+  if (isLoadingWorkflow && !workflow) {
     return (
       <div className="h-[calc(100vh-12rem)] flex items-center justify-center">
         <Spinner />
@@ -331,213 +276,432 @@ export function WorkflowDisplayCanvas({
   }
 
   return (
+    <WorkflowStoreProvider key={workflow.name} workflow={workflow}>
+      <Canvas />
+    </WorkflowStoreProvider>
+  );
+}
+
+export function useWorkflowRunQuery(enabled: boolean = false) {
+  const { connection, resourceUri } = useResourceRoute();
+  const runUri = resourceUri;
+
+  const runQuery = useQuery({
+    queryKey: workflowExecutionKeys.read(runUri || ""),
+    enabled: Boolean(connection && runUri && enabled),
+    queryFn: async () => {
+      if (!connection || !runUri) {
+        throw new Error("Connection and runUri are required");
+      }
+
+      const result = await callTool(connection, {
+        name: "DECO_RESOURCE_WORKFLOW_RUN_READ",
+        arguments: { uri: runUri },
+      });
+
+      const data = result.structuredContent as
+        | {
+            uri: string;
+            data: WorkflowRunData;
+            created_at?: string;
+            updated_at?: string;
+          }
+        | undefined;
+
+      if (!data) {
+        throw new Error("No data returned from workflow run query");
+      }
+
+      return data;
+    },
+    staleTime: 10_000,
+    refetchInterval: (q) => {
+      const status = q.state.data?.data?.status;
+      if (status === "completed" || status === "failed") return false;
+      return 2000;
+    },
+  });
+
+  return runQuery;
+}
+
+const StartWorkflowButton = () => {
+  const { mutateAsync, isPending } = useStartWorkflow();
+  const workflowUri = useWorkflowUri();
+  const navigateWorkspace = useNavigateWorkspace();
+  const firstStepInput = useWorkflowFirstStepInput();
+
+  const handleStartWorkflow = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
+      // Prevent any default behavior that might cause page reload
+      e.preventDefault();
+      e.stopPropagation();
+
+      try {
+        await mutateAsync(
+          {
+            uri: workflowUri,
+            input: firstStepInput as Record<string, unknown>,
+          },
+          {
+            onSuccess: (data) => {
+              if (!data.uri) return;
+              navigateWorkspace(
+                `/rsc/i:workflows-management/workflow_run/${encodeURIComponent(data.uri)}`,
+              );
+            },
+          },
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to start workflow",
+        );
+      }
+    },
+    [mutateAsync, workflowUri, firstStepInput, navigateWorkspace],
+  );
+
+  return (
+    <Button
+      type="button"
+      disabled={isPending}
+      variant="special"
+      onClick={handleStartWorkflow}
+      className="min-w-[200px] flex items-center gap-2"
+    >
+      {isPending ? (
+        <>
+          <Spinner size="xs" /> Starting...
+        </>
+      ) : (
+        <>
+          <Icon name="play_arrow" size={18} /> Start Workflow
+        </>
+      )}
+    </Button>
+  );
+};
+
+/**
+ * Interactive workflow canvas that shows a form for workflow input
+ * and displays the run results below
+ */
+export function Canvas() {
+  const resourceUri = useWorkflowUri();
+  const workflowName = useWorkflowName();
+  const workflowDescription = useWorkflowDescription();
+  // Track recent workflows (Resources v2 workflow detail)
+  const { locator } = useSDK();
+  const projectKey = typeof locator === "string" ? locator : undefined;
+  const { addRecent } = useRecentResources(projectKey);
+  const hasTrackedRecentRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      workflowName &&
+      resourceUri &&
+      projectKey &&
+      !hasTrackedRecentRef.current
+    ) {
+      hasTrackedRecentRef.current = true;
+      setTimeout(() => {
+        addRecent({
+          id: resourceUri,
+          name: workflowName,
+          type: "workflow",
+          icon: "flowchart",
+          path: `/${projectKey}/rsc/i:workflows-management/workflow/${encodeURIComponent(
+            resourceUri,
+          )}`,
+        });
+      }, 0);
+    }
+  }, [workflowName, resourceUri, projectKey, addRecent]);
+
+  return (
     <ScrollArea className="h-full w-full">
       <div className="flex flex-col">
         {/* Header */}
         <DetailSection>
-          <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-medium">{workflow.name}</h1>
-              {workflow.description && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  {workflow.description}
-                </p>
-              )}
-            </div>
-            {run && (
-              <Badge variant={badgeVariant} className="capitalize">
-                {status}
-              </Badge>
-            )}
-          </div>
-
-          {/* Run metadata */}
-          {run && (
-            <div className="flex items-center gap-4 flex-wrap text-sm">
-              <div className="flex items-center gap-2">
-                <Icon
-                  name="calendar_month"
-                  size={16}
-                  className="text-muted-foreground"
-                />
-                <span className="font-mono text-sm uppercase">
-                  {run.data.startTime
-                    ? new Date(run.data.startTime).toLocaleString([], {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : "-"}
-                </span>
-              </div>
-
-              <div className="h-3 w-px bg-border" />
-
-              <div className="flex items-center gap-2">
-                <Icon
-                  name="schedule"
-                  size={16}
-                  className="text-muted-foreground"
-                />
-                <span className="font-mono text-sm">{duration || "-"}</span>
-              </div>
-
-              <div className="h-3 w-px bg-border" />
-
-              {startedBy?.id && (
-                <UserInfo
-                  userId={startedBy.id}
-                  size="sm"
-                  noTooltip
-                  showEmail={false}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Error Alert */}
-          {error && (
-            <Alert className="bg-destructive/5 border-none">
-              <Icon name="error" className="h-4 w-4 text-destructive" />
-              <AlertTitle className="text-destructive">Error</AlertTitle>
-              <AlertDescription className="text-destructive">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-        </DetailSection>
-
-        {/* Input Form */}
-        <DetailSection title="Input">
-          <div className="bg-muted/30 rounded-xl p-6">
-            {firstStepInputSchema &&
-            typeof firstStepInputSchema === "object" &&
-            "properties" in firstStepInputSchema &&
-            firstStepInputSchema.properties &&
-            Object.keys(firstStepInputSchema.properties).length > 0 ? (
-              <Form
-                schema={firstStepInputSchema}
-                validator={validator}
-                formData={formData}
-                onChange={({ formData }) => setFormData(formData)}
-                onSubmit={({ formData }) => handleFormSubmit(formData)}
-                showErrorList={false}
-                noHtml5Validate
-                liveValidate={false}
-              >
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    size="lg"
-                    className="min-w-[200px] flex items-center gap-2"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Spinner size="xs" />
-                        Running...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="play_arrow" size={18} />
-                        Run Workflow
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </Form>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-4">
-                <p className="text-sm text-muted-foreground">
-                  This workflow does not require any input parameters.
-                </p>
-                <Button
-                  disabled={isSubmitting}
-                  size="lg"
-                  onClick={() => handleFormSubmit({})}
-                  className="min-w-[200px] flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Spinner size="xs" />
-                      Running...
-                    </>
-                  ) : (
-                    <>
-                      <Icon name="play_arrow" size={18} />
-                      Run Workflow
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        </DetailSection>
-
-        {/* Output Section - only show if we have a run */}
-        {run && (
-          <DetailSection title="Input & Output">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
-              <div className="min-w-0 flex">
-                <JsonViewer data={input} title="Input" matchHeight />
-              </div>
-
-              <div className="min-w-0 flex">
-                {status === "completed" || status === "success" ? (
-                  <JsonViewer data={output} title="Output" matchHeight />
-                ) : (
-                  <div className="space-y-2 w-full">
-                    <p className="font-mono text-sm text-muted-foreground uppercase">
-                      Output
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <h1 className="text-2xl font-medium">{workflowName}</h1>
+                  {workflowDescription && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {workflowDescription}
                     </p>
-                    <div className="bg-muted rounded-xl min-h-[200px] max-h-[300px] flex items-center justify-center p-4">
-                      <div className="text-xs text-muted-foreground italic text-center">
-                        Output will be available when the workflow completes
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </DetailSection>
-        )}
+            <div className="flex items-center gap-2">
+              <StartWorkflowButton />
+            </div>
+          </div>
+        </DetailSection>
 
         {/* Steps Section - show definition steps before run, runtime steps after */}
         <DetailSection title="Steps">
-          {steps.length > 0 ? (
-            <div className="flex flex-col items-center">
-              <div className="w-full max-w-[700px] space-y-0">
-                {steps.map((step, idx) => {
-                  const stableKey =
-                    (step as { id?: string }).id || step.name || `step-${idx}`;
-                  return (
-                    <div key={stableKey}>
-                      {idx > 0 && (
-                        <div className="h-10 w-full flex justify-center">
-                          <div className="w-px bg-border" />
-                        </div>
-                      )}
-                      <Suspense fallback={<Spinner />}>
-                        <WorkflowStepCard
-                          step={step}
-                          index={idx}
-                          showStatus={hasRun}
-                        />
-                      </Suspense>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground italic py-4">
-              No steps available yet
-            </div>
-          )}
+          <WorkflowStepsList />
         </DetailSection>
       </div>
     </ScrollArea>
+  );
+}
+
+function WorkflowStepsList() {
+  const stepNames = useWorkflowStepNames();
+  if (!stepNames || stepNames.length === 0) {
+    return (
+      <div className="text-sm text-muted-foreground italic py-4">
+        No steps available yet
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center">
+      <div className="w-full max-w-[700px] space-y-8">
+        {stepNames.map((stepName, index) => {
+          return (
+            <div key={`${stepName}-${index}`}>
+              <Suspense fallback={<Spinner />}>
+                <WorkflowStepCard stepName={stepName} type="definition" />
+              </Suspense>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function StepInput({ stepName }: { stepName: string }) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { connection } = useResourceRoute();
+  const actions = useWorkflowActions();
+  const workflowUri = useWorkflowUri();
+  const { locator } = useSDK();
+  const stepOutputs = useWorkflowStepOutputs();
+  const currentStepInput = useWorkflowStepInput(stepName);
+  const stepDefinition = useWorkflowStepDefinition(stepName);
+  const firstStepInput = useWorkflowFirstStepInput();
+
+  const stepInputSchema = useMemo(() => {
+    return stepDefinition?.inputSchema as JSONSchema7 | undefined;
+  }, [stepDefinition]);
+
+  // Use optimized hook for available refs
+  const availableRefs = useWorkflowAvailableRefs(stepName);
+
+  // Initialize form with current step input
+  const form = useForm<Record<string, unknown>>({
+    defaultValues: currentStepInput || {},
+    mode: "onSubmit",
+  });
+
+  const handleFormSubmit = useCallback(
+    async (data: Record<string, unknown>) => {
+      if (!connection || !workflowUri) return;
+
+      try {
+        setIsSubmitting(true);
+        actions.setStepExecutionStart(stepName);
+
+        // Resolve any @ references in the input data
+        const { resolved, errors } = resolveAtRefsInInput(
+          data,
+          stepOutputs,
+          firstStepInput,
+        );
+
+        // Show errors if any references couldn't be resolved
+        if (errors && errors.length > 0) {
+          const errorMessages = errors
+            .map((e) => `${e.ref}: ${e.error}`)
+            .join("\n");
+          throw new Error(`Failed to resolve references:\n${errorMessages}`);
+        }
+
+        // Save the resolved input data to the store
+        // This is important for subsequent steps that reference @input.*
+        actions.setStepInput(stepName, resolved);
+
+        const result = await callTool(
+          connection,
+          {
+            name: "DECO_WORKFLOW_RUN_STEP",
+            arguments: {
+              tool: stepDefinition,
+              input: resolved,
+            },
+          },
+          locator,
+        );
+
+        if (result.error) {
+          throw new Error(
+            `Tool execution failed: ${typeof result.error === "string" ? result.error : JSON.stringify(result.error)}`,
+          );
+        }
+
+        if (result.isError) {
+          const errorMessage =
+            (Array.isArray(result.content) && result.content[0]?.text) ||
+            "Unknown error";
+          throw new Error(`Tool execution failed: ${errorMessage}`);
+        }
+
+        // Unwrap the MCP response to extract the actual step output
+        const stepOutput = unwrapMCPResponse(result.structuredContent);
+
+        const outputKey = stepDefinition?.name ?? stepName;
+
+        if (stepOutput !== undefined) {
+          actions.setStepOutput(outputKey, stepOutput);
+        }
+
+        // Record successful execution
+        actions.setStepExecutionEnd(stepName, true);
+        toast.success("Step executed successfully!");
+      } catch (error) {
+        console.error("Failed to run step", error);
+
+        // Record failed execution
+        const errorObj =
+          error instanceof Error
+            ? { name: error.name, message: error.message }
+            : { name: "Error", message: String(error) };
+        actions.setStepExecutionEnd(stepName, false, errorObj);
+
+        toast.error(
+          error instanceof Error ? error.message : "Failed to run step",
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [
+      connection,
+      workflowUri,
+      stepName,
+      stepOutputs,
+      firstStepInput,
+      stepDefinition,
+      locator,
+    ],
+  );
+
+  // Check if schema has properties
+  const hasProperties =
+    stepInputSchema &&
+    typeof stepInputSchema === "object" &&
+    "properties" in stepInputSchema &&
+    stepInputSchema.properties &&
+    Object.keys(stepInputSchema.properties).length > 0;
+
+  if (!hasProperties) {
+    return (
+      <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-8 border border-dashed">
+        <div className="flex flex-col items-center justify-center text-center gap-4">
+          <div className="rounded-full bg-primary/10 p-4">
+            <Icon name="check_circle" size={32} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-medium mb-1">Ready to Execute</p>
+            <p className="text-xs text-muted-foreground">
+              This step does not require any input parameters
+            </p>
+          </div>
+          <Button
+            disabled={isSubmitting}
+            size="lg"
+            onClick={() => handleFormSubmit({})}
+            className="min-w-[200px] flex items-center gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <Spinner size="xs" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Icon name="play_arrow" size={18} />
+                Run Step
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl p-6 border">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit((data) =>
+            handleFormSubmit(data as Record<string, unknown>),
+          )}
+          className="space-y-6"
+        >
+          {Object.entries(stepInputSchema.properties!).map(
+            ([propName, propSchema]) => {
+              const isRequired =
+                stepInputSchema.required?.includes(propName) ?? false;
+              const schema = propSchema as JSONSchema7;
+
+              // Handle nested objects specially
+              if (schema.type === "object" && schema.properties) {
+                return (
+                  <NestedObjectField
+                    key={propName}
+                    name={propName}
+                    schema={schema}
+                    form={form}
+                    disabled={isSubmitting}
+                    availableRefs={availableRefs}
+                  />
+                );
+              }
+
+              return (
+                <WorkflowStepField
+                  key={propName}
+                  name={propName}
+                  schema={schema}
+                  form={form}
+                  isRequired={isRequired}
+                  disabled={isSubmitting}
+                  availableRefs={availableRefs}
+                />
+              );
+            },
+          )}
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              size="lg"
+              className="min-w-[200px] flex items-center gap-2"
+            >
+              {isSubmitting ? (
+                <>
+                  <Spinner size="xs" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Icon name="play_arrow" size={18} />
+                  Run Step
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }
