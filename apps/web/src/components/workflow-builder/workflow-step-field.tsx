@@ -21,7 +21,7 @@ import {
 import { Switch } from "@deco/ui/components/switch.tsx";
 import { Textarea } from "@deco/ui/components/textarea.tsx";
 import type { JSONSchema7 } from "json-schema";
-import { memo, useCallback, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 import type {
   ControllerRenderProps,
   FieldPath,
@@ -48,6 +48,7 @@ interface WorkflowStepFieldProps<T extends FieldValues = FieldValues> {
   isRequired: boolean;
   disabled: boolean;
   availableRefs: AtRefOption[];
+  isFirstStep: boolean;
   onFieldChange?: (name: string, value: unknown) => void;
 }
 
@@ -114,16 +115,24 @@ function isSchemaCompatible(
   return matches;
 }
 
-export function WorkflowStepField<T extends FieldValues = FieldValues>({
+const WorkflowStepFieldComponent = function <
+  T extends FieldValues = FieldValues,
+>({
   name,
   schema,
   form,
   isRequired,
   disabled,
   availableRefs,
+  isFirstStep,
 }: WorkflowStepFieldProps<T>) {
   const currentValue = form.watch(name as FieldPath<T>);
-  const [isRefMode, setIsRefMode] = useState(isAtRef(currentValue));
+  const disableReferenceMode = isFirstStep;
+
+  // For first step, never allow reference mode; otherwise check if value is a reference
+  const [isRefMode, setIsRefMode] = useState(
+    !disableReferenceMode && isAtRef(currentValue),
+  );
 
   // Store previous values for each mode to restore when switching back
   const previousValues = useRef<{ ref?: string; manual?: unknown }>({
@@ -158,9 +167,10 @@ export function WorkflowStepField<T extends FieldValues = FieldValues>({
   }, [availableRefs, schema]);
 
   // Show toggle when refs are available OR already in ref mode (for all types)
+  // But never show if reference mode is explicitly disabled
   const showToggle = useMemo(
-    () => compatibleRefs.length > 0 || isRefMode,
-    [compatibleRefs.length, isRefMode],
+    () => !disableReferenceMode && (compatibleRefs.length > 0 || isRefMode),
+    [disableReferenceMode, compatibleRefs.length, isRefMode],
   );
 
   const handleToggleChange = useCallback(
@@ -244,6 +254,7 @@ export function WorkflowStepField<T extends FieldValues = FieldValues>({
                 schema={schema}
                 disabled={disabled}
                 form={form}
+                isFirstStep={isFirstStep}
               />
             )}
           </FormControl>
@@ -265,7 +276,13 @@ export function WorkflowStepField<T extends FieldValues = FieldValues>({
       )}
     />
   );
-}
+};
+
+export const WorkflowStepField = memo(WorkflowStepFieldComponent) as <
+  T extends FieldValues = FieldValues,
+>(
+  props: WorkflowStepFieldProps<T>,
+) => React.ReactElement;
 
 interface ReferenceSelectProps {
   value?: string;
@@ -355,6 +372,7 @@ interface ManualInputProps<T extends FieldValues = FieldValues> {
   schema: JSONSchema7;
   disabled: boolean;
   form?: UseFormReturn<T>;
+  isFirstStep: boolean;
 }
 
 function ManualInputComponent<T extends FieldValues>({
@@ -363,6 +381,7 @@ function ManualInputComponent<T extends FieldValues>({
   schema,
   disabled,
   form,
+  isFirstStep,
 }: ManualInputProps<T>) {
   const handleNumberChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -466,6 +485,7 @@ function ManualInputComponent<T extends FieldValues>({
             form={form}
             disabled={disabled}
             availableRefs={[]} // No refs in manual mode
+            isFirstStep={isFirstStep}
           />
         );
       }
@@ -512,6 +532,7 @@ function ManualInputComponent<T extends FieldValues>({
           schema={{ ...itemSchema, title: itemTitle }}
           disabled={disabled}
           form={form}
+          isFirstStep={isFirstStep}
         />
       );
 
@@ -546,14 +567,18 @@ interface NestedObjectFieldProps<T extends FieldValues = FieldValues> {
   form: UseFormReturn<T>;
   disabled: boolean;
   availableRefs: AtRefOption[];
+  isFirstStep: boolean;
 }
 
-export function NestedObjectField<T extends FieldValues = FieldValues>({
+const NestedObjectFieldComponent = function <
+  T extends FieldValues = FieldValues,
+>({
   name,
   schema,
   form,
   disabled,
   availableRefs,
+  isFirstStep,
 }: NestedObjectFieldProps<T>) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const propertyName = name.split(".").pop() || name;
@@ -606,6 +631,7 @@ export function NestedObjectField<T extends FieldValues = FieldValues>({
                 isRequired={isRequired}
                 disabled={disabled}
                 availableRefs={availableRefs}
+                isFirstStep={isFirstStep}
               />
             );
           })}
@@ -613,8 +639,14 @@ export function NestedObjectField<T extends FieldValues = FieldValues>({
       )}
     </div>
   );
-}
+};
 
-const ManualInput = ManualInputComponent as <T extends FieldValues>(
+export const NestedObjectField = memo(NestedObjectFieldComponent) as <
+  T extends FieldValues = FieldValues,
+>(
+  props: NestedObjectFieldProps<T>,
+) => React.ReactElement;
+
+const ManualInput = memo(ManualInputComponent) as <T extends FieldValues>(
   props: ManualInputProps<T>,
 ) => React.ReactElement;

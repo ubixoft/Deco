@@ -12,14 +12,7 @@ import { Icon } from "@deco/ui/components/icon.tsx";
 import { ScrollArea } from "@deco/ui/components/scroll-area.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { EmptyState } from "../common/empty-state.tsx";
 import { useResourceRoute } from "../resources-v2/route-context.tsx";
 import { WorkflowStepCard } from "../workflows/workflow-step-card.tsx";
@@ -33,6 +26,8 @@ import {
   useWorkflowStepNames,
   useWorkflowStepOutputs,
   useWorkflowUri,
+  useIsFirstStep,
+  useHasFirstStepInput,
 } from "../../stores/workflows/hooks.ts";
 import { WorkflowStoreProvider } from "../../stores/workflows/provider.tsx";
 import { DetailSection } from "../common/detail-section.tsx";
@@ -330,6 +325,7 @@ const StartWorkflowButton = () => {
   const workflowUri = useWorkflowUri();
   const navigateWorkspace = useNavigateWorkspace();
   const firstStepInput = useWorkflowFirstStepInput();
+  const hasFirstStepInput = useHasFirstStepInput();
 
   const handleStartWorkflow = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -361,13 +357,20 @@ const StartWorkflowButton = () => {
     [mutateAsync, workflowUri, firstStepInput, navigateWorkspace],
   );
 
+  const isDisabled = isPending || !hasFirstStepInput;
+
   return (
     <Button
       type="button"
-      disabled={isPending}
+      disabled={isDisabled}
       variant="special"
       onClick={handleStartWorkflow}
       className="min-w-[200px] flex items-center gap-2"
+      title={
+        !hasFirstStepInput
+          ? "Please configure the first step before starting"
+          : undefined
+      }
     >
       {isPending ? (
         <>
@@ -396,27 +399,25 @@ export function Canvas() {
   const { addRecent } = useRecentResources(projectKey);
   const hasTrackedRecentRef = useRef(false);
 
-  useEffect(() => {
-    if (
-      workflowName &&
-      resourceUri &&
-      projectKey &&
-      !hasTrackedRecentRef.current
-    ) {
-      hasTrackedRecentRef.current = true;
-      setTimeout(() => {
-        addRecent({
-          id: resourceUri,
-          name: workflowName,
-          type: "workflow",
-          icon: "flowchart",
-          path: `/${projectKey}/rsc/i:workflows-management/workflow/${encodeURIComponent(
-            resourceUri,
-          )}`,
-        });
-      }, 0);
-    }
-  }, [workflowName, resourceUri, projectKey, addRecent]);
+  if (
+    workflowName &&
+    resourceUri &&
+    projectKey &&
+    !hasTrackedRecentRef.current
+  ) {
+    hasTrackedRecentRef.current = true;
+    queueMicrotask(() => {
+      addRecent({
+        id: resourceUri,
+        name: workflowName,
+        type: "workflow",
+        icon: "flowchart",
+        path: `/${projectKey}/rsc/i:workflows-management/workflow/${encodeURIComponent(
+          resourceUri,
+        )}`,
+      });
+    });
+  }
 
   return (
     <ScrollArea className="h-full w-full">
@@ -487,6 +488,7 @@ export function StepInput({ stepName }: { stepName: string }) {
   const currentStepInput = useWorkflowStepInput(stepName);
   const stepDefinition = useWorkflowStepDefinition(stepName);
   const firstStepInput = useWorkflowFirstStepInput();
+  const isFirstStep = useIsFirstStep(stepName);
 
   const stepInputSchema = useMemo(() => {
     return stepDefinition?.inputSchema as JSONSchema7 | undefined;
@@ -495,11 +497,47 @@ export function StepInput({ stepName }: { stepName: string }) {
   // Use optimized hook for available refs
   const availableRefs = useWorkflowAvailableRefs(stepName);
 
-  // Initialize form with current step input
+  const initialValues = useRef<Record<string, unknown> | null>(null);
+
+  if (!initialValues.current) {
+    const input = currentStepInput || {};
+    const cleaned: Record<string, unknown> = {};
+
+    if (isFirstStep) {
+      // For first step, remove any @ references
+      for (const [key, value] of Object.entries(
+        input as Record<string, unknown>,
+      )) {
+        // Skip reference values
+        if (typeof value === "string" && value.startsWith("@")) {
+          continue;
+        }
+        // Ensure we don't have undefined values
+        cleaned[key] = value ?? "";
+      }
+    } else {
+      // For other steps, just ensure no undefined values
+      for (const [key, value] of Object.entries(
+        input as Record<string, unknown>,
+      )) {
+        cleaned[key] = value ?? "";
+      }
+    }
+
+    initialValues.current = cleaned;
+  }
+
   const form = useForm<Record<string, unknown>>({
-    defaultValues: currentStepInput || {},
-    mode: "onSubmit",
+    defaultValues: initialValues.current,
+    mode: "onBlur",
   });
+
+  const handleBlur = useCallback(() => {
+    const currentData = form.getValues();
+    if (currentData && Object.keys(currentData).length > 0) {
+      actions.setStepInput(stepName, currentData);
+    }
+  }, [form, stepName, actions]);
 
   const handleFormSubmit = useCallback(
     async (data: Record<string, unknown>) => {
@@ -524,10 +562,11 @@ export function StepInput({ stepName }: { stepName: string }) {
           throw new Error(`Failed to resolve references:\n${errorMessages}`);
         }
 
-        // Save the resolved input data to the store
-        // This is important for subsequent steps that reference @input.*
-        actions.setStepInput(stepName, resolved);
+        // ✅ Save the ORIGINAL input data (with @references) to the store
+        // This preserves references so they work correctly after page refresh
+        actions.setStepInput(stepName, data);
 
+        // Use the resolved values only for execution
         const result = await callTool(
           connection,
           {
@@ -590,6 +629,7 @@ export function StepInput({ stepName }: { stepName: string }) {
       firstStepInput,
       stepDefinition,
       locator,
+      actions,
     ],
   );
 
@@ -644,6 +684,7 @@ export function StepInput({ stepName }: { stepName: string }) {
           onSubmit={form.handleSubmit((data) =>
             handleFormSubmit(data as Record<string, unknown>),
           )}
+          onBlur={handleBlur}
           className="space-y-6"
         >
           {Object.entries(stepInputSchema.properties!).map(
@@ -662,6 +703,7 @@ export function StepInput({ stepName }: { stepName: string }) {
                     form={form}
                     disabled={isSubmitting}
                     availableRefs={availableRefs}
+                    isFirstStep={isFirstStep}
                   />
                 );
               }
@@ -675,6 +717,7 @@ export function StepInput({ stepName }: { stepName: string }) {
                   isRequired={isRequired}
                   disabled={isSubmitting}
                   availableRefs={availableRefs}
+                  isFirstStep={isFirstStep}
                 />
               );
             },

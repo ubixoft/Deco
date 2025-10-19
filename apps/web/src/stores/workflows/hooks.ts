@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useWorkflowStore } from "./provider";
 
@@ -84,4 +85,83 @@ export function useWorkflowStepData(stepName: string) {
         ?.def,
     })),
   );
+}
+
+function hasValidValue(value: unknown): boolean {
+  // References are not valid for first step
+  if (typeof value === "string" && value.startsWith("@")) {
+    return false;
+  }
+
+  // Empty strings are not valid
+  if (value === "" || value === null || value === undefined) {
+    return false;
+  }
+
+  // For objects, check if they have at least one valid property
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return Object.values(value as Record<string, unknown>).some(hasValidValue);
+  }
+
+  // For arrays, check if they have at least one valid element
+  if (Array.isArray(value)) {
+    return value.length > 0 && value.some(hasValidValue);
+  }
+
+  // Other values are valid
+  return true;
+}
+
+export function useIsFirstStep(stepName: string) {
+  return useWorkflowStore((state) => {
+    const firstStep = state.workflow.steps[0];
+    return firstStep?.def.name === stepName;
+  });
+}
+
+export function useHasFirstStepInput() {
+  const firstStepData = useWorkflowStore(
+    useShallow((state) => {
+      const firstStep = state.workflow.steps[0];
+      if (!firstStep) return null;
+
+      const stepName = firstStep.def.name;
+      return {
+        persistedInput: state.stepInputs[stepName],
+        defaultInput: firstStep.input,
+      };
+    }),
+  );
+
+  return useMemo(() => {
+    if (!firstStepData) return false;
+
+    const { persistedInput, defaultInput } = firstStepData;
+
+    // Check if there's persisted input with valid values
+    if (
+      persistedInput !== undefined &&
+      typeof persistedInput === "object" &&
+      persistedInput !== null
+    ) {
+      const hasValid = Object.values(
+        persistedInput as Record<string, unknown>,
+      ).some(hasValidValue);
+      if (hasValid) return true;
+    }
+
+    // Check if there's default input with valid values
+    if (
+      defaultInput !== undefined &&
+      typeof defaultInput === "object" &&
+      defaultInput !== null
+    ) {
+      const hasValid = Object.values(
+        defaultInput as Record<string, unknown>,
+      ).some(hasValidValue);
+      if (hasValid) return true;
+    }
+
+    return false;
+  }, [firstStepData]);
 }
