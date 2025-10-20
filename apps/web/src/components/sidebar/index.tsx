@@ -52,7 +52,13 @@ import {
 } from "@deco/ui/components/sidebar.tsx";
 import { Skeleton } from "@deco/ui/components/skeleton.tsx";
 import { type ReactNode, Suspense, useMemo, useState } from "react";
-import { Link, useMatch, useNavigate, useParams } from "react-router";
+import {
+  Link,
+  useLocation,
+  useMatch,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { trackEvent } from "../../hooks/analytics.ts";
 import {
   useNavigateWorkspace,
@@ -196,6 +202,7 @@ function WorkspaceViews() {
   const removeViewMutation = useRemoveView();
   const navigateWorkspace = useNavigateWorkspace();
   const navigate = useNavigate();
+  const location = useLocation();
   const [addViewsDialogState, setAddViewsDialogState] = useState<{
     open: boolean;
     integration?: Integration;
@@ -486,7 +493,14 @@ function WorkspaceViews() {
             <SidebarMenuButton asChild>
               <Link
                 to={href}
-                onClick={() => {
+                onClick={(e) => {
+                  // Reload if already on current page (client-side)
+                  if (location.pathname === href) {
+                    e.preventDefault();
+                    navigate(0);
+                    return;
+                  }
+
                   trackEvent("sidebar_navigation_click", {
                     item: displayTitle,
                   });
@@ -554,7 +568,14 @@ function WorkspaceViews() {
                     <Link
                       to={href}
                       className="group/item relative"
-                      onClick={() => {
+                      onClick={(e) => {
+                        // Reload if already on current page (client-side)
+                        if (location.pathname === href) {
+                          e.preventDefault();
+                          navigate(0);
+                          return;
+                        }
+
                         trackEvent("sidebar_navigation_click", {
                           item: view.title,
                         });
@@ -720,7 +741,14 @@ function WorkspaceViews() {
                             <Link
                               to={href}
                               className="group/item relative"
-                              onClick={() => {
+                              onClick={(e) => {
+                                // Reload if already on current page (client-side)
+                                if (location.pathname === href) {
+                                  e.preventDefault();
+                                  navigate(0);
+                                  return;
+                                }
+
                                 trackEvent("sidebar_navigation_click", {
                                   item: view.title,
                                 });
@@ -788,7 +816,14 @@ function WorkspaceViews() {
                       <Link
                         to={href}
                         className="group/item relative"
-                        onClick={() => {
+                        onClick={(e) => {
+                          // Reload if already on current page (client-side)
+                          if (location.pathname === href) {
+                            e.preventDefault();
+                            navigate(0);
+                            return;
+                          }
+
                           trackEvent("sidebar_navigation_click", {
                             item: resource.title,
                           });
@@ -918,7 +953,14 @@ function WorkspaceViews() {
                     <Link
                       to={resource.path}
                       className="group/item relative"
-                      onClick={() => {
+                      onClick={(e) => {
+                        // Reload if already on current page (client-side)
+                        if (location.pathname === resource.path) {
+                          e.preventDefault();
+                          navigate(0);
+                          return;
+                        }
+
                         trackEvent("sidebar_navigation_click", {
                           item: resource.name,
                           type: "pinned-resource",
@@ -985,7 +1027,14 @@ function WorkspaceViews() {
                     <Link
                       to={resource.path}
                       className="group/item relative"
-                      onClick={() => {
+                      onClick={(e) => {
+                        // Reload if already on current page (client-side)
+                        if (location.pathname === resource.path) {
+                          e.preventDefault();
+                          navigate(0);
+                          return;
+                        }
+
                         trackEvent("sidebar_navigation_click", {
                           item: resource.name,
                           type: "recent-resource",
