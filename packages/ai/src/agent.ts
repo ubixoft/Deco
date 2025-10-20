@@ -97,8 +97,6 @@ export interface Env {
   GATEWAY_ID: string;
   ACCOUNT_ID: string;
   CF_ACCOUNT_ID: string;
-  TURSO_ORGANIZATION: string;
-  TURSO_ADMIN_TOKEN: string;
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
   AWS_REGION: string;
@@ -214,13 +212,7 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
 
   private get llmVault() {
     return this.env.LLMS_ENCRYPTION_KEY
-      ? new SupabaseLLMVault(
-          this.context.db,
-          this.env.LLMS_ENCRYPTION_KEY,
-          this.workspace,
-          // TODO(@viktormarinho): figure out what to do here
-          null,
-        )
+      ? new SupabaseLLMVault(this._createAppContext(this.metadata))
       : undefined;
   }
 
@@ -517,12 +509,8 @@ export class AIAgent extends BaseActor<AgentMetadata> implements IIAgent {
    */
   private _initializeMemoryStore() {
     const doInit = async () => {
-      const db = await workspaceDB({
-        workspaceDO: this.context.workspaceDO,
-        workspace: { value: this.workspace },
-        // @ts-expect-error - this is a valid field
-        envVars: this.env,
-      });
+      const ctx = this._createAppContext(this.metadata);
+      const db = await workspaceDB(ctx);
 
       // Create D1Client adapter for IWorkspaceDB
       const d1Store = new D1Store({
