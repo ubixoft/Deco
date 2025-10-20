@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { program } from "./commands.js";
+import { deconfig } from "./commands.js";
 
 (async () => {
   try {
-    await program.parseAsync();
+    await deconfig.parseAsync();
   } catch (error) {
     console.error(error);
     process.exit(1);
