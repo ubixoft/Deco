@@ -34,53 +34,6 @@ interface StreamProcessorConfig {
   onConnected: (connected: boolean) => void;
 }
 
-function extractAccessToken(encodedToken: string): string | null {
-  try {
-    const base64Data = encodedToken.startsWith("base64-")
-      ? encodedToken.substring(7)
-      : encodedToken;
-
-    const jsonString = globalThis.atob(base64Data);
-    const sessionData = JSON.parse(jsonString) as { access_token?: string };
-    return sessionData.access_token || null;
-  } catch (error) {
-    console.error("[ResourceWatch] Failed to extract access token:", error);
-    return null;
-  }
-}
-
-function getAuthToken(): string | null {
-  // Guard against SSR - only run in browser
-  if (typeof document === "undefined" || typeof window === "undefined") {
-    return null;
-  }
-
-  const cookies = document.cookie.split(";");
-  const tokenChunks: Array<{ index: number; value: string }> = [];
-
-  for (const cookie of cookies) {
-    const [name, value] = cookie.trim().split("=");
-
-    if (name.startsWith("sb-auth-auth-token.")) {
-      const index = parseInt(name.split(".")[1], 10);
-      if (!isNaN(index)) {
-        tokenChunks.push({ index, value: decodeURIComponent(value) });
-      }
-    } else if (name === "sb-auth-auth-token") {
-      const encodedToken = decodeURIComponent(value);
-      return extractAccessToken(encodedToken);
-    }
-  }
-
-  if (tokenChunks.length > 0) {
-    tokenChunks.sort((a, b) => a.index - b.index);
-    const fullToken = tokenChunks.map((c) => c.value).join("");
-    return extractAccessToken(fullToken);
-  }
-
-  return null;
-}
-
 function mapEventType(type: SSEFileChangeEvent["type"]): WatchEvent["type"] {
   switch (type) {
     case "added":
@@ -206,7 +159,6 @@ export function useResourceWatch({
   const { locator } = useSDK();
   const { addEvent, setConnected, setError } = useResourceWatchActions();
   const lastCtime = useConnectionLastCtime(resourceUri);
-  const token = getAuthToken();
 
   // Capture initial lastCtime to keep URL stable for connection lifecycle
   const initialLastCtimeRef = useRef<number | null>(null);
@@ -219,12 +171,12 @@ export function useResourceWatch({
 
   // Build watch URL with stable parameters
   const watchUrl = useMemo(() => {
-    if (!locator || !enabled || !token) {
+    if (!locator || !enabled) {
       return null;
     }
 
     return buildWatchUrl(locator, pathFilter, initialLastCtimeRef.current);
-  }, [locator, pathFilter, enabled, token]);
+  }, [locator, pathFilter, enabled]);
 
   // Set up React Query for SSE connection management
   const query = useQuery({
@@ -251,9 +203,6 @@ export function useResourceWatch({
 
       const response = await fetch(fullUrl, {
         signal,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         credentials: "include",
       });
 
