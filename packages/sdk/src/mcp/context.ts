@@ -93,7 +93,7 @@ const createWorkspaceDB = async (ctx: AppContext): Promise<IWorkspaceDB> => {
     locator.project === "default" || locator.project === "personal";
   const projectDiscriminator = useLegacyWorkspace
     ? workspace.value
-    : locator.value;
+    : workspace.value;
 
   const integrationId = strProp(user, "integrationId");
   const appName = strProp(user, "appName");
