@@ -9,6 +9,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { useParams } from "react-router";
 import { DecopilotLayout } from "../layout/decopilot-layout.tsx";
 import { WorkflowFlowVisualization } from "./workflow-flow-visualization.tsx";
+import { useResourceWatch } from "../../hooks/use-resource-watch.ts";
 
 function tryParseJson(str: unknown): unknown {
   if (typeof str !== "string") {
@@ -449,7 +450,7 @@ function processStepGraph(graph: any): any[] {
   }
 }
 
-function WorkflowDetail() {
+function WorkflowDetailContent() {
   const { workflowName = "", instanceId = "" } = useParams();
   const { data } = useWorkflowStatus(workflowName, instanceId);
   const { locator } = useSDK();
@@ -457,6 +458,17 @@ function WorkflowDetail() {
   const { addRecent } = useRecentResources(projectKey);
   const params = useParams<{ org: string; project: string }>();
   const hasTrackedRecentRef = useRef(false);
+
+  // Initialize resource watch for this instance
+  // Workflows are stored in deconfig at /src/workflows/{name}.json
+  const watchEnabled = Boolean(workflowName && instanceId);
+  useResourceWatch({
+    resourceUri: watchEnabled
+      ? `workflow://${workflowName}/instances/${instanceId}`
+      : "",
+    pathFilter: watchEnabled ? `/src/workflows/${workflowName}.json` : "",
+    enabled: watchEnabled,
+  });
 
   // Track as recently opened when workflow is loaded (only once)
   useEffect(() => {
@@ -558,7 +570,7 @@ function WorkflowDetail() {
                     </Badge>
                     <Icon
                       name="timer"
-                      size={18}
+                      size={12}
                       className="text-muted-foreground"
                     />
                     <span className="font-semibold text-base">Duration:</span>
@@ -633,4 +645,6 @@ function WorkflowDetail() {
   );
 }
 
-export default WorkflowDetail;
+export default function WorkflowDetail() {
+  return <WorkflowDetailContent />;
+}
