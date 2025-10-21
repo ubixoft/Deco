@@ -111,7 +111,7 @@ const createWorkspaceDB = async (ctx: AppContext): Promise<IWorkspaceDB> => {
 export const workspaceDB = async (ctx: AppContext): Promise<IWorkspaceDB> => {
   return wrapIWorkspaceDB(
     await createWorkspaceDB(ctx),
-    ctx.locator?.value ?? ctx.workspace?.value,
+    ctx.workspace?.value,
   );
 };
 
