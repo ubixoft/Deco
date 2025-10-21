@@ -150,7 +150,7 @@ function WorkflowRunsContent({
     data,
     refetch: _refetch,
     isRefetching: _isRefetching,
-  } = useWorkflowRuns("all", 1, 25);
+  } = useWorkflowRuns("", 1, 25);
 
   const runs = data?.runs || [];
 
