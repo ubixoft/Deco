@@ -109,10 +109,7 @@ const createWorkspaceDB = async (ctx: AppContext): Promise<IWorkspaceDB> => {
 };
 
 export const workspaceDB = async (ctx: AppContext): Promise<IWorkspaceDB> => {
-  return wrapIWorkspaceDB(
-    await createWorkspaceDB(ctx),
-    ctx.workspace?.value,
-  );
+  return wrapIWorkspaceDB(await createWorkspaceDB(ctx), ctx.workspace?.value);
 };
 
 export type IWorkspaceDBExecResult = { result: QueryResult[] } & Disposable;
