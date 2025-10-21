@@ -46,6 +46,17 @@ const TreeNode = memo(function TreeNode({
   const count = getCount(value);
   const canExpand = isExpandable(value);
 
+  // Pre-compute entries for expandable objects/arrays - must be called before any conditional returns
+  const entries = useMemo(
+    () =>
+      canExpand
+        ? Array.isArray(value)
+          ? value.map((item, index) => [index.toString(), item] as const)
+          : Object.entries(value as Record<string, unknown>)
+        : [],
+    [value, canExpand],
+  );
+
   // Check for max depth - prevents infinite recursion and excessive nesting
   if (level >= MAX_TREE_DEPTH && canExpand) {
     return (
@@ -89,14 +100,6 @@ const TreeNode = memo(function TreeNode({
   }
 
   // Render expandable objects/arrays
-  const entries = useMemo(
-    () =>
-      Array.isArray(value)
-        ? value.map((item, index) => [index.toString(), item] as const)
-        : Object.entries(value as Record<string, unknown>),
-    [value],
-  );
-
   return (
     <div className="text-sm">
       <button
