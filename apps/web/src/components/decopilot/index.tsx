@@ -33,7 +33,9 @@ function useThreadTitle(
   threadId: string | undefined,
   fallback: string = "New chat",
 ) {
-  const { data: messages } = useThreadMessages(threadId ?? "no-thread");
+  const { data: messages } = useThreadMessages(threadId ?? "", {
+    shouldFetch: !!threadId,
+  });
 
   return useMemo(() => {
     if (!messages?.messages || messages.messages.length === 0) {
@@ -184,7 +186,9 @@ export function DecopilotChat() {
   const { data: agent } = useAgentData(agentId);
   const agentRoot = useAgentRoot(agentId);
   const { preferences } = useUserPreferences();
-  const { data } = useThreadMessages(currentThread?.id || "");
+  const { data } = useThreadMessages(currentThread?.id || "", {
+    shouldFetch: !!currentThread?.id,
+  });
   const threadMessages = data?.messages ?? [];
 
   // If no thread yet or agent not loaded, show a loading state
