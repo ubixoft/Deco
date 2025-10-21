@@ -245,7 +245,26 @@ export const deploy = async ({
   };
 
   const response = await deploy(manifest);
-  const { hosts } = response.structuredContent as { hosts: string[] };
+
+  // Validate response structure
+  if (
+    !response.structuredContent ||
+    typeof response.structuredContent !== "object"
+  ) {
+    console.error("❌ Deployment failed: Invalid response structure");
+    console.error("Response:", JSON.stringify(response, null, 2));
+    throw new Error("Deployment response missing structuredContent");
+  }
+
+  const structuredContent = response.structuredContent as { hosts?: string[] };
+  const hosts = structuredContent.hosts;
+
+  if (!hosts || !Array.isArray(hosts) || hosts.length === 0) {
+    console.error("❌ Deployment failed: No hosts returned in response");
+    console.error("Response:", JSON.stringify(response, null, 2));
+    throw new Error("Deployment response missing hosts array");
+  }
+
   console.log(`\n🎉 Deployed! Available at:`);
   hosts.forEach((host) => console.log(`  ${host}`));
   console.log();
