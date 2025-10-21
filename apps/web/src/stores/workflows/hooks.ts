@@ -121,7 +121,21 @@ export function useWorkflowStepData(stepName: string) {
   return useWorkflowStore(useShallow(selector));
 }
 
-// Helper functions
+// Helper functions and type guards
+function isObjectWithRequiredArray(
+  schema: unknown,
+): schema is { required: string[] } {
+  return (
+    typeof schema === "object" &&
+    schema !== null &&
+    "required" in schema &&
+    Array.isArray((schema as { required: unknown }).required) &&
+    (schema as { required: unknown[] }).required.every(
+      (item) => typeof item === "string",
+    )
+  );
+}
+
 function hasValidValue(value: unknown): boolean {
   // References are not valid for first step
   if (typeof value === "string" && value.startsWith("@")) {
@@ -164,6 +178,7 @@ export function useHasFirstStepInput() {
       return {
         persistedInput: state.stepInputs[stepName],
         defaultInput: firstStep.input,
+        inputSchema: firstStep.def.inputSchema,
       };
     }),
   );
@@ -171,7 +186,16 @@ export function useHasFirstStepInput() {
   return useMemo(() => {
     if (!firstStepData) return false;
 
-    const { persistedInput, defaultInput } = firstStepData;
+    const { persistedInput, defaultInput, inputSchema } = firstStepData;
+
+    // Check if the schema has any required properties
+    const hasRequiredProperties =
+      isObjectWithRequiredArray(inputSchema) && inputSchema.required.length > 0;
+
+    // If no required properties, empty input is valid
+    if (!hasRequiredProperties) {
+      return true;
+    }
 
     // Check if there's persisted input with valid values
     if (
