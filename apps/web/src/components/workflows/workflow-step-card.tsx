@@ -1,19 +1,17 @@
 import { Badge } from "@deco/ui/components/badge.tsx";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import {
-  Suspense,
-  lazy,
   memo,
   useCallback,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 import { getStatusBadgeVariant } from "./utils.ts";
 import { useWorkflowStepData } from "../../stores/workflows/hooks.ts";
 import { useWorkflowRunQuery } from "./workflow-run-detail.tsx";
 import { WorkflowStepInput } from "../workflow-builder/steps.tsx";
+import { JsonViewer } from "../chat/json-viewer.tsx";
 
 function deepParse(value: unknown, depth = 0): unknown {
   if (typeof value !== "string") {
@@ -59,92 +57,6 @@ function deepParse(value: unknown, depth = 0): unknown {
     return value;
   }
 }
-
-const LazyHighlighter = lazy(() => import("../chat/lazy-highlighter.tsx"));
-
-const JsonViewer = memo(function JsonViewer({
-  data,
-  title,
-  matchHeight = false,
-}: {
-  data: unknown;
-  title: string;
-  matchHeight?: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-  const parsedData = useMemo(() => deepParse(data), [data]);
-
-  const handleCopy = useCallback(async () => {
-    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
-      globalThis.window.alert("Clipboard API unavailable");
-      return;
-    }
-
-    const payload = JSON.stringify(parsedData, null, 2);
-    try {
-      await navigator.clipboard.writeText(payload);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch (error) {
-      console.error("Failed to copy data", error);
-    }
-  }, [parsedData]);
-
-  if (data === null || data === undefined) {
-    return (
-      <div className="space-y-2">
-        <p className="font-mono text-sm text-muted-foreground uppercase">
-          {title}
-        </p>
-        <div className="text-xs text-muted-foreground italic p-2">
-          No {title.toLowerCase()}
-        </div>
-      </div>
-    );
-  }
-
-  const jsonString = JSON.stringify(parsedData, null, 2);
-
-  return (
-    <div
-      className={`space-y-2 min-w-0 w-full ${matchHeight ? "h-full flex flex-col" : ""}`}
-    >
-      <p className="font-mono text-sm text-muted-foreground uppercase">
-        {title}
-      </p>
-      <div
-        className={`relative bg-muted rounded-xl ${matchHeight ? "min-h-[200px]" : ""} max-h-[300px] overflow-auto w-full ${matchHeight ? "flex-1" : ""}`}
-      >
-        <div className="absolute right-2 top-2 z-10 flex items-center gap-1 bg-background rounded-xl shadow-sm">
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
-          >
-            <Icon name={copied ? "check" : "content_copy"} size={16} />
-          </button>
-        </div>
-        <div
-          className={`overflow-x-auto w-full ${matchHeight ? "h-full" : ""}`}
-        >
-          <Suspense
-            fallback={
-              <pre className="p-3 text-xs font-mono whitespace-pre-wrap break-all">
-                {jsonString}
-              </pre>
-            }
-          >
-            <LazyHighlighter
-              language="json"
-              content={jsonString}
-              fillHeight={matchHeight}
-            />
-          </Suspense>
-        </div>
-      </div>
-    </div>
-  );
-});
 
 const StepError = memo(function StepError({ error }: { error: unknown }) {
   if (!error) return null;
@@ -402,7 +314,16 @@ interface StepOutputProps {
 const StepOutput = memo(function StepOutput({ output }: StepOutputProps) {
   if (output === undefined || output === null) return null;
 
-  return <JsonViewer data={output} title="Output" />;
+  const parsedOutput = useMemo(() => deepParse(output), [output]);
+
+  return (
+    <div className="space-y-2 min-w-0 w-full">
+      <p className="font-mono text-sm text-muted-foreground uppercase">
+        Output
+      </p>
+      <JsonViewer data={parsedOutput} maxHeight="300px" defaultView="tree" />
+    </div>
+  );
 });
 
 interface StepAttemptsProps {
