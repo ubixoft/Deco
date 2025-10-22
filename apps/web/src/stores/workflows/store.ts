@@ -78,7 +78,7 @@ export const createWorkflowStore = (
         ...createStepManagementSlice(set, get, api),
       }),
       {
-        name: `workflow-store-${initialState.workflowUri}`,
+        name: `workflow-store-${encodeURIComponent(initialState.workflowUri).slice(0, 200)}`,
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
           stepInputs: state.stepInputs,
