@@ -564,7 +564,7 @@ export const createTeam = createTool({
   inputSchema: z.lazy(() =>
     z.object({
       name: z.string(),
-      slug: z.string().optional(),
+      slug: z.string(),
     }),
   ),
 

@@ -1,0 +1,1 @@
+alter table teams alter column slug set not null;

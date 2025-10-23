@@ -45,7 +45,7 @@ export const getTeam = (
 
 export interface CreateTeamInput {
   name: string;
-  slug?: string;
+  slug: string;
   stripe_subscription_id?: string;
   [key: string]: unknown;
 }

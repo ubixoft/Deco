@@ -883,7 +883,7 @@ export type Database = {
           icon: string | null;
           id: string;
           name: string;
-          project_id: string | null;
+          project_id: string;
           workspace: string | null;
         };
         Insert: {
@@ -896,7 +896,7 @@ export type Database = {
           icon?: string | null;
           id?: string;
           name: string;
-          project_id?: string | null;
+          project_id: string;
           workspace?: string | null;
         };
         Update: {
@@ -909,7 +909,7 @@ export type Database = {
           icon?: string | null;
           id?: string;
           name?: string;
-          project_id?: string | null;
+          project_id?: string;
           workspace?: string | null;
         };
         Relationships: [
@@ -3207,30 +3207,33 @@ export type Database = {
         Row: {
           created_at: string | null;
           id: number;
+          mfa_required: boolean | null;
           name: string;
           plan: string | null;
           plan_id: string;
-          slug: string | null;
+          slug: string;
           stripe_subscription_id: string | null;
           theme: Json | null;
         };
         Insert: {
           created_at?: string | null;
           id?: number;
+          mfa_required?: boolean | null;
           name: string;
           plan?: string | null;
           plan_id?: string;
-          slug?: string | null;
+          slug: string;
           stripe_subscription_id?: string | null;
           theme?: Json | null;
         };
         Update: {
           created_at?: string | null;
           id?: number;
+          mfa_required?: boolean | null;
           name?: string;
           plan?: string | null;
           plan_id?: string;
-          slug?: string | null;
+          slug?: string;
           stripe_subscription_id?: string | null;
           theme?: Json | null;
         };
@@ -4583,10 +4586,7 @@ export type Database = {
       };
     };
     Functions: {
-      create_team_and_member: {
-        Args: { name: string };
-        Returns: number;
-      };
+      create_team_and_member: { Args: { name: string }; Returns: number };
       create_team_with_slug_and_member: {
         Args: { name: string; slug: string };
         Returns: number;
@@ -4599,14 +4599,8 @@ export type Database = {
         Args: { amount: string; target_user_id: string };
         Returns: undefined;
       };
-      exchange_session_share_code: {
-        Args: { code: string };
-        Returns: Json;
-      };
-      generate_referral_code: {
-        Args: Record<PropertyKey, never>;
-        Returns: string;
-      };
+      exchange_session_share_code: { Args: { code: string }; Returns: Json };
+      generate_referral_code: { Args: never; Returns: string };
       get_app_reactions: {
         Args: {
           app_id: number;
@@ -4692,32 +4686,45 @@ export type Database = {
           username: string;
         }[];
       };
-      get_following_by_user_id: {
-        Args:
-          | {
-              limit_rows?: number;
-              logged_user_id: string;
-              page: number;
-              profile_id: string;
-            }
-          | {
+      get_following_by_user_id:
+        | {
+            Args: {
               limit_rows?: number;
               logged_user_id: string;
               page: number;
               profile_id: string;
             };
-        Returns: {
-          avatar_url: string;
-          company: string;
-          created_at: string;
-          full_name: string;
-          id: number;
-          is_following: boolean;
-          occupation: string;
-          user_id: string;
-          username: string;
-        }[];
-      };
+            Returns: {
+              avatar_url: string;
+              company: string;
+              created_at: string;
+              full_name: string;
+              id: number;
+              is_following: boolean;
+              occupation: string;
+              user_id: string;
+              username: string;
+            }[];
+          }
+        | {
+            Args: {
+              limit_rows?: number;
+              logged_user_id: string;
+              page: number;
+              profile_id: string;
+            };
+            Returns: {
+              avatar_url: string;
+              company: string;
+              created_at: string;
+              full_name: string;
+              id: number;
+              is_following: boolean;
+              occupation: string;
+              user_id: string;
+              username: string;
+            }[];
+          };
       get_followings_by_profile_id: {
         Args: {
           limit_value: number;
@@ -4830,6 +4837,12 @@ export type Database = {
           student_id: number;
           university_id: number;
         };
+        SetofOptions: {
+          from: "*";
+          to: "students";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       get_university: {
         Args: { domain_text: string };
@@ -4842,6 +4855,12 @@ export type Database = {
           quantity: number | null;
           quantity_updated_at: string | null;
         }[];
+        SetofOptions: {
+          from: "*";
+          to: "universities";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       get_university_by_email: {
         Args: { user_email: string };
@@ -4853,6 +4872,12 @@ export type Database = {
           name: string | null;
           quantity: number | null;
           quantity_updated_at: string | null;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "universities";
+          isOneToOne: true;
+          isSetofReturn: false;
         };
       };
       is_member_of: {
@@ -4937,10 +4962,7 @@ export type Database = {
         };
         Returns: undefined;
       };
-      rpc_safe_execute: {
-        Args: { query_text: string };
-        Returns: Json[];
-      };
+      rpc_safe_execute: { Args: { query_text: string }; Returns: Json[] };
       search_community_apps: {
         Args: { search_text: string };
         Returns: {
@@ -4974,6 +4996,12 @@ export type Database = {
           student_id: number;
           university_id: number;
         };
+        SetofOptions: {
+          from: "*";
+          to: "students";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       update_university: {
         Args: { domain_text: string };
@@ -4986,15 +5014,18 @@ export type Database = {
           quantity: number | null;
           quantity_updated_at: string | null;
         }[];
+        SetofOptions: {
+          from: "*";
+          to: "universities";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       user_has_webdraw_access: {
         Args: { useremail: string };
         Returns: boolean;
       };
-      webdraw_exchange_auth_code: {
-        Args: { code: string };
-        Returns: Json;
-      };
+      webdraw_exchange_auth_code: { Args: { code: string }; Returns: Json };
     };
     Enums: {
       deco_chat_visibility_type: "public" | "private" | "role_based";
