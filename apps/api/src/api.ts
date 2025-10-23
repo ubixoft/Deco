@@ -29,15 +29,15 @@ import {
   createWorkflowRunsResourceV2Implementation,
   createWorkflowViewsV2,
   DECONFIG_TOOLS,
-  documentViews as legacyDocumentViews,
   EMAIL_TOOLS,
-  viewViews as legacyViewViews,
   getIntegration,
   getPresignedReadUrl_WITHOUT_CHECKING_AUTHORIZATION,
   getRegistryApp,
   getWorkspaceBucketName,
   GLOBAL_TOOLS,
   type IntegrationWithTools,
+  documentViews as legacyDocumentViews,
+  viewViews as legacyViewViews,
   workflowViews as legacyWorkflowViews,
   ListToolsMiddleware,
   PrincipalExecutionContext,
@@ -50,10 +50,12 @@ import {
   watchSSE,
   withMCPAuthorization,
   withMCPErrorHandling,
+  WithTool,
   WorkflowBindingImplOptions,
   wrapToolFn,
 } from "@deco/sdk/mcp";
 import { getApps, getGroupByAppName } from "@deco/sdk/mcp/groups";
+import { executeTool } from "@deco/sdk/mcp/tools/api";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   CallToolRequestSchema,
@@ -69,6 +71,7 @@ import { endTime, startTime } from "hono/timing";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { studio } from "outerbase-browsable-do-enforced";
 import { z } from "zod";
+import { convertJsonSchemaToZod } from "zod-from-json-schema";
 import { ROUTES as loginRoutes } from "./auth/index.ts";
 import { withActorsStubMiddleware } from "./middlewares/actors-stub.ts";
 import { withActorsMiddleware } from "./middlewares/actors.ts";
@@ -747,6 +750,212 @@ const projectTools = (ctx: Context) => {
   return Promise.resolve([...PROJECT_TOOLS, ...createContextBasedTools(ctx)]);
 };
 
+const createSelfTools = async (ctx: Context) => {
+  const appCtx = honoCtxToAppCtx(ctx);
+  const client = createDeconfigClientForContext(appCtx);
+
+  // 1. Get all custom tools using DECO_RESOURCE_TOOL_SEARCH
+  const toolResourceV2 = createToolResourceV2Implementation(
+    client,
+    formatIntegrationId(WellKnownMcpGroups.Tools),
+  );
+
+  const toolsResourceClient = createMCPToolsStub({
+    tools: toolResourceV2,
+    context: appCtx,
+  });
+
+  const customToolsResult = await State.run(
+    appCtx,
+    async () =>
+      await toolsResourceClient.DECO_RESOURCE_TOOL_SEARCH({ query: "" }),
+  );
+
+  // 2. Read each tool's full definition (search only returns metadata)
+  const toolsWithFullData = await Promise.all(
+    (
+      customToolsResult as {
+        items: Array<{
+          id: string;
+          uri: string;
+          description: string;
+          data: unknown;
+        }>;
+      }
+    ).items.map(async (toolUri) => {
+      const fullTool = await State.run(
+        appCtx,
+        async () =>
+          await toolsResourceClient.DECO_RESOURCE_TOOL_READ({
+            uri: toolUri.uri,
+          }),
+      );
+      return fullTool;
+    }),
+  );
+
+  // 3. Transform custom tools into executable tools
+  const customTools = toolsWithFullData.map((toolResult: unknown) => {
+    // @ts-expect-error - Typings not really working, but this is fine
+    const toolData = toolResult.data;
+
+    // Convert JSON Schema to Zod for proper UI rendering
+    const inputSchema = convertJsonSchemaToZod(toolData.inputSchema);
+    const outputSchema = convertJsonSchemaToZod(toolData.outputSchema);
+
+    // Create a tool that executes the custom tool
+    return {
+      name: toolData.name,
+      description: toolData.description,
+      inputSchema,
+      outputSchema,
+      handler: async (input) => {
+        await assertWorkspaceResourceAccess(appCtx, "DECO_TOOL_CALL_TOOL");
+
+        // Execute the tool without JSON schema validation (already validated by MCP layer via Zod schema)
+        return await State.run(appCtx, async () => {
+          const contextWithTool = {
+            ...appCtx,
+            tool: { name: toolData.name },
+          } as unknown;
+
+          if (!toolData.execute) {
+            return {
+              error: `Tool '${toolData.name}' is missing execute code`,
+            };
+          }
+
+          const { result } = await executeTool(
+            toolData,
+            input,
+            contextWithTool as WithTool<AppContext>,
+            appCtx.token,
+          );
+
+          return result;
+        });
+      },
+    } as Tool;
+  });
+
+  // 4. Get all workflows and create start tools
+  const workflowResourceV2 = createWorkflowResourceV2Implementation(
+    client,
+    formatIntegrationId(WellKnownMcpGroups.Workflows),
+  );
+
+  const workflowsResourceClient = createMCPToolsStub({
+    tools: workflowResourceV2,
+    context: appCtx,
+  });
+
+  const workflowsResult = await State.run(
+    appCtx,
+    async () =>
+      await workflowsResourceClient.DECO_RESOURCE_WORKFLOW_SEARCH({
+        query: "",
+      }),
+  );
+
+  // 5. Read each workflow's full definition (search only returns metadata)
+  const workflowsWithFullData = await Promise.all(
+    (
+      workflowsResult as {
+        items: Array<{
+          id: string;
+          uri: string;
+          description: string;
+          data: unknown;
+        }>;
+      }
+    ).items.map(async (workflowUri) => {
+      const fullWorkflow = await State.run(
+        appCtx,
+        async () =>
+          await workflowsResourceClient.DECO_RESOURCE_WORKFLOW_READ({
+            uri: workflowUri.uri,
+          }),
+      );
+      return fullWorkflow;
+    }),
+  );
+
+  // 6. Create workflow start tools (similar to packages/runtime/src/mastra.ts:416-442)
+  const workflowTools = workflowsWithFullData.map((workflowResult: unknown) => {
+    // @ts-expect-error - Typings not really working, but this is fine
+    const workflow = workflowResult.data;
+
+    // Convert the first step's inputSchema from JSON Schema to Zod
+    // Note: The schema is at workflow.steps[0].def.inputSchema, not workflow.steps[0].inputSchema
+    let firstStepInputSchema: z.ZodTypeAny = z.object({}).passthrough();
+    if (workflow.steps?.[0]?.def?.inputSchema) {
+      try {
+        // Use convertJsonSchemaToZod to convert JSON Schema to Zod
+        firstStepInputSchema = convertJsonSchemaToZod(
+          workflow.steps[0].def.inputSchema,
+        );
+      } catch (e) {
+        // If there's any error parsing, fall back to empty object
+        console.error("[Self MCP] Error converting workflow input schema:", e);
+        firstStepInputSchema = z.object({}).passthrough();
+      }
+    }
+
+    return {
+      name: `workflow_start_${workflow.name}`,
+      description: workflow.description ?? `Start workflow ${workflow.name}`,
+      inputSchema: firstStepInputSchema,
+      outputSchema: z.object({
+        runId: z.string(),
+        uri: z.string(),
+      }),
+      handler: async (input: unknown) => {
+        await assertWorkspaceResourceAccess(appCtx, "DECO_TOOL_CALL_TOOL");
+
+        // Use DECO_WORKFLOW_START to start the workflow
+        return await State.run(appCtx, async () => {
+          const workflowBinding = createWorkflowBindingImpl({
+            // @ts-expect-error - Typings not really working, but this is fine
+            resourceWorkflowRead: (uri: string) =>
+              State.run(
+                appCtx,
+                async () =>
+                  await workflowsResourceClient.DECO_RESOURCE_WORKFLOW_READ({
+                    uri,
+                  }),
+              ),
+            // @ts-expect-error - Typings not really working, but this is fine
+            resourceWorkflowUpdate: (uri: string, data: unknown) =>
+              State.run(
+                appCtx,
+                async () =>
+                  await workflowsResourceClient.DECO_RESOURCE_WORKFLOW_UPDATE({
+                    uri,
+                    data,
+                  }),
+              ),
+          });
+
+          const startTool = workflowBinding.find(
+            (t) => t.name === "DECO_WORKFLOW_START",
+          );
+          if (!startTool) {
+            throw new Error("DECO_WORKFLOW_START tool not found");
+          }
+          return await startTool.handler({
+            // @ts-expect-error - Typings not really working, but this is fine
+            uri: workflowResult.uri,
+            // @ts-expect-error - Typings not really working, but this is fine
+            input: input,
+          });
+        });
+      },
+    } as Tool;
+  });
+
+  return [...customTools, ...workflowTools];
+};
+
 app.all("/:org/:project/mcp", createMCPHandlerFor(projectTools));
 
 app.all("/:org/:project/agents/:agentId/mcp", createMCPHandlerFor(AGENT_TOOLS));
@@ -763,6 +972,8 @@ app.post(
   `/:org/:project/${WellKnownMcpGroups.Email}/mcp`,
   createMCPHandlerFor(EMAIL_TOOLS),
 );
+
+app.post("/:org/:project/self/mcp", createMCPHandlerFor(createSelfTools));
 
 app.post("/:org/:project/:integrationId/mcp", async (c) => {
   const mcpServerProxy = await createMcpServerProxy(c);
