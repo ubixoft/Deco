@@ -23,13 +23,14 @@ import { useAgentSettingsToolsSet } from "../../hooks/use-agent-settings-tools-s
 import { useFileUpload } from "../../hooks/use-file-upload.ts";
 import { useUserPreferences } from "../../hooks/use-user-preferences.ts";
 import { ContextResources } from "../chat/context-resources.tsx";
-import { useAgenticChat } from "./provider.tsx";
 import { useThreadContext } from "../decopilot/thread-context-provider.tsx";
-import type { ToolsetContextItem } from "./types.ts";
 import { SelectConnectionDialog } from "../integrations/select-connection-dialog.tsx";
 import { AudioButton } from "./audio-button.tsx";
+import { ErrorBanner } from "./error-banner.tsx";
 import { ModelSelector } from "./model-selector.tsx";
+import { useAgenticChat } from "./provider.tsx";
 import { RichTextArea, type RichTextAreaHandle } from "./rich-text.tsx";
+import type { ToolsetContextItem } from "./types.ts";
 
 export function ChatInput({
   disabled,
@@ -38,8 +39,18 @@ export function ChatInput({
   disabled?: boolean;
   rightNode?: ReactNode;
 } = {}) {
-  const { chat, input, setInput, agent, sendMessage, isLoading, uiOptions } =
-    useAgenticChat();
+  const {
+    chat,
+    input,
+    setInput,
+    agent,
+    sendMessage,
+    sendTextMessage,
+    isLoading,
+    uiOptions,
+    runtimeError,
+    clearError,
+  } = useAgenticChat();
   const { stop } = chat;
   const { preferences, setPreferences } = useUserPreferences();
   const { enableAllTools } = useAgentSettingsToolsSet();
@@ -148,6 +159,20 @@ export function ChatInput({
     openFileDialog();
   }, [openFileDialog]);
 
+  const handleFixError = useCallback(() => {
+    if (!runtimeError) return;
+
+    // Send the error message to chat
+    sendTextMessage(runtimeError.message, runtimeError.context);
+
+    // Clear the error banner after sending
+    clearError();
+  }, [runtimeError, clearError, sendTextMessage]);
+
+  const handleDismissError = useCallback(() => {
+    clearError();
+  }, [clearError]);
+
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -195,7 +220,17 @@ export function ChatInput({
   };
 
   return (
-    <div className="w-full mx-auto relative">
+    <div className="w-full mx-auto relative flex flex-col pb-2.5 pt-0 px-0">
+      {/* Error Banner */}
+      {runtimeError && (
+        <ErrorBanner
+          message={runtimeError.displayMessage || "App error found"}
+          errorCount={runtimeError.errorCount}
+          onFix={handleFixError}
+          onDismiss={handleDismissError}
+        />
+      )}
+
       {/* Hidden file input for file uploads */}
       <input
         type="file"

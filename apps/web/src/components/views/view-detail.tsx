@@ -1,16 +1,21 @@
 import {
   DECO_CMS_API_URL,
-  useViewByUriV2,
-  useSDK,
   useRecentResources,
+  useSDK,
+  useViewByUriV2,
 } from "@deco/sdk";
 import { Icon } from "@deco/ui/components/icon.tsx";
 import { Spinner } from "@deco/ui/components/spinner.tsx";
-import { useMemo, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useParams } from "react-router";
-import { EmptyState } from "../common/empty-state.tsx";
-import { PreviewIframe } from "../agent/preview.tsx";
 import { generateViewHTML } from "../../utils/view-template.ts";
+import { PreviewIframe } from "../agent/preview.tsx";
+import {
+  appendRuntimeError,
+  clearRuntimeError,
+  type RuntimeErrorEntry,
+} from "../chat/provider.tsx";
+import { EmptyState } from "../common/empty-state.tsx";
 
 interface ViewDetailProps {
   resourceUri: string;
@@ -58,6 +63,54 @@ export function ViewDetail({ resourceUri }: ViewDetailProps) {
     }
   }, [effectiveView, resourceUri, projectKey, org, project, addRecent]);
 
+  // Listen for messages from iframe (Fix with AI and Runtime Errors)
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      // Validate message structure
+      if (!event.data || !event.data.type) {
+        return;
+      }
+
+      // Handle Runtime Error messages
+      if (event.data.type === "RUNTIME_ERROR") {
+        const errorData = event.data.payload as RuntimeErrorEntry;
+        appendRuntimeError(
+          { ...errorData, type: "Runtime Error" },
+          resourceUri,
+          effectiveView?.name,
+        );
+      }
+
+      // Handle Resource Error messages
+      if (event.data.type === "RESOURCE_ERROR") {
+        const errorData = event.data.payload as RuntimeErrorEntry;
+        appendRuntimeError(
+          { ...errorData, type: "Resource Error" },
+          resourceUri,
+          effectiveView?.name,
+        );
+      }
+
+      // Handle Unhandled Promise Rejection messages
+      if (event.data.type === "UNHANDLED_REJECTION") {
+        const errorData = event.data.payload as RuntimeErrorEntry;
+        appendRuntimeError(
+          { ...errorData, type: "Unhandled Rejection" },
+          resourceUri,
+          effectiveView?.name,
+        );
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [resourceUri, effectiveView?.name]);
+
+  // Clear errors when view changes
+  useEffect(() => {
+    clearRuntimeError();
+  }, [resourceUri]);
+
   // Generate HTML from React code on the client side
   const htmlValue = useMemo(() => {
     if (!effectiveView?.code || !org || !project) return null;
@@ -97,7 +150,7 @@ export function ViewDetail({ resourceUri }: ViewDetailProps) {
   return (
     <div className="h-full w-full flex flex-col">
       {/* Preview Section - Full Container */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         {htmlValue ? (
           <PreviewIframe
             srcDoc={htmlValue}
