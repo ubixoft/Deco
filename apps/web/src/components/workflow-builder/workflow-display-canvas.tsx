@@ -32,7 +32,9 @@ import { useResourceWatch } from "../../hooks/use-resource-watch.ts";
 import { useQueryClient } from "@tanstack/react-query";
 import { resourceKeys } from "@deco/sdk";
 import { useWorkflowSync } from "./hooks.ts";
-import { WorkflowStepsList } from "./steps.tsx";
+import { WorkflowStepsList } from "./steps/list.tsx";
+import { ResetWorkflowButton } from "./reset-workflow-button.tsx";
+import { SaveWorkflowButton } from "./save-workflow-button.tsx";
 
 interface WorkflowDisplayCanvasProps {
   resourceUri: string;
@@ -41,26 +43,26 @@ interface WorkflowDisplayCanvasProps {
 
 export function WorkflowDisplay({ resourceUri }: WorkflowDisplayCanvasProps) {
   const storeRef = useRef<StoreApi<Store> | null>(null);
-  const lastWorkflowNameRef = useRef<string | null>(null);
+  const lastWorkflowKeyRef = useRef<string | null>(null);
 
   const { data: resource, isLoading: isLoadingWorkflow } = useWorkflowSync(
     resourceUri,
     storeRef,
   );
   const workflow = resource?.data;
-  const workflowName = workflow?.name;
+  const workflowKey = workflow ? resourceUri : null;
 
   const store = useMemo(() => {
     if (!workflow) return null;
 
-    // Only recreate store when workflow name changes (identity check)
-    if (storeRef.current && lastWorkflowNameRef.current === workflow.name) {
+    // Recreate store when the workflow identity (URI) changes
+    if (storeRef.current && lastWorkflowKeyRef.current === workflowKey) {
       return storeRef.current;
     }
 
     const s = createWorkflowStore({ workflow, workflowUri: resourceUri });
     storeRef.current = s;
-    lastWorkflowNameRef.current = workflow.name;
+    lastWorkflowKeyRef.current = workflowKey;
 
     if (import.meta.env.DEV) {
       console.log(
@@ -69,7 +71,7 @@ export function WorkflowDisplay({ resourceUri }: WorkflowDisplayCanvasProps) {
       );
     }
     return s;
-  }, [workflowName]); // Only depend on workflowName (primitive), not workflow object
+  }, [workflowKey]); // Depend on unique identity
 
   if (isLoadingWorkflow && !workflow) {
     return (
@@ -250,6 +252,8 @@ export const Canvas = memo(function Canvas() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ResetWorkflowButton />
+            <SaveWorkflowButton />
             <StartWorkflowButton />
           </div>
         </div>

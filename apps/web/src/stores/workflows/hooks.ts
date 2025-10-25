@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { useWorkflowStore } from "./provider";
 
 // Stable empty array to prevent reference instability in selectors
-const EMPTY_VIEWS: readonly string[] = [];
+export const EMPTY_VIEWS: readonly string[] = [];
 
-// Primitive selectors - use Object.is for strict equality
+// Primitive selectors - use Object.is for exact equality
 export function useWorkflowName() {
   return useWorkflowStore((state) => state.workflow.name, Object.is);
 }
@@ -85,6 +85,19 @@ export function useWorkflowStepDefinition(stepName: string) {
     (state) =>
       state.workflow.steps.find((step) => step.def.name === stepName)?.def,
   );
+}
+
+export function useStepTools(stepName: string) {
+  return useWorkflowStore((state) => {
+    const step = state.workflow.steps.find((s) => s.def.name === stepName);
+    return step?.def.dependencies?.flatMap(
+      (dep) =>
+        dep.toolNames?.map((toolName) => ({
+          name: toolName,
+          integration: { name: dep.integrationId, icon: undefined },
+        })) ?? [],
+    );
+  });
 }
 
 export function useWorkflowUri() {
@@ -220,13 +233,43 @@ export function useHasFirstStepInput() {
   }, [firstStepData]);
 }
 
-// All actions grouped in one hook for convenience
+// UI state selectors
+export function useExecuteEditorStepName() {
+  return useWorkflowStore((state) => state.executeEditorStepName, Object.is);
+}
+
+export function useIsExecuteEditorOpen(stepName: string) {
+  return useWorkflowStore(
+    (state) => state.executeEditorStepName === stepName,
+    Object.is,
+  );
+}
+
+export function useExecuteDraft(stepName: string) {
+  return useWorkflowStore((state) => state.executeDrafts[stepName], Object.is);
+}
+
+export function useHasExecuteDraft(stepName: string) {
+  return useWorkflowStore(
+    (state) => stepName in state.executeDrafts,
+    Object.is,
+  );
+}
+
+export function useDirtySteps() {
+  return useWorkflowStore((state) => Object.keys(state.executeDrafts));
+}
+
+// All actions grouped in one hook (actions are stable, but return object needs shallow)
 export function useWorkflowActions() {
   return useWorkflowStore((state) => ({
     // Sync actions
     handleExternalUpdate: state.handleExternalUpdate,
     acceptPendingUpdate: state.acceptPendingUpdate,
     dismissPendingUpdate: state.dismissPendingUpdate,
+    resetAndResync: state.resetAndResync,
+    getWorkflowToSave: state.getWorkflowToSave,
+    handleSaveSuccess: state.handleSaveSuccess,
     // Step management actions
     addStep: state.addStep,
     updateStep: state.updateStep,
@@ -238,5 +281,22 @@ export function useWorkflowActions() {
     setStepInput: state.setStepInput,
     setStepExecutionStart: state.setStepExecutionStart,
     setStepExecutionEnd: state.setStepExecutionEnd,
+    runStep: state.runStep,
+    // Step editing actions
+    openExecuteEditor: state.openExecuteEditor,
+    closeExecuteEditor: state.closeExecuteEditor,
+    toggleExecuteEditor: state.toggleExecuteEditor,
+    setExecuteDraft: state.setExecuteDraft,
+    clearExecuteDraft: state.clearExecuteDraft,
+    hasExecuteDraft: state.hasExecuteDraft,
+    getDirtySteps: state.getDirtySteps,
   }));
+}
+
+export function useGetWorkflowToSave() {
+  return useWorkflowStore((state) => state.getWorkflowToSave, Object.is);
+}
+
+export function useHandleSaveSuccess() {
+  return useWorkflowStore((state) => state.handleSaveSuccess, Object.is);
 }

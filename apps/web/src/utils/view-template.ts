@@ -170,10 +170,12 @@ function createSDK(apiBase: string, ws: string, proj: string) {
 /**
  * Generates complete HTML document from React component code
  *
- * @param code - The React component code (must define `export const App = () => {}`)
+ * @param code - The React component code (must define `export const App = (props) => {}`).
+ *               The App component will receive input data as props when passed from the parent window.
  * @param apiBase - The API base URL for tool calls (e.g., 'http://localhost:3001' or 'https://api.decocms.com')
  * @param workspace - The organization/workspace name (from route params)
  * @param project - The project name (from route params)
+ * @param trustedOrigin - The trusted origin for postMessage validation (typically the admin app's origin)
  * @param importmap - Optional custom import map (defaults to React 19.2.0 imports)
  * @returns Complete HTML document ready for iframe srcDoc
  */
@@ -182,10 +184,33 @@ export function generateViewHTML(
   apiBase: string,
   workspace: string,
   project: string,
+  trustedOrigin: string,
   importmap?: Record<string, string>,
 ): string {
   const ws = workspace;
   const proj = project;
+
+  // Validate trustedOrigin parameter
+  if (!trustedOrigin || typeof trustedOrigin !== "string") {
+    throw new Error(
+      "generateViewHTML: trustedOrigin is required and must be a non-empty string",
+    );
+  }
+
+  // Validate that trustedOrigin is a valid origin (protocol + host)
+  try {
+    const url = new URL(trustedOrigin);
+    // Ensure it's just the origin (no path, query, or hash)
+    if (url.origin !== trustedOrigin) {
+      throw new Error(
+        `generateViewHTML: trustedOrigin must be a valid origin (protocol + host only). Got: ${trustedOrigin}`,
+      );
+    }
+  } catch (error) {
+    throw new Error(
+      `generateViewHTML: Invalid trustedOrigin URL: ${trustedOrigin}. ${error instanceof Error ? error.message : ""}`,
+    );
+  }
 
   // Escape closing script tags in user code to prevent HTML parsing issues
   const escapedCode = escapeScriptTags(code);
@@ -202,6 +227,61 @@ export function generateViewHTML(
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DECO View</title>
+
+  <!-- Initialize view data (will be populated by parent window via postMessage) -->
+  <script>
+    window.viewData = {};
+    
+    // Configured trusted origin for postMessage validation
+    const trustedOrigin = '${trustedOrigin}';
+    
+    // Compute expected origin from document.referrer with strict validation
+    const expectedOrigin = (() => {
+      try {
+        if (document.referrer) {
+          const referrerOrigin = new URL(document.referrer).origin;
+          // Verify that referrer matches the trusted origin
+          if (referrerOrigin === trustedOrigin) {
+            return referrerOrigin;
+          }
+          console.warn(
+            'View Security Warning: document.referrer origin does not match trustedOrigin. ' +
+            'Referrer: ' + referrerOrigin + ', Expected: ' + trustedOrigin
+          );
+        }
+      } catch (e) {
+        console.warn('Failed to parse document.referrer:', e);
+      }
+      
+      // Fallback to configured trusted origin when referrer is absent or mismatched
+      // This is safer than using window.location.origin which could be attacker-controlled
+      console.info('Using configured trustedOrigin for postMessage validation: ' + trustedOrigin);
+      return trustedOrigin;
+    })();
+    
+    // Listen for data from parent window with strict origin and source validation
+    window.addEventListener('message', function(event) {
+      // Validate message type, source, and origin before processing
+      if (
+        event.data && 
+        event.data.type === 'VIEW_DATA' &&
+        event.source === window.parent &&
+        event.origin === expectedOrigin
+      ) {
+        window.viewData = event.data.payload;
+        // Dispatch custom event so React can re-render with new props
+        window.dispatchEvent(new CustomEvent('viewDataUpdated', { detail: event.data.payload }));
+      } else if (event.data && event.data.type === 'VIEW_DATA') {
+        // Log rejected messages for debugging (without exposing sensitive data)
+        console.warn(
+          'View Security: Rejected VIEW_DATA message. ' +
+          'Origin: ' + event.origin + ' (expected: ' + expectedOrigin + '), ' +
+          'Source valid: ' + (event.source === window.parent)
+        );
+      }
+      // Silently ignore other message types
+    });
+  </script>
 
   <!-- View SDK -->
   <script>
@@ -269,6 +349,20 @@ ${escapedCode}
       document.getElementById('root').innerHTML = errorHtml;
     };
     
+    // Global root instance for re-rendering
+    let rootInstance = null;
+    
+    // Render function that can be called multiple times
+    const renderApp = (App) => {
+      if (!rootInstance) {
+        rootInstance = createRoot(document.getElementById('root'));
+      }
+      // Pass window.viewData as props to the App component
+      rootInstance.render(
+        createElement(App, window.viewData || {}, null)
+      );
+    };
+    
     try {
       // Compile user's code
       const userCode = document.getElementById('user-code').textContent;
@@ -287,10 +381,13 @@ ${escapedCode}
         throw new Error('App component not found. Please define: export const App = () => { ... }');
       }
       
-      // Render App wrapped in ErrorBoundary
-      createRoot(document.getElementById('root')).render(
-        createElement(App, {}, null)
-      );
+      // Initial render with current viewData
+      renderApp(App);
+      
+      // Re-render when viewData updates
+      window.addEventListener('viewDataUpdated', () => {
+        renderApp(App);
+      });
     } catch (error) {
       showError(error);
     }

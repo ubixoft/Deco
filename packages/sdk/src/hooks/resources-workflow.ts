@@ -140,16 +140,6 @@ export function startWorkflow(
   return client[WORKFLOW_TOOLS.START](params as any, { signal });
 }
 
-export function runStep(
-  locator: ProjectLocator,
-  params: WorkflowRunStepParams,
-  signal?: AbortSignal,
-) {
-  // oxlint-disable-next-line no-explicit-any
-  const client = workspaceResourceClient(locator) as any;
-  // oxlint-disable-next-line no-explicit-any
-  return client[WORKFLOW_TOOLS.RUN_STEP](params as any, { signal });
-}
 /**
  * Hook to fetch a workflow by URI
  *
@@ -182,7 +172,9 @@ export const useUpsertWorkflow = () => {
       return result;
     },
     onSuccess: (data) => {
-      // Notify about the resource update
+      // Broadcast workflow upsert to other tabs/components for consistency
+      // with other resource types (agents, tools, etc.) and to ensure
+      // all listeners react to workflow changes
       if (data.uri) {
         notifyResourceUpdate(data.uri);
       }
