@@ -64,9 +64,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { type Context, Hono } from "hono";
 import { env, getRuntimeKey } from "hono/adapter";
-import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
-import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 import { endTime, startTime } from "hono/timing";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { studio } from "outerbase-browsable-do-enforced";
@@ -76,6 +75,7 @@ import { ROUTES as loginRoutes } from "./auth/index.ts";
 import { withActorsStubMiddleware } from "./middlewares/actors-stub.ts";
 import { withActorsMiddleware } from "./middlewares/actors.ts";
 import { withContextMiddleware } from "./middlewares/context.ts";
+import { loggerMiddleware } from "./middlewares/logger.ts";
 import { setUserMiddleware } from "./middlewares/user.ts";
 import { handleCodeExchange } from "./oauth/code.ts";
 import { type AppContext, type AppEnv, State } from "./utils/context.ts";
@@ -223,18 +223,29 @@ const createMCPHandlerFor = (
           ? tool.outputSchema.schema
           : tool.outputSchema;
 
+      // Unwrap ZodEffects (from .refine(), .transform(), etc.) to get the base schema
+      const unwrapSchema = (schema: z.ZodTypeAny): z.ZodTypeAny => {
+        if (schema instanceof z.ZodEffects) {
+          return unwrapSchema(schema.innerType());
+        }
+        return schema;
+      };
+
+      const baseInputSchema = unwrapSchema(evalInputSchema);
+      const baseOutputSchema = unwrapSchema(evalOutputSchema);
+
       server.registerTool(
         tool.name,
         {
           annotations: tool.annotations,
           description: tool.description,
           inputSchema:
-            "shape" in evalInputSchema
-              ? (evalInputSchema.shape as z.ZodRawShape)
+            "shape" in baseInputSchema
+              ? (baseInputSchema.shape as z.ZodRawShape)
               : z.object({}).shape,
           outputSchema:
-            evalOutputSchema && "shape" in evalOutputSchema
-              ? (evalOutputSchema.shape as z.ZodRawShape)
+            baseOutputSchema && "shape" in baseOutputSchema
+              ? (baseOutputSchema.shape as z.ZodRawShape)
               : z.object({}).shape,
         },
         // @ts-expect-error: zod shape is not typed
@@ -537,8 +548,8 @@ const createMcpServerProxy = (c: Context) => {
   );
 };
 
-// Add logger middleware
-app.use(logger());
+// Logger middleware with tool information highlighted
+app.use(loggerMiddleware);
 
 // Enable CORS for all routes on api.decocms.com and localhost
 app.use(
@@ -582,8 +593,13 @@ app.use(async (c, next) => {
 
 app.use(withActorsMiddleware);
 
-app.post(`/contracts/mcp`, createMCPHandlerFor(CONTRACTS_TOOLS));
-app.post(`/deconfig/mcp`, createMCPHandlerFor(DECONFIG_TOOLS));
+const contractsMcpHandler = createMCPHandlerFor(CONTRACTS_TOOLS);
+app.post(`/contracts/mcp`, contractsMcpHandler);
+app.post(`/contracts/mcp/tool/:toolName`, contractsMcpHandler);
+
+const deconfigMcpHandler = createMCPHandlerFor(DECONFIG_TOOLS);
+app.post(`/deconfig/mcp`, deconfigMcpHandler);
+app.post(`/deconfig/mcp/tool/:toolName`, deconfigMcpHandler);
 app.get(`/:org/:project/deconfig/watch`, async (ctx) => {
   const appCtx = honoCtxToAppCtx(ctx);
   return await watchSSE(appCtx, {
@@ -601,7 +617,9 @@ app.get(`/:org/:project/deconfig/watch`, async (ctx) => {
   });
 });
 
-app.all("/mcp", createMCPHandlerFor(GLOBAL_TOOLS));
+const globalMcpHandler = createMCPHandlerFor(GLOBAL_TOOLS);
+app.all("/mcp", globalMcpHandler);
+app.all("/mcp/tool/:toolName", globalMcpHandler);
 
 app.get("/mcp/groups", (ctx) => {
   return ctx.json(getApps());
@@ -956,26 +974,38 @@ const createSelfTools = async (ctx: Context) => {
   return [...customTools, ...workflowTools];
 };
 
-app.all("/:org/:project/mcp", createMCPHandlerFor(projectTools));
+const projectMcpHandler = createMCPHandlerFor(projectTools);
+app.all("/:org/:project/mcp", projectMcpHandler);
+app.all("/:org/:project/mcp/tool/:toolName", projectMcpHandler);
 
-app.all("/:org/:project/agents/:agentId/mcp", createMCPHandlerFor(AGENT_TOOLS));
+const agentMcpHandler = createMCPHandlerFor(AGENT_TOOLS);
+app.all("/:org/:project/agents/:agentId/mcp", agentMcpHandler);
+app.all("/:org/:project/agents/:agentId/mcp/tool/:toolName", agentMcpHandler);
 
 // Tool call endpoint handlers
-app.post("/tools/call/:tool", createToolCallHandlerFor(GLOBAL_TOOLS));
+const globalToolCallHandler = createToolCallHandlerFor(GLOBAL_TOOLS);
+app.post("/tools/call/:tool", globalToolCallHandler);
 
+const projectToolCallHandler = createToolCallHandlerFor(projectTools);
+app.post("/:org/:project/tools/call/:tool", projectToolCallHandler);
+
+const emailMcpHandler = createMCPHandlerFor(EMAIL_TOOLS);
+app.post(`/:org/:project/${WellKnownMcpGroups.Email}/mcp`, emailMcpHandler);
 app.post(
-  "/:org/:project/tools/call/:tool",
-  createToolCallHandlerFor(projectTools),
+  `/:org/:project/${WellKnownMcpGroups.Email}/mcp/tool/:toolName`,
+  emailMcpHandler,
 );
 
-app.post(
-  `/:org/:project/${WellKnownMcpGroups.Email}/mcp`,
-  createMCPHandlerFor(EMAIL_TOOLS),
-);
-
-app.post("/:org/:project/self/mcp", createMCPHandlerFor(createSelfTools));
+const selfMcpHandler = createMCPHandlerFor(createSelfTools);
+app.post("/:org/:project/self/mcp", selfMcpHandler);
+app.post("/:org/:project/self/mcp/tool/:toolName", selfMcpHandler);
 
 app.post("/:org/:project/:integrationId/mcp", async (c) => {
+  const mcpServerProxy = await createMcpServerProxy(c);
+
+  return mcpServerProxy.fetch(c.req.raw);
+});
+app.post("/:org/:project/:integrationId/mcp/tool/:toolName", async (c) => {
   const mcpServerProxy = await createMcpServerProxy(c);
 
   return mcpServerProxy.fetch(c.req.raw);
@@ -986,8 +1016,21 @@ app.post("/:org/:project/:branch/:integrationId/mcp", async (c) => {
 
   return mcpServerProxy.fetch(c.req.raw);
 });
+app.post(
+  "/:org/:project/:branch/:integrationId/mcp/tool/:toolName",
+  async (c) => {
+    const mcpServerProxy = await createMcpServerProxy(c);
+
+    return mcpServerProxy.fetch(c.req.raw);
+  },
+);
 
 app.post("/apps/mcp", async (c) => {
+  const mcpServerProxy = await createMcpServerProxyForAppName(c);
+
+  return mcpServerProxy.fetch(c.req.raw);
+});
+app.post("/apps/mcp/tool/:toolName", async (c) => {
   const mcpServerProxy = await createMcpServerProxyForAppName(c);
 
   return mcpServerProxy.fetch(c.req.raw);
