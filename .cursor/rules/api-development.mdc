@@ -79,7 +79,103 @@ const createTool = createToolGroup("Feature", {
 });
 ```
 
-### 1.2 Tool Implementation Pattern
+### 1.2 Return Type Requirements
+
+**CRITICAL**: MCP tools MUST return objects, not nullable primitives:
+
+```typescript
+// ❌ BAD - TypeScript error: null not assignable to object
+export const getFeature = createTool({
+  name: "FEATURE_GET",
+  handler: async ({ id }, c) => {
+    const feature = await fetchFeature(id);
+    return feature || null;  // ERROR: Type 'Feature | null' not assignable
+  },
+});
+
+// ✅ GOOD - Wrap in object
+export const getFeature = createTool({
+  name: "FEATURE_GET",
+  outputSchema: z.object({ 
+    feature: FeatureSchema.nullable() 
+  }),
+  handler: async ({ id }, c) => {
+    const feature = await fetchFeature(id);
+    return { feature: feature || null };  // ✅ Always returns object
+  },
+});
+```
+
+### 1.3 Organization Context Handling
+
+For org-level operations, auto-resolve context and use slug-based authorization:
+
+```typescript
+import { getOrgIdFromContext } from "../projects/util.ts";
+
+export const updateOrgFeature = createTool({
+  name: "FEATURE_UPDATE_ORG",
+  inputSchema: z.object({
+    // Do NOT include orgId in input - always resolve from context
+    featureData: FeatureSchema,
+  }),
+  handler: async (props, c) => {
+    // 1. Auto-resolve org ID from context
+    const orgId = await getOrgIdFromContext(c);
+    
+    if (!orgId) {
+      throw new Error("No organization context available");
+    }
+
+    // 2. Use org SLUG for authorization (not ID!)
+    const orgSlug = c.locator?.org;
+    if (!orgSlug) {
+      throw new Error("No organization slug in context");
+    }
+    
+    // ✅ CORRECT - Use slug from locator
+    await assertTeamResourceAccess("TEAMS_UPDATE", orgSlug, c);
+
+    // 3. Use Drizzle for database operations
+    const result = await c.drizzle
+      .update(organizations)
+      .set({ feature: props.featureData })
+      .where(eq(organizations.id, orgId))
+      .returning();
+
+    return { feature: result[0].feature };
+  },
+});
+```
+
+**Key Points**:
+- Do NOT accept `orgId` from input - always auto-resolve from context
+- Auto-resolve using `getOrgIdFromContext(c)`
+- Always use **org slug** for `assertTeamResourceAccess`, never numeric ID
+- Use `c.drizzle` for Drizzle ORM
+
+### 1.4 Database Operations
+
+**Prefer Drizzle ORM for all new code.** We're gradually migrating away from Supabase queries:
+
+```typescript
+// ✅ PREFERRED - Use c.drizzle for Drizzle ORM
+const result = await c.drizzle
+  .select()
+  .from(organizations)
+  .where(eq(organizations.id, orgId));
+
+// ⚠️ LEGACY - c.db (Supabase client) for existing queries only
+// Avoid using for new features
+const { data, error } = await c.db
+  .from(DECO_CHAT_FEATURE_TABLE)
+  .select(SELECT_FEATURE_QUERY)
+  .eq("workspace", workspace);
+
+if (error) throw error;  // Supabase pattern
+```
+
+### 1.5 Tool Implementation Pattern
 
 ```typescript
 export const listFeatures = createTool({

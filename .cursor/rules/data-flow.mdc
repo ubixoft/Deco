@@ -308,22 +308,44 @@ const result = await db.from("agents").insert(agent);
 React Query updates cache and triggers re-renders
 ```
 
-## 6. Best Practices
+## 6. Virtual Integrations
+
+### Tool Groups as Integrations
+Tool groups automatically become virtual integrations accessible via `i:{group-name}`:
+
+```typescript
+// Tool group definition
+export const createTool = createToolGroup("Theme", {
+  name: "Theme Management",
+  description: "Manage organization-level themes.",
+  icon: "https://assets.decocache.com/mcp/.../theme.png",
+});
+
+// Becomes virtual integration: i:theme-management
+// Accessible in frontend via:
+const { data: tools } = useTools(integration.connection);
+```
+
+## 7. Best Practices
 
 ### Tool Development
 - Always use Zod schemas for input/output validation
 - Call `context.resourceAccess.grant()` after authorization checks
 - Use descriptive tool names following the pattern `{RESOURCE}_{ACTION}`
 - Group related tools by functionality
+- Return objects, not nullable primitives (MCP requirement)
+- Use slug-based authorization for team resources
 
 ### Frontend Integration
 - Use consistent query keys from `KEYS` object
 - Implement optimistic updates for better UX
 - Handle loading and error states appropriately
 - Use `useSuspenseQuery` for critical data
+- Include `locator` in all scoped API calls
 
 ### Authorization
 - Always check workspace/team access before operations
+- Use **org slugs** for team resource access, not IDs
 - Use least-privilege principle for API keys
 - Implement proper error handling for forbidden operations
 - Log authorization failures for debugging
