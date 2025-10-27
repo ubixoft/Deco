@@ -472,7 +472,7 @@ function WorkspaceViews() {
     "Workflows",
     "Documents",
     "Agents",
-    "Theme",
+    ...(project ? [] : ["Theme"]),
   ];
   const legacyTitleMap: Record<string, string> = {
     Prompts: "Documents",
@@ -507,7 +507,7 @@ function WorkspaceViews() {
     "Tools",
     "Views",
     "Files",
-    "Theme",
+    ...(project ? [] : ["Theme"]),
   ];
   const resourceItems = resourceTypeOrder
     .map((title) => {
