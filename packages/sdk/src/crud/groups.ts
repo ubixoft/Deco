@@ -29,6 +29,7 @@ export const WellKnownMcpGroups = {
   HTTP: "http",
   Workflows: "workflows-management",
   Self: "self",
+  Theme: "theme-management",
 } as const;
 
 type Groups = typeof WellKnownMcpGroups;
@@ -65,6 +66,7 @@ export const WellKnownAppNames = {
   "tools-management": "tools",
   http: "http",
   "workflows-management": "workflows",
+  // Note: "theme-management" is not included as it's a native feature, not a registry app
 } satisfies Partial<WellKnownMcpGroupRecord>;
 
 export type WellKnownMcpGroup = keyof typeof WellKnownMcpGroups;

@@ -439,6 +439,13 @@ const router = createBrowserRouter([
             path: "settings",
             Component: OrgSettings,
           },
+          {
+            path: "theme-editor",
+            lazy: () =>
+              import(
+                "./components/theme-editor/theme-editor-resource-list.tsx"
+              ).then((m) => ({ Component: m.ThemeEditorResourceList })),
+          },
         ],
       },
       {

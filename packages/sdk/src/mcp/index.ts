@@ -26,6 +26,7 @@ import * as promptsAPI from "./prompts/api.ts";
 import * as registryAPI from "./registry/api.ts";
 import type { CreateStubHandlerOptions, MCPClientStub } from "./stub.ts";
 import * as teamsAPI from "./teams/api.ts";
+import * as themeAPI from "./theme/api.ts";
 import * as threadsAPI from "./threads/api.ts";
 import { runTool } from "./tools/api.ts";
 import * as triggersAPI from "./triggers/api.ts";
@@ -86,7 +87,7 @@ export const GLOBAL_TOOLS = [
   teamsAPI.updateTeamRole,
   teamsAPI.deleteTeamRole,
   teamsAPI.getTeamRole,
-  teamsAPI.getWorkspaceTheme,
+  teamsAPI.getOrgTheme,
   teamsAPI.listProjects,
   teamsAPI.createProject,
   teamsAPI.updateProject,
@@ -113,6 +114,7 @@ export const GLOBAL_TOOLS = [
 
 // Tools tied to an specific workspace
 export const PROJECT_TOOLS = [
+  themeAPI.updateOrgTheme,
   teamsAPI.addView,
   teamsAPI.removeView,
   membersAPI.inviteTeamMembers,

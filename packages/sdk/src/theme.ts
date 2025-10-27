@@ -2,7 +2,7 @@
  * TODO(camudo): Handle custom fonts
  */
 
-export const THEME_VARIABLES = [
+export const COLOR_VARIABLES = [
   "--background",
   "--foreground",
   "--card",
@@ -25,16 +25,38 @@ export const THEME_VARIABLES = [
   "--warning-foreground",
   "--border",
   "--input",
+  "--ring",
+  "--chart-1",
+  "--chart-2",
+  "--chart-3",
+  "--chart-4",
+  "--chart-5",
   "--sidebar",
   "--sidebar-foreground",
   "--sidebar-accent",
   "--sidebar-accent-foreground",
   "--sidebar-border",
-  "--sidebar-ring",
-  "--primary-light",
-  "--primary-dark",
-  "--splash",
 ] as const;
+
+export const LAYOUT_VARIABLES = ["--radius", "--spacing"] as const;
+
+export const SHADOW_VARIABLES = [
+  "--shadow-x",
+  "--shadow-y",
+  "--shadow-blur",
+  "--shadow-spread",
+  "--shadow-opacity",
+] as const;
+
+export const THEME_VARIABLES = [
+  ...COLOR_VARIABLES,
+  ...LAYOUT_VARIABLES,
+  ...SHADOW_VARIABLES,
+] as const;
+
+export type ColorVariable = (typeof COLOR_VARIABLES)[number];
+export type LayoutVariable = (typeof LAYOUT_VARIABLES)[number];
+export type ShadowVariable = (typeof SHADOW_VARIABLES)[number];
 export type ThemeVariable = (typeof THEME_VARIABLES)[number];
 export interface GoogleFontsThemeFont {
   type: "Google Fonts";
@@ -56,35 +78,45 @@ export interface Theme {
 export const DEFAULT_THEME: Theme = {
   variables: {
     "--background": "oklch(1 0 0)",
-    "--foreground": "oklch(20.5% 0 0)",
-    "--primary-light": "#d0ec1a",
-    "--primary-dark": "#07401a",
-    "--card": "oklch(97.6% 0 0)",
-    "--card-foreground": "oklch(20.5% 0 0)",
+    "--foreground": "oklch(0.2050 0 0)",
+    "--card": "oklch(0.9760 0 0)",
+    "--card-foreground": "oklch(0.2050 0 0)",
     "--popover": "oklch(1 0 0)",
-    "--popover-foreground": "oklch(20.5% 0 0)",
-    "--primary": "oklch(20.5% 0 0)",
-    "--primary-foreground": "oklch(98.5% 0 0)",
-    "--secondary": "oklch(97% 0 0)",
-    "--secondary-foreground": "oklch(20.5% 0 0)",
-    "--muted": "oklch(97% 0 0)",
-    "--muted-foreground": "oklch(55.6% 0 0)",
-    "--accent": "oklch(97% 0 0)",
-    "--accent-foreground": "oklch(20.5% 0 0)",
-    "--destructive": "oklch(0.577 0.245 27.325)",
+    "--popover-foreground": "oklch(0.2050 0 0)",
+    "--primary": "oklch(0.8916 0.2037 118.17)",
+    "--primary-foreground": "oklch(0.3266 0.0858 149.2)",
+    "--secondary": "oklch(0.9700 0 0)",
+    "--secondary-foreground": "oklch(0.2050 0 0)",
+    "--muted": "oklch(0.9700 0 0)",
+    "--muted-foreground": "oklch(0.5560 0 0)",
+    "--accent": "oklch(0.9700 0 0)",
+    "--accent-foreground": "oklch(0.2050 0 0)",
+    "--destructive": "oklch(0.5770 0.2450 27.3250)",
     "--destructive-foreground": "oklch(1 0 0)",
-    "--success": "oklch(0.654 0.184 142.0)",
-    "--success-foreground": "oklch(0.963 0.025 137.0)",
-    "--warning": "oklch(0.877 0.184 99.0)",
-    "--warning-foreground": "oklch(0.293 0.071 70.0)",
-    "--border": "oklch(92.2% 0 0)",
-    "--input": "oklch(92.2% 0 0)",
+    "--success": "oklch(0.6540 0.1840 142)",
+    "--success-foreground": "oklch(0.9630 0.0250 137)",
+    "--warning": "oklch(0.8770 0.1840 99)",
+    "--warning-foreground": "oklch(0.2930 0.0710 70)",
+    "--border": "oklch(0.9220 0 0)",
+    "--input": "oklch(0.9220 0 0)",
+    "--ring": "oklch(0.2680 0.0070 34.2980)",
+    "--chart-1": "oklch(0.6460 0.2220 41.1160)",
+    "--chart-2": "oklch(0.6000 0.1180 184.7040)",
+    "--chart-3": "oklch(0.3980 0.0700 227.3920)",
+    "--chart-4": "oklch(0.8280 0.1890 84.4290)",
+    "--chart-5": "oklch(0.7690 0.1880 70.0800)",
     "--sidebar": "oklch(1 0 0)",
-    "--sidebar-foreground": "oklch(20.5% 0 0)",
-    "--sidebar-accent": "oklch(97% 0 0)",
-    "--sidebar-accent-foreground": "oklch(20.5% 0 0)",
-    "--sidebar-border": "oklch(92.2% 0 0)",
-    "--sidebar-ring": "oklch(92.2% 0 0)",
+    "--sidebar-foreground": "oklch(0.2050 0 0)",
+    "--sidebar-accent": "oklch(0.9700 0 0)",
+    "--sidebar-accent-foreground": "oklch(0.2050 0 0)",
+    "--sidebar-border": "oklch(0.9220 0 0)",
+    "--radius": "0.375rem",
+    "--spacing": "0.25rem",
+    "--shadow-x": "0",
+    "--shadow-y": "1px",
+    "--shadow-blur": "3px",
+    "--shadow-spread": "0px",
+    "--shadow-opacity": "0.1",
   },
 
   font: {
