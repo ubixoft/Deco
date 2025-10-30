@@ -1,4 +1,4 @@
-name = "deco-chat-api"
+name = "deco"
 main = "apps/api/main.ts"
 compatibility_date = "2025-10-30"
 compatibility_flags = ["nodejs_compat"]
