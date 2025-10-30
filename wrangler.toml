@@ -1,56 +1,76 @@
-name = "deco-chat-api"
-main = "apps/api/main.ts"
-compatibility_date = "2025-10-30"
+#:schema node_modules/wrangler/config-schema.json
 compatibility_flags = ["nodejs_compat"]
+
+name = "deco-chat-api"
+main = "main.ts"
+compatibility_date = "2024-11-27"
+routes = [
+  { pattern = "api.decocms.com", custom_domain = true },
+  { pattern = "api.deco.chat", custom_domain = true },
+  { pattern = "*/*", zone_name = "deco.page" },
+]
+
+[vars]
+VITE_USE_LOCAL_BACKEND = false
 
 [observability]
 enabled = true
 
-# Environment variables
-[vars]
-ENVIRONMENT = "production"
-VITE_USE_LOCAL_BACKEND = "false"
+[version_metadata]
+binding = "CF_VERSION_METADATA"
 
-# Durable Objects - SQLite format (required for free plan)
 [[durable_objects.bindings]]
 name = "AIAGENT"
 class_name = "AIAgent"
-script_name = "deco-chat-api"
 
 [[durable_objects.bindings]]
 name = "TRIGGER"
 class_name = "Trigger"
-script_name = "deco-chat-api"
 
 [[durable_objects.bindings]]
 name = "WORKSPACE_DB"
 class_name = "WorkspaceDatabase"
-script_name = "deco-chat-api"
 
 [[durable_objects.bindings]]
 name = "BRANCH"
 class_name = "Branch"
-script_name = "deco-chat-api"
 
 [[durable_objects.bindings]]
 name = "BLOBS"
 class_name = "Blobs"
-script_name = "deco-chat-api"
 
-# Define Durable Object classes with SQLite storage
+# Durable Object migrations.
+# Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#migrations
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["AIAgent", "Trigger", "WorkspaceDatabase", "Branch", "Blobs"]
+new_classes = ["Trigger", "AIAgent"]
 
-# Workflows - FIXED FORMAT
+[[tail_consumers]]
+service = "hyperdx-tail"
+
+[[migrations]]
+tag = "v2"
+new_classes = ["TestDO"]
+
+[[migrations]]
+tag = "v3"
+deleted_classes = ["TestDO"]
+
+# Workflow bindings for knowledge base file processing
 [[workflows]]
+name = "kb-file-processor"
 binding = "KB_FILE_PROCESSOR"
 class_name = "KbFileProcessorWorkflow"
 
 [[workflows]]
+name = "workflow-runner"
 binding = "WORKFLOW_RUNNER"
 class_name = "WorkflowRunner"
 
-# Tail consumers (comment out if hyperdx-tail doesn't exist)
-[[tail_consumers]]
-service = "hyperdx-tail"
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["WorkspaceDatabase"] # Array of new classes
+
+[[migrations]]
+tag = "v5"
+new_sqlite_classes = ["Branch", "Blobs"] # DECONFIG DurableObjects
