@@ -1,0 +1,30 @@
+name = "deco-chat"
+main = "main.ts"
+compatibility_date = "2025-10-30"
+
+# Node.js compatibility for packages that need it
+compatibility_flags = ["nodejs_compat"]
+
+# Build configuration - skip the broken build
+[build]
+command = ""
+
+# Environment variables (non-secret)
+[vars]
+ENVIRONMENT = "production"
+
+# Add your D1 database if needed
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "deco-chat-db"
+# database_id = "your-database-id-here"
+
+# Add KV namespace if needed
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-id-here"
+
+# Add R2 bucket if needed
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "deco-chat-assets"
