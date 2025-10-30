@@ -11,7 +11,7 @@ enabled = true
 ENVIRONMENT = "production"
 VITE_USE_LOCAL_BACKEND = "false"
 
-# Durable Objects - NEW SQLITE FORMAT (required for free plan)
+# Durable Objects - SQLite format (required for free plan)
 [[durable_objects.bindings]]
 name = "AIAGENT"
 class_name = "AIAgent"
@@ -42,15 +42,15 @@ script_name = "deco-chat-api"
 tag = "v1"
 new_sqlite_classes = ["AIAgent", "Trigger", "WorkspaceDatabase", "Branch", "Blobs"]
 
-# Workflows
+# Workflows - FIXED FORMAT
 [[workflows]]
 binding = "KB_FILE_PROCESSOR"
-name = "KbFileProcessorWorkflow"
+class_name = "KbFileProcessorWorkflow"
 
 [[workflows]]
 binding = "WORKFLOW_RUNNER"
-name = "WorkflowRunner"
+class_name = "WorkflowRunner"
 
-# Tail consumers
+# Tail consumers (comment out if hyperdx-tail doesn't exist)
 [[tail_consumers]]
 service = "hyperdx-tail"
