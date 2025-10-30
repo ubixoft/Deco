@@ -2,7 +2,7 @@
 compatibility_flags = ["nodejs_compat"]
 
 name = "deco-chat-api"
-main = "main.ts"
+main = "apps/api/main.ts"
 compatibility_date = "2024-11-27"
 routes = [
   { pattern = "api.decocms.com", custom_domain = true },
